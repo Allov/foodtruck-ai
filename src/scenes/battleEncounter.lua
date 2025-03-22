@@ -34,12 +34,15 @@ function BattleEncounter.new()
         currentCookingIndex = 1,
         timeRemaining = 60,
         currentScore = 0,
-        maxSelectedCards = 3,
         roundNumber = 1,
         maxRounds = 3,
-        actionFeedback = nil,  -- For showing feedback messages
-        comboMultiplier = 1    -- For card combinations
+        actionFeedback = nil,
+        comboMultiplier = 1
     }
+    -- Remove maxSelectedCards from here since it will be set by setupBattleParameters
+    
+    -- Call setupBattleParameters during initialization
+    self:setupBattleParameters()
     
     if self.init then
         self:init()
@@ -82,13 +85,13 @@ function BattleEncounter:setupBattleParameters()
         food_critic = {
             rounds = 3,
             timePerRound = 60,
-            maxCards = 3,
+            maxCards = 5,  -- Updated to 5 cards
             targetScore = 100
         },
         rush_hour = {
             rounds = 5,
             timePerRound = 45,
-            maxCards = 2,
+            maxCards = 5,  -- Updated to 5 cards
             targetScore = 150
         }
         -- Add more battle types as needed
@@ -403,8 +406,8 @@ function BattleEncounter:drawInitialHand()
     self.state.handCards = {}
     self.state.selectedCardIndex = 1  -- Reset selection index
     
-    -- Draw 5 cards from the current deck
-    local cardsToDraw = 5
+    -- Draw 8 cards from the current deck
+    local cardsToDraw = 8
     for i = 1, cardsToDraw do
         local card = self.state.deck:draw()
         if card then
@@ -421,43 +424,105 @@ end
 
 function BattleEncounter:drawPreparationPhase()
     local cardWidth, cardHeight = Card.getDimensions()
-    local spacing = 20
     local baseY = love.graphics.getHeight() - cardHeight - 50
-    local startX = (love.graphics.getWidth() - ((cardWidth + spacing) * #self.state.handCards)) / 2
     
-    -- Draw cards
-    for i, card in ipairs(self.state.handCards) do
-        local x = startX + ((i-1) * (cardWidth + spacing))
-        local y = baseY
-        
-        -- Highlight selected card
-        if i == self.state.selectedCardIndex then
-            love.graphics.setColor(0.8, 0.8, 0.2, 0.3)
-            love.graphics.rectangle('fill', x - 5, y - 5, cardWidth + 10, cardHeight + 10)
+    -- Calculate overlap amount based on number of cards
+    local totalWidth = love.graphics.getWidth() - 200  -- Leave some margin on sides
+    local overlapAmount = math.min(
+        cardWidth * 0.8,  -- Increased overlap (80% of card width)
+        (cardWidth * #self.state.handCards - totalWidth) / (#self.state.handCards - 1)
+    )
+    local startX = (love.graphics.getWidth() - (cardWidth + overlapAmount * (#self.state.handCards - 1))) / 2
+    
+    -- Calculate curve parameters
+    local curveHeight = 30  -- Reduced from 40 to tighten curve
+    local middleIndex = math.ceil(#self.state.handCards / 2)
+    
+    -- First draw non-selected cards from right to left
+    for i = #self.state.handCards, 1, -1 do  -- Reversed loop
+        if i ~= self.state.selectedCardIndex then
+            local card = self.state.handCards[i]
+            local x = startX + ((i-1) * (cardWidth - overlapAmount))
+            
+            -- Modified curve calculation to be more balanced
+            local progress = (i - 1) / (#self.state.handCards - 1)
+            local curveOffset = math.sin(progress * math.pi) * curveHeight
+            local y = baseY - curveOffset
+            
+            -- Adjusted rotation to be more subtle
+            local rotation = math.rad((i - middleIndex) * 2)  -- Reduced from 3 to 2 degrees
+            
+            -- Highlight locked/selected cards
+            if card.isLocked then
+                love.graphics.setColor(0.2, 0.8, 0.2, 0.3)
+                love.graphics.rectangle('fill', x, y, cardWidth, cardHeight)
+            end
+            
+            -- Draw the card
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.push()
+            love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
+            love.graphics.rotate(rotation)
+            love.graphics.translate(-cardWidth/2, -cardHeight/2)
+            card:draw(0, 0)
+            love.graphics.pop()
         end
+    end
+    
+    -- Then draw the selected card last (on top)
+    if self.state.selectedCardIndex > 0 and self.state.selectedCardIndex <= #self.state.handCards then
+        local card = self.state.handCards[self.state.selectedCardIndex]
+        local i = self.state.selectedCardIndex
+        local x = startX + ((i-1) * (cardWidth - overlapAmount))
         
-        -- Highlight locked/selected cards
+        -- Use same curve calculation for selected card
+        local progress = (i - 1) / (#self.state.handCards - 1)
+        local curveOffset = math.sin(progress * math.pi) * curveHeight
+        local y = baseY - curveOffset - 20  -- Raise selected card
+        
+        -- Use same rotation calculation
+        local rotation = math.rad((i - middleIndex) * 2)
+        
+        -- Draw selection highlight
+        love.graphics.setColor(0.8, 0.8, 0.2, 0.3)
+        love.graphics.push()
+        love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
+        love.graphics.rotate(rotation)
+        love.graphics.translate(-cardWidth/2 - 5, -cardHeight/2 - 5)
+        love.graphics.rectangle('fill', 0, 0, cardWidth + 10, cardHeight + 10)
+        love.graphics.pop()
+        
+        -- Highlight if locked
         if card.isLocked then
             love.graphics.setColor(0.2, 0.8, 0.2, 0.3)
-            love.graphics.rectangle('fill', x, y, cardWidth, cardHeight)
+            love.graphics.push()
+            love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
+            love.graphics.rotate(rotation)
+            love.graphics.translate(-cardWidth/2, -cardHeight/2)
+            love.graphics.rectangle('fill', 0, 0, cardWidth, cardHeight)
+            love.graphics.pop()
         end
         
         -- Draw the card
         love.graphics.setColor(1, 1, 1, 1)
-        card:draw(x, y)
+        love.graphics.push()
+        love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
+        love.graphics.rotate(rotation)
+        love.graphics.translate(-cardWidth/2, -cardHeight/2)
+        card:draw(0, 0)
+        love.graphics.pop()
     end
     
-    -- Draw selection info
+    -- Draw UI elements
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf(
         string.format("Selected: %d/%d", #self.state.selectedCards, self.state.maxSelectedCards),
         0,
-        baseY - 30,
+        baseY - 70,
         love.graphics.getWidth(),
         'center'
     )
     
-    -- Draw instructions
     love.graphics.printf(
         "← → to move  |  SPACE to select  |  ENTER to confirm  |  D to discard",
         0,
@@ -466,7 +531,6 @@ function BattleEncounter:drawPreparationPhase()
         'center'
     )
 
-    -- Draw discard pile if in discard mode
     if self.state.currentAction == self.ACTIONS.DISCARD then
         self:drawDiscardUI()
     end
