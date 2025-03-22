@@ -19,6 +19,7 @@ function SceneManager:switch(name)
     -- Check if the scene exists before switching
     if self.scenes[name] then
         self.current = self.scenes[name]
+        print("Switching to scene:", name)
         self.current:enter()
     else
         error("Scene '" .. name .. "' not found")
@@ -38,3 +39,4 @@ function SceneManager:draw()
 end
 
 return SceneManager
+

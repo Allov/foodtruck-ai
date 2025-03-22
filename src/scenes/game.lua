@@ -21,6 +21,13 @@ function Game:update(dt)
         self.showingConfirmDialog = true
         return
     end
+
+    -- Simply switch to deck viewer, setting game as previous scene
+    if love.keyboard.wasPressed('tab') then
+        gameState.previousScene = 'game'
+        sceneManager:switch('deckViewer')
+        return
+    end
 end
 
 function Game:draw()
@@ -28,8 +35,10 @@ function Game:draw()
     if self.paused then
         love.graphics.printf("PAUSED", 0, love.graphics.getHeight()/2, love.graphics.getWidth(), 'center')
     else
-        love.graphics.printf("Game Running\nPress ESC to return to menu", 0, love.graphics.getHeight()/2, love.graphics.getWidth(), 'center')
+        love.graphics.printf("Game Running\nPress ESC to return to menu\nPress TAB to view deck", 0, love.graphics.getHeight()/2, love.graphics.getWidth(), 'center')
     end
 end
 
 return Game
+
+

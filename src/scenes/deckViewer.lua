@@ -133,9 +133,18 @@ function DeckViewer:update(dt)
         end
     end
     
-    -- Return to previous scene
-    if love.keyboard.wasPressed('escape') then
-        sceneManager:switch(gameState.previousScene or 'mainMenu')
+    -- If we came from game scene, allow both ESC and TAB to return
+    if gameState.previousScene == 'game' then
+        if love.keyboard.wasPressed('escape') or love.keyboard.wasPressed('tab') then
+            sceneManager:switch('game')
+            return
+        end
+    else
+        -- Otherwise, just ESC to return to previous scene
+        if love.keyboard.wasPressed('escape') then
+            sceneManager:switch(gameState.previousScene or 'mainMenu')
+            return
+        end
     end
 end
 
@@ -224,4 +233,6 @@ function DeckViewer:draw()
 end
 
 return DeckViewer
+
+
 
