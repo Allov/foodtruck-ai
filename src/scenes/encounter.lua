@@ -235,20 +235,28 @@ function Encounter:draw()
 end
 
 function Encounter:resolveEncounter()
-    -- Get the province map scene
-    local provinceMap = sceneManager.scenes['provinceMap']
-    
-    -- Mark the current node as completed
-    provinceMap:markNodeCompleted(gameState.currentNodeLevel, gameState.currentNodeIndex)
+    -- Only try to mark node as completed if we came from the province map
+    if gameState.currentNodeLevel and gameState.currentNodeIndex then
+        -- Get the province map scene
+        local provinceMap = sceneManager.scenes['provinceMap']
+        
+        -- Mark the current node as completed
+        provinceMap:markNodeCompleted(gameState.currentNodeLevel, gameState.currentNodeIndex)
+    end
     
     -- Clear the current encounter
     gameState.currentEncounter = nil
     
-    -- Return to the map
-    sceneManager:switch('provinceMap')
+    -- Return to previous scene (either provinceMap or debugMenu)
+    if gameState.previousScene then
+        sceneManager:switch(gameState.previousScene)
+    else
+        sceneManager:switch('provinceMap')
+    end
 end
 
 return Encounter
+
 
 
 

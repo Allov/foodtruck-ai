@@ -36,7 +36,9 @@ function love.load()
         seedInput = require('src.scenes.seedInput'),
         chefSelect = require('src.scenes.chefSelect'),
         provinceMap = require('src.scenes.provinceMap'),
-        encounter = require('src.scenes.encounter')
+        encounter = require('src.scenes.encounter'),
+        debugMenu = require('src.scenes.debugMenu'),
+        encounterTester = require('src.scenes.encounterTester')
     }
 
     -- Add scenes to manager
@@ -69,6 +71,7 @@ end
 function love.draw()
     sceneManager:draw()
 end
+
 
 
 

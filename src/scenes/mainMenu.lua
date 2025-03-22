@@ -11,6 +11,7 @@ function MainMenu:init()
     self.options = {
         "Start Food Truck Journey",
         "Options",
+        "Debug Menu",  -- New debug option
         "Exit"
     }
     self.selected = 1
@@ -33,7 +34,9 @@ function MainMenu:update(dt)
     if love.keyboard.wasPressed('return') then
         if self.selected == 1 then
             sceneManager:switch('seedInput')
-        elseif self.selected == 3 then
+        elseif self.selected == 3 then  -- Debug Menu
+            sceneManager:switch('debugMenu')
+        elseif self.selected == 4 then  -- Exit moved to position 4
             love.event.quit()
         end
     end
@@ -54,5 +57,6 @@ function MainMenu:draw()
 end
 
 return MainMenu
+
 
 
