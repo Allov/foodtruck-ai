@@ -7,10 +7,16 @@ BattleEncounter.__name = "battleEncounter"
 setmetatable(BattleEncounter, Scene)
 
 BattleEncounter.PHASES = {
-    PREPARATION = "PREPARATION", -- Player selects cards
-    COOKING = "COOKING",       -- Active cooking phase with timer
-    JUDGING = "JUDGING",      -- Results evaluation
-    RESULTS = "RESULTS"       -- Show round/battle results
+    PREPARATION = "PREPARATION",
+    COOKING = "COOKING",
+    JUDGING = "JUDGING",
+    RESULTS = "RESULTS"
+}
+
+BattleEncounter.ACTIONS = {
+    SELECT = "SELECT",
+    DISCARD = "DISCARD",
+    COOK = "COOK"
 }
 
 function BattleEncounter.new()
@@ -19,15 +25,20 @@ function BattleEncounter.new()
     
     self.state = {
         currentPhase = BattleEncounter.PHASES.PREPARATION,
+        currentAction = BattleEncounter.ACTIONS.SELECT,
         selectedCards = {},
         handCards = {},
+        discardPile = {},
+        selectedForDiscard = {},
         selectedCardIndex = 1,
         currentCookingIndex = 1,
         timeRemaining = 60,
         currentScore = 0,
         maxSelectedCards = 3,
         roundNumber = 1,
-        maxRounds = 3
+        maxRounds = 3,
+        actionFeedback = nil,  -- For showing feedback messages
+        comboMultiplier = 1    -- For card combinations
     }
     
     if self.init then
@@ -55,6 +66,15 @@ function BattleEncounter:enter()
     
     -- Set battle parameters based on type
     self:setupBattleParameters()
+    
+    -- Initialize first card as selected
+    if #self.state.handCards > 0 then
+        self.state.selectedCardIndex = 1
+        local firstCard = self.state.handCards[1]
+        if firstCard then
+            firstCard:setSelected(true)
+        end
+    end
 end
 
 function BattleEncounter:setupBattleParameters()
@@ -127,7 +147,14 @@ function BattleEncounter:update(dt)
 end
 
 function BattleEncounter:updatePreparationPhase()
-    -- Handle card selection
+    if self.state.currentAction == self.ACTIONS.SELECT then
+        self:handleCardSelection()
+    elseif self.state.currentAction == self.ACTIONS.DISCARD then
+        self:handleCardDiscard()
+    end
+end
+
+function BattleEncounter:handleCardSelection()
     if love.keyboard.wasPressed('left') then
         self:selectPreviousCard()
     elseif love.keyboard.wasPressed('right') then
@@ -135,7 +162,59 @@ function BattleEncounter:updatePreparationPhase()
     elseif love.keyboard.wasPressed('space') then
         self:toggleCardSelection()
     elseif love.keyboard.wasPressed('return') and #self.state.selectedCards > 0 then
-        self:transitionToPhase(BattleEncounter.PHASES.COOKING)
+        self:transitionToPhase(self.PHASES.COOKING)
+    elseif love.keyboard.wasPressed('d') then
+        if #self.state.handCards > 0 then
+            self.state.currentAction = self.ACTIONS.DISCARD
+        end
+    end
+end
+
+function BattleEncounter:handleCardDiscard()
+    if love.keyboard.wasPressed('escape') then
+        self.state.currentAction = self.ACTIONS.SELECT
+        self.state.selectedForDiscard = {}
+    elseif love.keyboard.wasPressed('space') then
+        self:toggleCardDiscard()
+    elseif love.keyboard.wasPressed('return') then
+        self:confirmDiscard()
+    end
+end
+
+function BattleEncounter:toggleCardDiscard()
+    local card = self.state.handCards[self.state.selectedCardIndex]
+    if not card then return end
+    
+    local index = table.indexOf(self.state.selectedForDiscard, card)
+    if index then
+        table.remove(self.state.selectedForDiscard, index)
+    else
+        table.insert(self.state.selectedForDiscard, card)
+    end
+end
+
+function BattleEncounter:confirmDiscard()
+    for _, card in ipairs(self.state.selectedForDiscard) do
+        -- Remove from hand
+        local index = table.indexOf(self.state.handCards, card)
+        if index then
+            table.remove(self.state.handCards, index)
+            table.insert(self.state.discardPile, card)
+            
+            -- Trigger any "on discard" effects
+            if card.onDiscard then
+                card:onDiscard(self)
+            end
+        end
+    end
+    
+    -- Clear discard selection and return to normal selection mode
+    self.state.selectedForDiscard = {}
+    self.state.currentAction = self.ACTIONS.SELECT
+    
+    -- Adjust selected card index if needed
+    if self.state.selectedCardIndex > #self.state.handCards then
+        self.state.selectedCardIndex = #self.state.handCards
     end
 end
 
@@ -175,20 +254,22 @@ function BattleEncounter:toggleCardSelection()
     local card = self.state.handCards[self.state.selectedCardIndex]
     if not card then return end
     
-    if card.isLocked then
-        card:setLocked(false)
-        -- Remove from selected cards
-        for i, selectedCard in ipairs(self.state.selectedCards) do
-            if selectedCard == card then
-                table.remove(self.state.selectedCards, i)
-                break
-            end
+    -- Check if card is already selected
+    local isSelected = false
+    for i, selectedCard in ipairs(self.state.selectedCards) do
+        if selectedCard == card then
+            isSelected = true
+            -- Remove from selected cards
+            table.remove(self.state.selectedCards, i)
+            card:setLocked(false)
+            break
         end
-    else
-        if #self.state.selectedCards < self.state.maxSelectedCards then
-            card:setLocked(true)
-            table.insert(self.state.selectedCards, card)
-        end
+    end
+    
+    -- If not selected and we haven't reached max cards, add it
+    if not isSelected and #self.state.selectedCards < self.state.maxSelectedCards then
+        table.insert(self.state.selectedCards, card)
+        card:setLocked(true)
     end
 end
 
@@ -234,7 +315,6 @@ function BattleEncounter:applyCookingEffect(card)
 end
 
 function BattleEncounter:draw()
-    print("[BattleEncounter:draw] Drawing instance", self.instanceId, "state:", self.state)
     love.graphics.setColor(1, 1, 1, 1)
     
     -- Draw phase-specific elements
@@ -321,6 +401,7 @@ end
 function BattleEncounter:drawInitialHand()
     -- Clear current hand
     self.state.handCards = {}
+    self.state.selectedCardIndex = 1  -- Reset selection index
     
     -- Draw 5 cards from the current deck
     local cardsToDraw = 5
@@ -328,6 +409,10 @@ function BattleEncounter:drawInitialHand()
         local card = self.state.deck:draw()
         if card then
             table.insert(self.state.handCards, card)
+            -- Select the first card
+            if i == 1 then
+                card:setSelected(true)
+            end
         else
             break
         end
@@ -340,22 +425,73 @@ function BattleEncounter:drawPreparationPhase()
     local baseY = love.graphics.getHeight() - cardHeight - 50
     local startX = (love.graphics.getWidth() - ((cardWidth + spacing) * #self.state.handCards)) / 2
     
-    -- Update and draw cards
+    -- Draw cards
     for i, card in ipairs(self.state.handCards) do
-        card:update(dt)
         local x = startX + ((i-1) * (cardWidth + spacing))
-        card:draw(x, baseY)
+        local y = baseY
+        
+        -- Highlight selected card
+        if i == self.state.selectedCardIndex then
+            love.graphics.setColor(0.8, 0.8, 0.2, 0.3)
+            love.graphics.rectangle('fill', x - 5, y - 5, cardWidth + 10, cardHeight + 10)
+        end
+        
+        -- Highlight locked/selected cards
+        if card.isLocked then
+            love.graphics.setColor(0.2, 0.8, 0.2, 0.3)
+            love.graphics.rectangle('fill', x, y, cardWidth, cardHeight)
+        end
+        
+        -- Draw the card
+        love.graphics.setColor(1, 1, 1, 1)
+        card:draw(x, y)
     end
     
-    -- Draw instructions
+    -- Draw selection info
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf(
-        "Select cards with SPACE (max " .. self.state.maxSelectedCards .. ")\nPress ENTER when ready",
+        string.format("Selected: %d/%d", #self.state.selectedCards, self.state.maxSelectedCards),
+        0,
+        baseY - 30,
+        love.graphics.getWidth(),
+        'center'
+    )
+    
+    -- Draw instructions
+    love.graphics.printf(
+        "← → to move  |  SPACE to select  |  ENTER to confirm  |  D to discard",
         0,
         love.graphics.getHeight() - 30,
         love.graphics.getWidth(),
         'center'
     )
+
+    -- Draw discard pile if in discard mode
+    if self.state.currentAction == self.ACTIONS.DISCARD then
+        self:drawDiscardUI()
+    end
+end
+
+function BattleEncounter:drawDiscardUI()
+    -- Draw semi-transparent overlay
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    
+    -- Draw discard mode instructions
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf(
+        "DISCARD MODE\nSpace: Select cards to discard\nEnter: Confirm\nEsc: Cancel",
+        0,
+        50,
+        love.graphics.getWidth(),
+        'center'
+    )
+    
+    -- Highlight cards selected for discard
+    for _, card in ipairs(self.state.selectedForDiscard) do
+        -- Draw red outline or overlay on selected cards
+        -- Implementation depends on your card drawing system
+    end
 end
 
 function BattleEncounter:drawCookingPhase()
@@ -429,30 +565,94 @@ function BattleEncounter:drawResultsPhase()
 end
 
 function BattleEncounter:selectNextCard()
-    if #self.state.handCards > 0 then
-        -- Deselect current card
-        if self.state.handCards[self.state.selectedCardIndex] then
-            self.state.handCards[self.state.selectedCardIndex]:setSelected(false)
-        end
-        
-        -- Update index
-        self.state.selectedCardIndex = self.state.selectedCardIndex + 1
-        if self.state.selectedCardIndex > #self.state.handCards then
-            self.state.selectedCardIndex = 1
-        end
-        
-        -- Select new card
-        self.state.handCards[self.state.selectedCardIndex]:setSelected(true)
+    if #self.state.handCards == 0 then return end
+    
+    -- Deselect current card
+    local currentCard = self.state.handCards[self.state.selectedCardIndex]
+    if currentCard then
+        currentCard:setSelected(false)
+    end
+    
+    -- Update index
+    self.state.selectedCardIndex = self.state.selectedCardIndex + 1
+    if self.state.selectedCardIndex > #self.state.handCards then
+        self.state.selectedCardIndex = 1
+    end
+    
+    -- Select new card
+    local newCard = self.state.handCards[self.state.selectedCardIndex]
+    if newCard then
+        newCard:setSelected(true)
     end
 end
 
 function BattleEncounter:selectPreviousCard()
-    if #self.state.handCards > 0 then
-        self.state.selectedCardIndex = self.state.selectedCardIndex - 1
-        if self.state.selectedCardIndex < 1 then
-            self.state.selectedCardIndex = #self.state.handCards
-        end
+    if #self.state.handCards == 0 then return end
+    
+    -- Deselect current card
+    local currentCard = self.state.handCards[self.state.selectedCardIndex]
+    if currentCard then
+        currentCard:setSelected(false)
     end
+    
+    -- Update index
+    self.state.selectedCardIndex = self.state.selectedCardIndex - 1
+    if self.state.selectedCardIndex < 1 then
+        self.state.selectedCardIndex = #self.state.handCards
+    end
+    
+    -- Select new card
+    local newCard = self.state.handCards[self.state.selectedCardIndex]
+    if newCard then
+        newCard:setSelected(true)
+    end
+end
+
+function BattleEncounter:transitionToPhase(newPhase)
+    -- Validate phase
+    if not self.PHASES[newPhase] then
+        return
+    end
+
+    -- Handle cleanup of current phase
+    if self.state.currentPhase == self.PHASES.PREPARATION then
+        -- Reset any preparation phase specific states
+        self.state.currentAction = self.ACTIONS.SELECT
+        self.state.selectedForDiscard = {}
+    elseif self.state.currentPhase == self.PHASES.COOKING then
+        -- Reset cooking specific states
+        self.state.currentCookingIndex = 1
+    end
+
+    -- Set up new phase
+    if newPhase == self.PHASES.COOKING then
+        -- Initialize cooking phase
+        self.state.timeRemaining = 60
+        self.state.currentCookingIndex = 1
+    elseif newPhase == self.PHASES.JUDGING then
+        -- Calculate final score for the round
+        self:calculateRoundScore()
+    end
+
+    -- Update the phase
+    self.state.currentPhase = newPhase
+end
+
+function BattleEncounter:calculateRoundScore()
+    -- Basic score calculation
+    local baseScore = 0
+    for _, card in ipairs(self.state.selectedCards) do
+        baseScore = baseScore + (card.value or 0)
+    end
+    
+    -- Apply combo multiplier
+    local finalScore = baseScore * self.state.comboMultiplier
+    
+    -- Update total score
+    self.state.currentScore = self.state.currentScore + finalScore
+    
+    -- Reset combo multiplier for next round
+    self.state.comboMultiplier = 1
 end
 
 return BattleEncounter  -- NOT return true/false

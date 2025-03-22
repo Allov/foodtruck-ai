@@ -1,0 +1,11 @@
+Fix battle encounter card selection and UI
+
+- Fixed card selection UI bugs and initialization
+- Improved card selection mechanics
+- Added proper visual feedback for selected cards
+- Removed debug print statements
+- Fixed first card selection in preparation phase
+- Added proper state handling for card transitions
+- Improved phase transition logic
+
+Part of battle system improvements from battle_system.md todos
