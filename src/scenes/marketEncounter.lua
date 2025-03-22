@@ -7,6 +7,7 @@ local CARD_WIDTH = 160
 local CARD_HEIGHT = 200
 local CARD_SPACING = 20
 local CARDS_PER_ROW = 4
+local START_Y = 100  -- Add this constant
 
 function MarketEncounter.new()
     local self = setmetatable({}, MarketEncounter)
@@ -34,6 +35,11 @@ function MarketEncounter:enter()
     
     -- Generate initial stock
     self:generateMarketStock()
+
+    -- If no cards were generated, default to "Leave" option
+    if #self.state.availableCards == 0 then
+        self.state.selectedIndex = 1  -- Only the leave button will be available
+    end
 end
 
 function MarketEncounter:generateMarketStock()
@@ -246,20 +252,28 @@ function MarketEncounter:update(dt)
         end
     end
     
-    if love.keyboard.wasPressed('return') then
+    if love.keyboard.wasPressed('return') or love.keyboard.wasPressed('space') then
         if self.state.selectedIndex > numCards then
             -- Selected "Leave" option
             gameState.cash = self.state.cash
-            sceneManager:switch(gameState.previousScene or 'mainMenu')
+            self:resolveEncounter()
         else
             -- Try to buy selected card
             self:tryPurchase(self.state.selectedIndex)
         end
     end
+
+    -- Allow escape to leave
+    if love.keyboard.wasPressed('escape') then
+        gameState.cash = self.state.cash
+        self:resolveEncounter()
+    end
 end
 
 function MarketEncounter:tryPurchase(index)
     local card = self.state.availableCards[index]
+    if not card then return end  -- Safety check
+
     if self.state.cash >= card.cost then
         -- Add to player's deck
         gameState.currentDeck:addCard(card)
@@ -268,13 +282,19 @@ function MarketEncounter:tryPurchase(index)
         gameState.cash = self.state.cash
         -- Remove from available cards
         table.remove(self.state.availableCards, index)
-        -- Reset selection if needed
-        if self.state.selectedIndex > #self.state.availableCards then
-            self.state.selectedIndex = #self.state.availableCards + 1
+        
+        -- Adjust selection index if needed
+        if #self.state.availableCards == 0 then
+            self.state.selectedIndex = 1  -- Select leave button if no cards left
+        elseif self.state.selectedIndex > #self.state.availableCards then
+            self.state.selectedIndex = #self.state.availableCards
         end
         
         -- Resolve the encounter after successful purchase
         self:resolveEncounter()
+    else
+        -- Optional: Add feedback for insufficient funds
+        -- Could add a small message or visual indicator here
     end
 end
 
@@ -289,33 +309,44 @@ function MarketEncounter:draw()
         'center'
     )
     
-    -- Draw cash
+    -- Draw cash with proper formatting
     love.graphics.setColor(1, 0.8, 0, 1)
     love.graphics.printf(
-        string.format("Cash: $%d", self.state.cash),
+        string.format("Cash: $%d", math.floor(self.state.cash)),
         -20,
         30,
         love.graphics.getWidth(),
         'right'
     )
 
-    -- Calculate layout and draw cards
-    local totalWidth = CARDS_PER_ROW * (CARD_WIDTH + CARD_SPACING) - CARD_SPACING
-    local startX = (love.graphics.getWidth() - totalWidth) / 2
-    local startY = 100
+    -- If no cards available, show a message
+    if #self.state.availableCards == 0 then
+        love.graphics.setColor(0.7, 0.7, 0.7, 1)
+        love.graphics.printf(
+            "No items available for purchase",
+            0,
+            love.graphics.getHeight() / 2 - 40,
+            love.graphics.getWidth(),
+            'center'
+        )
+    else
+        -- Calculate layout and draw cards
+        local totalWidth = CARDS_PER_ROW * (CARD_WIDTH + CARD_SPACING) - CARD_SPACING
+        local startX = (love.graphics.getWidth() - totalWidth) / 2
 
-    for i, card in ipairs(self.state.availableCards) do
-        local row = math.floor((i-1) / CARDS_PER_ROW)
-        local col = (i-1) % CARDS_PER_ROW
-        
-        local x = startX + col * (CARD_WIDTH + CARD_SPACING)
-        local y = startY + row * (CARD_HEIGHT + CARD_SPACING)
-        
-        self:drawCard(card, x, y, i == self.state.selectedIndex)
+        for i, card in ipairs(self.state.availableCards) do
+            local row = math.floor((i-1) / CARDS_PER_ROW)
+            local col = (i-1) % CARDS_PER_ROW
+            
+            local x = startX + col * (CARD_WIDTH + CARD_SPACING)
+            local y = START_Y + row * (CARD_HEIGHT + CARD_SPACING)
+            
+            self:drawCard(card, x, y, i == self.state.selectedIndex)
+        end
     end
     
     -- Draw "Leave" button
-    local leaveY = startY + (math.ceil(#self.state.availableCards / CARDS_PER_ROW)) * (CARD_HEIGHT + CARD_SPACING) + 20
+    local leaveY = START_Y + (math.ceil(#self.state.availableCards / CARDS_PER_ROW)) * (CARD_HEIGHT + CARD_SPACING) + 20
     
     if self.state.selectedIndex > #self.state.availableCards then
         love.graphics.setColor(1, 1, 0, 1)
@@ -341,5 +372,7 @@ function MarketEncounter:draw()
 end
 
 return MarketEncounter
+
+
 
 
