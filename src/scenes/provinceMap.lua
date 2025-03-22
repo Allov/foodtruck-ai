@@ -94,14 +94,27 @@ function ProvinceMap:generateMap()
     -- Calculate section width for even distribution
     local sectionWidth = love.graphics.getWidth() / (level2Count + 1)
     
+    -- Ensure at least one battle in level 2
+    local battlePlaced = false
+    local battlePosition = love.math.random(1, level2Count)
+    
     for i = 1, level2Count do
         local x = (i * sectionWidth) + love.math.random(-30, 30)
         x = math.max(100, math.min(love.graphics.getWidth() - 100, x))
         
+        -- If this is our chosen battle position, or we haven't placed a battle yet and this is the last position
+        local encounterType
+        if i == battlePosition then
+            encounterType = "card_battle"
+            battlePlaced = true
+        else
+            encounterType = self:randomEncounterType(true) -- true means exclude card_battle
+        end
+        
         table.insert(self.nodes[2], {
             x = x,
             y = level2Y,
-            type = self:randomEncounterType(),
+            type = encounterType,
             connections = {}
         })
     end
@@ -192,8 +205,13 @@ function ProvinceMap:connectNodesWithoutCrossing()
     end
 end
 
-function ProvinceMap:randomEncounterType()
-    local types = {"card_battle", "beneficial", "negative", "market", "lore"}
+function ProvinceMap:randomEncounterType(excludeBattle)
+    local types
+    if excludeBattle then
+        types = {"beneficial", "negative", "market", "lore"}
+    else
+        types = {"card_battle", "beneficial", "negative", "market", "lore"}
+    end
     return types[love.math.random(#types)]
 end
 
@@ -440,6 +458,8 @@ function ProvinceMap:getEventTypeName(type)
 end
 
 return ProvinceMap
+
+
 
 
 
