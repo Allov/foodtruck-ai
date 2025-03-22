@@ -1,0 +1,6 @@
+# Love2D specific
+*.love
+
+# OS specific
+.DS_Store
+Thumbs.db
