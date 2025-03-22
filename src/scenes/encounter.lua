@@ -16,6 +16,100 @@ function Encounter:init()
         LORE = "lore"
     }
     
+    -- Define possible encounters for each type
+    self.encounterPool = {
+        card_battle = {
+            {
+                title = "Food Critic Challenge",
+                description = "A renowned food critic has arrived! They're ready to test your culinary skills.",
+                options = {"Accept the challenge", "Try to negotiate", "Decline politely"}
+            },
+            {
+                title = "Rush Hour Service",
+                description = "The lunch rush is hitting hard! Can you handle the pressure?",
+                options = {"Speed up service", "Call for backup", "Limit menu options"}
+            },
+            {
+                title = "Cooking Competition",
+                description = "A local TV show is hosting a cooking competition!",
+                options = {"Show off signature dish", "Try new recipe", "Focus on presentation"}
+            },
+            {
+                title = "Health Inspector Visit",
+                description = "A surprise inspection! Your cooking skills will be thoroughly tested.",
+                options = {"Welcome inspection", "Request postponement", "Show documentation"}
+            }
+        },
+        beneficial = {
+            {
+                title = "Local Food Festival",
+                description = "A food festival is happening nearby! This could be a great opportunity.",
+                options = {"Set up a stall", "Network with chefs", "Learn new recipes"}
+            },
+            {
+                title = "Ingredient Giveaway",
+                description = "A local supplier is giving away premium ingredients!",
+                options = {"Take fresh produce", "Choose exotic spices", "Get premium meats"}
+            },
+            {
+                title = "Master Chef Workshop",
+                description = "A famous chef is offering free cooking lessons!",
+                options = {"Learn techniques", "Get secret recipe", "Ask for advice"}
+            }
+        },
+        negative = {
+            {
+                title = "Equipment Malfunction",
+                description = "Your main cooking equipment is acting up. This could be trouble!",
+                options = {"Try emergency repairs", "Call technician", "Use backup equipment"}
+            },
+            {
+                title = "Bad Weather",
+                description = "A storm is affecting customer turnout!",
+                options = {"Offer delivery", "Run weather special", "Close early"}
+            },
+            {
+                title = "Ingredient Shortage",
+                description = "Your key ingredients didn't arrive today!",
+                options = {"Find substitutes", "Change menu", "Visit local market"}
+            }
+        },
+        market = {
+            {
+                title = "Farmers Market",
+                description = "You've found a local farmers market with fresh ingredients!",
+                options = {"Browse produce", "Check specialty items", "Meet suppliers"}
+            },
+            {
+                title = "Restaurant Supply Sale",
+                description = "A major supplier is having a clearance sale!",
+                options = {"Buy equipment", "Stock up basics", "Look for deals"}
+            },
+            {
+                title = "Specialty Food Shop",
+                description = "You've discovered a hidden gem of rare ingredients!",
+                options = {"Buy exotic items", "Learn about products", "Make connections"}
+            }
+        },
+        lore = {
+            {
+                title = "Local Food Legend",
+                description = "You've met an elderly chef who knows ancient cooking secrets!",
+                options = {"Listen to stories", "Learn techniques", "Request recipes"}
+            },
+            {
+                title = "Cultural Festival",
+                description = "A celebration of traditional cooking is taking place!",
+                options = {"Study methods", "Try local dishes", "Meet elders"}
+            },
+            {
+                title = "Recipe Discovery",
+                description = "You've found an old cookbook with forgotten recipes!",
+                options = {"Study recipes", "Try modernizing", "Preserve tradition"}
+            }
+        }
+    }
+    
     self.state = {
         type = nil,
         title = "",
@@ -25,22 +119,21 @@ function Encounter:init()
     }
 end
 
+function Encounter:setupEncounter(encounterType)
+    local encounters = self.encounterPool[encounterType]
+    if encounters then
+        local chosen = encounters[love.math.random(#encounters)]
+        self.state.type = encounterType
+        self.state.title = chosen.title
+        self.state.description = chosen.description
+        self.state.options = chosen.options
+    end
+end
+
 function Encounter:enter()
     -- Use the encounter type from game state
     if gameState.currentEncounter then
-        self.state.type = gameState.currentEncounter
-        -- Generate encounter based on type
-        if self.state.type == "card_battle" then
-            self:setupCardBattle()
-        elseif self.state.type == "beneficial" then
-            self:setupBeneficial()
-        elseif self.state.type == "negative" then
-            self:setupNegative()
-        elseif self.state.type == "market" then
-            self:setupMarket()
-        elseif self.state.type == "lore" then
-            self:setupLore()
-        end
+        self:setupEncounter(gameState.currentEncounter)
     else
         -- Fallback to random encounter if no type specified
         self:generateEncounter()
@@ -52,48 +145,16 @@ function Encounter:generateEncounter()
     local roll = love.math.random(100)
     
     if roll <= 30 then
-        self:setupCardBattle()
+        self:setupEncounter("card_battle")
     elseif roll <= 50 then
-        self:setupBeneficial()
+        self:setupEncounter("beneficial")
     elseif roll <= 65 then
-        self:setupNegative()
+        self:setupEncounter("negative")
     elseif roll <= 85 then
-        self:setupMarket()
+        self:setupEncounter("market")
     else
-        self:setupLore()
+        self:setupEncounter("lore")
     end
-end
-
-function Encounter:setupCardBattle()
-    self.state.type = self.encounterTypes.CARD_BATTLE
-    -- Example setup
-    self.state.title = "Food Critic Challenge"
-    self.state.description = "A renowned food critic has arrived!"
-    self.state.options = {
-        "Accept the challenge",
-        "Try to negotiate",
-        "Decline politely"
-    }
-end
-
-function Encounter:setupBeneficial()
-    self.state.type = self.encounterTypes.BENEFICIAL
-    -- Similar setup for beneficial events
-end
-
-function Encounter:setupNegative()
-    self.state.type = self.encounterTypes.NEGATIVE
-    -- Similar setup for negative events
-end
-
-function Encounter:setupMarket()
-    self.state.type = self.encounterTypes.MARKET
-    -- Similar setup for market events
-end
-
-function Encounter:setupLore()
-    self.state.type = self.encounterTypes.LORE
-    -- Similar setup for lore events
 end
 
 function Encounter:update(dt)
@@ -174,5 +235,7 @@ function Encounter:resolveEncounter()
 end
 
 return Encounter
+
+
 
 

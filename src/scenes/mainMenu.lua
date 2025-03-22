@@ -17,6 +17,11 @@ function MainMenu:init()
 end
 
 function MainMenu:update(dt)
+    if love.keyboard.wasPressed('escape') then
+        love.event.quit()
+        return
+    end
+
     if love.keyboard.wasPressed('up') then
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.options end
@@ -27,7 +32,7 @@ function MainMenu:update(dt)
     end
     if love.keyboard.wasPressed('return') then
         if self.selected == 1 then
-            sceneManager:switch('chefSelect')
+            sceneManager:switch('seedInput')
         elseif self.selected == 3 then
             love.event.quit()
         end
@@ -49,3 +54,5 @@ function MainMenu:draw()
 end
 
 return MainMenu
+
+

@@ -5,6 +5,7 @@ sceneManager = require('src.sceneManager')
 gameState = {
     currentEncounter = nil,
     selectedChef = nil,
+    mapSeed = nil,  -- Store the current map seed
     progress = {
         level = 1,
         score = 0,
@@ -13,12 +14,26 @@ gameState = {
 }
 
 -- Keyboard handling
-local keyPressed = {}
+love.keyboard.keysPressed = {}
+love.keyboard.keysReleased = {}
+
+function love.keypressed(key)
+    love.keyboard.keysPressed[key] = true
+end
+
+function love.keyreleased(key)
+    love.keyboard.keysReleased[key] = true
+end
+
+function love.keyboard.wasPressed(key)
+    return love.keyboard.keysPressed[key]
+end
 
 function love.load()
     -- Load all scenes
     local scenes = {
         mainMenu = require('src.scenes.mainMenu'),
+        seedInput = require('src.scenes.seedInput'),
         chefSelect = require('src.scenes.chefSelect'),
         provinceMap = require('src.scenes.provinceMap'),
         encounter = require('src.scenes.encounter')
@@ -33,24 +48,29 @@ function love.load()
     sceneManager:switch('mainMenu')
 end
 
+-- Add textinput callback
+function love.textinput(t)
+    if sceneManager.current and sceneManager.current.inputtingSeed then
+        -- Only allow alphanumeric characters and some basic punctuation
+        if t:match("^[%w%s%-_%.]+$") then
+            sceneManager.current.seedInput = sceneManager.current.seedInput .. t
+        end
+    end
+end
+
 function love.update(dt)
     sceneManager:update(dt)
     
-    -- Reset keyboard state
-    keyPressed = {}
+    -- Reset keyboard states
+    love.keyboard.keysPressed = {}
+    love.keyboard.keysReleased = {}
 end
 
 function love.draw()
     sceneManager:draw()
 end
 
-function love.keypressed(key)
-    keyPressed[key] = true
-end
 
--- Helper function for keyboard input
-function love.keyboard.wasPressed(key)
-    return keyPressed[key]
-end
+
 
 

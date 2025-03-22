@@ -28,6 +28,11 @@ function ChefSelect:update(dt)
     if love.keyboard.wasPressed('return') then
         -- Store selected chef and move to map
         gameState.selectedChef = self.chefs[self.selected]
+        
+        -- Get the province map scene and set its seed
+        local provinceMap = sceneManager.scenes['provinceMap']
+        provinceMap:setSeed(gameState.mapSeed)
+        
         sceneManager:switch('provinceMap')
     end
     if love.keyboard.wasPressed('escape') then
@@ -55,3 +60,4 @@ function ChefSelect:draw()
 end
 
 return ChefSelect
+
