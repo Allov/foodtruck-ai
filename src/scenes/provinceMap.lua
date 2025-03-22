@@ -260,6 +260,7 @@ function ProvinceMap:update(dt)
             gameState.currentEncounter = selectedNode.type
             gameState.currentNodeLevel = self.currentLevel
             gameState.currentNodeIndex = self.selected
+            gameState.previousScene = 'provinceMap'
             sceneManager:switch('encounter')
         end
     end
@@ -383,6 +384,7 @@ function ProvinceMap:getSeed()
 end
 
 return ProvinceMap
+
 
 
 
