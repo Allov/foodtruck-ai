@@ -256,14 +256,17 @@ function ProvinceMap:handleNodeSelection(selectedNode)
     gameState.currentNodeIndex = self.selected
     gameState.previousScene = 'provinceMap'
 
+    -- Set market type if it's a market node
+    if selectedNode.type == "market" then
+        -- Randomly select a market type
+        local marketTypes = {"farmers_market", "specialty_shop", "supply_store"}
+        gameState.currentMarketType = marketTypes[love.math.random(#marketTypes)]
+    end
+
     -- Get the appropriate scene for this encounter
     local EncounterRegistry = require('src.encounters.encounterRegistry')
     local SceneClass = EncounterRegistry:getSceneClass(selectedNode.type)
     
-    -- Debug print to help identify issues
-    print("Selected node type:", selectedNode.type)
-    print("Scene class:", SceneClass and SceneClass.__name or "nil")
-
     if SceneClass then
         local sceneName = SceneClass.__name or selectedNode.type
         print("Switching to scene:", sceneName)

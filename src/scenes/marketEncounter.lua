@@ -1,4 +1,6 @@
 local Encounter = require('src.scenes.encounter')
+local Card = require('src.cards.card')  -- Add this at the top with other requires
+local PackFactory = require('src.cards.packFactory')
 local MarketEncounter = {}
 MarketEncounter.__index = MarketEncounter
 MarketEncounter.__name = "marketEncounter"
@@ -46,127 +48,33 @@ function MarketEncounter:enter()
 end
 
 function MarketEncounter:generateMarketStock()
-    -- Generate 4-6 cards for sale
-    local numCards = love.math.random(4, 6)
-    self.state.availableCards = {}
+    print("Generating market stock for type:", gameState.currentMarketType)
+    self.state.availableCards = PackFactory.generatePack(gameState.currentMarketType)
+    print("Generated stock:", self.state.availableCards)
     
-    -- Different card pools based on market type
-    local cardPools = {
-        farmers_market = {
-            {name = "Fresh Tomatoes", cardType = "ingredient", cost = 3, description = "Basic but versatile"},
-            {name = "Local Herbs", cardType = "ingredient", cost = 4, description = "Adds flavor to any dish"},
-            {name = "Fresh Fish", cardType = "ingredient", cost = 6, description = "Caught this morning"},
-            {name = "Seasonal Vegetables", cardType = "ingredient", cost = 3, description = "A mix of local produce"},
-            {name = "Farm Eggs", cardType = "ingredient", cost = 2, description = "Fresh from the coop"},
-            {name = "Wild Mushrooms", cardType = "ingredient", cost = 5, description = "Locally foraged"}
-        },
-        specialty_shop = {
-            {name = "Truffle Oil", cardType = "ingredient", cost = 8, description = "Luxurious finishing oil"},
-            {name = "Saffron", cardType = "ingredient", cost = 10, description = "Precious spice"},
-            {name = "Aged Vinegar", cardType = "ingredient", cost = 7, description = "Complex flavors"},
-            {name = "Imported Cheese", cardType = "ingredient", cost = 9, description = "Artisanal selection"},
-            {name = "Caviar", cardType = "ingredient", cost = 12, description = "Premium fish roe"},
-            {name = "Wagyu Beef", cardType = "ingredient", cost = 15, description = "Highest grade marbling"}
-        },
-        supply_store = {
-            {name = "Sharp Knife", cardType = "technique", cost = 5, description = "Improved cutting speed"},
-            {name = "Steel Pan", cardType = "technique", cost = 6, description = "Better heat control"},
-            {name = "Basic Spices", cardType = "ingredient", cost = 4, description = "Essential seasonings"},
-            {name = "Cooking Oil", cardType = "ingredient", cost = 2, description = "All-purpose oil"},
-            {name = "Stock Pot", cardType = "technique", cost = 7, description = "For soups and stocks"},
-            {name = "Kitchen Scale", cardType = "technique", cost = 4, description = "Precise measurements"}
-        }
-    }
+    -- Add the Skip card at the end using proper Card object
+    local skipCard = Card.new(0, "Skip Market", "Leave this market without making a purchase")
+    skipCard.cardType = "action"
+    skipCard.cost = 0
     
-    -- Select cards based on market type
-    local pool = cardPools[gameState.currentMarketType or "farmers_market"]
-    
-    -- Create a copy of the pool to modify
-    local availablePool = {}
-    for i, card in ipairs(pool) do
-        table.insert(availablePool, card)
-    end
-    
-    -- Select random unique cards
-    for i = 1, numCards do
-        if #availablePool > 0 then
-            local index = love.math.random(#availablePool)
-            table.insert(self.state.availableCards, availablePool[index])
-            table.remove(availablePool, index)
-        end
-    end
-    
-    -- Sort cards by cost
-    table.sort(self.state.availableCards, function(a, b) 
-        return a.cost < b.cost 
-    end)
-
-    -- Add the Skip card at the end
-    table.insert(self.state.availableCards, {
-        name = "Skip Market",
-        cardType = "action",
-        cost = 0,
-        description = "Leave this market without making a purchase"
-    })
+    table.insert(self.state.availableCards, skipCard)
 end
 
-function MarketEncounter:drawCard(card, x, y, isSelected)
-    -- Draw card background
-    if isSelected then
-        love.graphics.setColor(0.3, 0.3, 0.3, 1)
-    else
-        love.graphics.setColor(0.2, 0.2, 0.2, 1)
-    end
-    love.graphics.rectangle('fill', x, y, CARD_WIDTH, CARD_HEIGHT)
+function MarketEncounter:drawCard(cardData, x, y, isSelected)
+    -- Create a temporary Card object for drawing
+    local tempCard = Card.new(0, cardData.name, cardData.description)
+    tempCard.cardType = cardData.cardType
+    tempCard.cost = cardData.cost
     
-    -- Draw card border
-    if isSelected then
-        love.graphics.setColor(1, 1, 0, 1)  -- Yellow border for selected
-        love.graphics.setLineWidth(3)
-    else
-        love.graphics.setColor(0.8, 0.8, 0.8, 1)
-        love.graphics.setLineWidth(1)
-    end
-    love.graphics.rectangle('line', x, y, CARD_WIDTH, CARD_HEIGHT)
+    -- Use the Card class's draw method
+    tempCard:draw(x, y, isSelected)
     
-    -- Draw card content
-    love.graphics.setColor(1, 1, 1, 1)
-    
-    -- Card name
-    love.graphics.printf(
-        card.name,
-        x + 10,
-        y + 20,
-        CARD_WIDTH - 20,
-        'center'
-    )
-    
-    -- Card type
-    love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    love.graphics.printf(
-        card.cardType,
-        x + 10,
-        y + 50,
-        CARD_WIDTH - 20,
-        'center'
-    )
-    
-    -- Cost
+    -- Draw cost (since it's market-specific)
     love.graphics.setColor(1, 0.8, 0, 1)  -- Gold color for cost
     love.graphics.printf(
-        "$" .. card.cost,
+        "$" .. cardData.cost,
         x + 10,
-        y + 80,
-        CARD_WIDTH - 20,
-        'center'
-    )
-    
-    -- Description
-    love.graphics.setColor(0.9, 0.9, 0.9, 1)
-    love.graphics.printf(
-        card.description,
-        x + 10,
-        y + CARD_HEIGHT - 60,
+        y + CARD_HEIGHT - 40,
         CARD_WIDTH - 20,
         'center'
     )
@@ -291,21 +199,32 @@ function MarketEncounter:update(dt)
 end
 
 function MarketEncounter:tryPurchase(index)
-    local card = self.state.availableCards[index]
-    if not card then return end  -- Safety check
+    local cardData = self.state.availableCards[index]
+    if not cardData then return end  -- Safety check
 
-    if card.name == "Skip Market" then
+    if cardData.name == "Skip Market" then
         -- Skip card is free and just resolves the encounter
         self:resolveEncounter()
         return
     end
 
-    if self.state.cash >= card.cost then
+    if self.state.cash >= cardData.cost then
+        -- Create a proper Card object
+        local card = Card.new(
+            love.math.random(1000, 9999), -- Generate a random ID for now
+            cardData.name,
+            cardData.description
+        )
+        card.cardType = cardData.cardType
+        card.cost = cardData.cost  -- Optional: preserve cost info
+        
         -- Add to player's deck
         gameState.currentDeck:addCard(card)
+        
         -- Deduct cost
-        self.state.cash = self.state.cash - card.cost
+        self.state.cash = self.state.cash - cardData.cost
         gameState.cash = self.state.cash
+        
         -- Remove from available cards
         table.remove(self.state.availableCards, index)
         
@@ -316,9 +235,6 @@ function MarketEncounter:tryPurchase(index)
         
         -- Resolve the encounter after successful purchase
         self:resolveEncounter()
-    else
-        -- Optional: Add feedback for insufficient funds
-        -- Could add a small message or visual indicator here
     end
 end
 
@@ -336,7 +252,7 @@ function MarketEncounter:draw()
         'center'
     )
 
-    -- Draw cards
+    -- Draw cards using drawCard function
     for i, card in ipairs(self.state.availableCards) do
         local row = math.floor((i-1) / CARDS_PER_ROW)
         local col = (i-1) % CARDS_PER_ROW
@@ -345,33 +261,7 @@ function MarketEncounter:draw()
             + col * (CARD_WIDTH + CARD_SPACING)
         local y = START_Y + row * (CARD_HEIGHT + CARD_SPACING)
         
-        -- Highlight selected card
-        if i == self.state.selectedIndex then
-            love.graphics.setColor(1, 1, 0, 1)
-        else
-            love.graphics.setColor(1, 1, 1, 1)
-        end
-        
-        -- Draw card
-        love.graphics.rectangle('line', x, y, CARD_WIDTH, CARD_HEIGHT)
-        
-        -- Draw card contents
-        love.graphics.printf(
-            card.name,
-            x + 10,
-            y + 20,
-            CARD_WIDTH - 20,
-            'center'
-        )
-        
-        -- Draw cost
-        love.graphics.printf(
-            "$" .. (card.cost or 0),
-            x + 10,
-            y + CARD_HEIGHT - 40,
-            CARD_WIDTH - 20,
-            'center'
-        )
+        self:drawCard(card, x, y, i == self.state.selectedIndex)
     end
 
     -- Draw help text for deck viewing
@@ -386,10 +276,5 @@ function MarketEncounter:draw()
 end
 
 return MarketEncounter
-
-
-
-
-
 
 

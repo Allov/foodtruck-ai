@@ -1,10 +1,10 @@
 local Scene = require('src.scenes.scene')
+local Card = require('src.cards.card')
 local DeckViewer = setmetatable({}, Scene)
 DeckViewer.__index = DeckViewer
 
--- Constants for card display
-local CARD_WIDTH = 120
-local CARD_HEIGHT = 180
+-- Get card dimensions from Card class
+local CARD_WIDTH, CARD_HEIGHT = Card.getDimensions()
 local CARD_SPACING = 10
 local CARDS_PER_ROW = 6
 local SECTION_SPACING = 40
@@ -12,11 +12,15 @@ local SECTION_TITLE_HEIGHT = 30
 local ANIMATION_DURATION = 0.3 -- seconds
 
 function DeckViewer.new()
-    local self = setmetatable({}, Scene)
-    return setmetatable(self, DeckViewer)
-end
-
-function DeckViewer:init()
+    local self = setmetatable({}, DeckViewer)
+    -- Initialize cardTypes here instead of in init
+    self.cardTypes = {
+        "ingredient",
+        "technique",
+        "recipe"
+    }
+    -- Initialize other properties
+    self.sectionPositions = {}
     self.state = {
         scroll = 0,
         targetScroll = 0,
@@ -27,15 +31,11 @@ function DeckViewer:init()
         animationTime = 0,
         isAnimating = false
     }
-    
-    self.cardTypes = {
-        "ingredient",
-        "technique",
-        "recipe"
-    }
-    
-    -- Store section positions
-    self.sectionPositions = {}
+    return self
+end
+
+function DeckViewer:init()
+    -- Remove cardTypes initialization from here since it's now in new()
 end
 
 -- Quadratic easing function
@@ -56,18 +56,22 @@ function DeckViewer:startScrollAnimation(targetScroll)
 end
 
 function DeckViewer:enter()
-    self.deck = gameState.currentDeck or {}
-    
-    -- Organize cards by type
+    -- Initialize organized cards first
     self.organizedCards = {}
     for _, cardType in ipairs(self.cardTypes) do
         self.organizedCards[cardType] = {}
     end
-    
-    for _, card in ipairs(self.deck.cards or {}) do
-        local cardType = card.cardType or "unknown"
-        self.organizedCards[cardType] = self.organizedCards[cardType] or {}
-        table.insert(self.organizedCards[cardType], card)
+
+    -- Get deck and organize cards if it exists
+    self.deck = gameState.currentDeck
+    if self.deck and self.deck.cards then
+        for _, card in ipairs(self.deck.cards) do
+            local cardType = card.cardType or "unknown"
+            if not self.organizedCards[cardType] then
+                self.organizedCards[cardType] = {}
+            end
+            table.insert(self.organizedCards[cardType], card)
+        end
     end
     
     -- Calculate section positions and max scroll
@@ -148,34 +152,6 @@ function DeckViewer:update(dt)
     end
 end
 
-function DeckViewer:drawCard(card, x, y)
-    -- Draw card background
-    love.graphics.setColor(0.2, 0.2, 0.2, 1)
-    love.graphics.rectangle('fill', x, y, CARD_WIDTH, CARD_HEIGHT)
-    
-    -- Draw card border
-    love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    love.graphics.rectangle('line', x, y, CARD_WIDTH, CARD_HEIGHT)
-    
-    -- Draw card content
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf(
-        card.name,
-        x + 5,
-        y + 10,
-        CARD_WIDTH - 10,
-        'center'
-    )
-    
-    love.graphics.printf(
-        card.description,
-        x + 5,
-        y + CARD_HEIGHT - 60,
-        CARD_WIDTH - 10,
-        'center'
-    )
-end
-
 function DeckViewer:draw()
     love.graphics.push()
     love.graphics.translate(0, -self.state.scroll)
@@ -210,7 +186,8 @@ function DeckViewer:draw()
                 x = x + col * (CARD_WIDTH + CARD_SPACING)
                 local y = currentY + row * (CARD_HEIGHT + CARD_SPACING)
                 
-                self:drawCard(card, x, y)
+                -- Use card's draw method
+                card:draw(x, y, i == self.state.selectedCategory)
             end
             
             local rows = math.ceil(#cards / CARDS_PER_ROW)
@@ -233,6 +210,11 @@ function DeckViewer:draw()
 end
 
 return DeckViewer
+
+
+
+
+
 
 
 

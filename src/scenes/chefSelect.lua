@@ -1,5 +1,5 @@
 local Scene = require('src.scenes.scene')
-local Deck = require('src.cards.deck')
+local DeckFactory = require('src.cards.deckFactory')
 
 local ChefSelect = {}
 ChefSelect.__index = ChefSelect
@@ -39,22 +39,7 @@ function ChefSelect:loadChefs()
 end
 
 function ChefSelect:generateStarterDeck(chef)
-    local deck = Deck.new()
-    
-    -- Common cards every chef starts with
-    local commonCards = {
-        {name = "Basic Knife", cardType = "technique", description = "Simple cutting technique"},
-        {name = "Salt", cardType = "ingredient", description = "Essential seasoning"},
-        {name = "Oil", cardType = "ingredient", description = "Basic cooking oil"},
-        {name = "Pan Fry", cardType = "technique", description = "Basic pan frying technique"}
-    }
-    
-    -- Add common cards
-    for _, card in ipairs(commonCards) do
-        deck:addCard(card)
-    end
-    
-    return deck
+    return DeckFactory.createStarterDeck(chef)
 end
 
 function ChefSelect:init()
@@ -124,4 +109,5 @@ function ChefSelect:draw()
 end
 
 return ChefSelect
+
 
