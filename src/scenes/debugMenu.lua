@@ -14,6 +14,7 @@ function DebugMenu:init()
         "Encounter Tester",
         "View Test Deck",
         "View Chef Decks",
+        "Test Market",
         "Back to Main Menu"
     }
     self.selected = 1
@@ -74,6 +75,12 @@ function DebugMenu:update(dt)
             -- Show chef selection submenu
             self.showingChefSelect = true
         elseif self.selected == 4 then
+            -- Test market
+            gameState.cash = 20  -- Give some test money
+            gameState.previousScene = 'debugMenu'
+            gameState.currentMarketType = 'farmers_market'  -- Default to farmers market
+            sceneManager:switch('marketEncounter')
+        elseif self.selected == 5 then
             sceneManager:switch('mainMenu')
         end
     end
@@ -111,4 +118,5 @@ function DebugMenu:draw()
 end
 
 return DebugMenu
+
 

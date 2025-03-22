@@ -77,18 +77,39 @@ function Encounter:init()
         market = {
             {
                 title = "Farmers Market",
-                description = "You've found a local farmers market with fresh ingredients!",
-                options = {"Browse produce", "Check specialty items", "Meet suppliers"}
-            },
-            {
-                title = "Restaurant Supply Sale",
-                description = "A major supplier is having a clearance sale!",
-                options = {"Buy equipment", "Stock up basics", "Look for deals"}
+                description = "A bustling farmers market with fresh local produce.",
+                options = {"Browse Goods", "Chat with Vendors", "Leave"},
+                marketType = "farmers_market",
+                gossips = {
+                    "You know, I heard the royal chef only uses heirloom tomatoes from the northern valleys.",
+                    "My cousin's neighbor's friend says there's a secret ingredient in the capital's famous soup!",
+                    "The harvest this year is particularly good. Perfect weather for root vegetables.",
+                    "Did you hear? They're teaching cooking at the academy now. Times are changing!",
+                }
             },
             {
                 title = "Specialty Food Shop",
-                description = "You've discovered a hidden gem of rare ingredients!",
-                options = {"Buy exotic items", "Learn about products", "Make connections"}
+                description = "An elegant shop filled with exotic ingredients.",
+                options = {"Browse Goods", "Chat with Shopkeeper", "Leave"},
+                marketType = "specialty_shop",
+                gossips = {
+                    "I just received a rare shipment of truffles from the eastern forests.",
+                    "The palace recently ordered a large quantity of saffron. Something special must be happening.",
+                    "A famous chef visited last week, bought all my aged vinegar.",
+                    "They say the desert merchants are bringing new spices next month.",
+                }
+            },
+            {
+                title = "Restaurant Supply Store",
+                description = "A well-stocked store with professional kitchen equipment.",
+                options = {"Browse Goods", "Chat with Manager", "Leave"},
+                marketType = "supply_store",
+                gossips = {
+                    "These new steel pans? Straight from the master forgers in the mountain cities.",
+                    "Been seeing more young chefs lately. The culinary scene is really growing.",
+                    "Word is, the guild's updating their equipment standards next season.",
+                    "Had a master chef test our new knives yesterday. Said they're the best he's used.",
+                }
             }
         },
         lore = {
@@ -186,6 +207,13 @@ function Encounter:update(dt)
     end
     
     if love.keyboard.wasPressed('return') then
+        -- Special handling for market encounters
+        if self.state.type == "market" then
+            gameState.previousScene = 'provinceMap'  -- Store the previous scene
+            sceneManager:switch('marketEncounter')
+            return
+        end
+        
         self:resolveEncounter()
     end
 end
@@ -256,6 +284,9 @@ function Encounter:resolveEncounter()
 end
 
 return Encounter
+
+
+
 
 
 

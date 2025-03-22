@@ -6,7 +6,8 @@ gameManager = require('src.gameManager')
 gameState = {
     currentEncounter = nil,
     selectedChef = nil,
-    mapSeed = nil,  -- Store the current map seed
+    mapSeed = nil,
+    cash = 15,  -- Starting cash: enough for 1-3 basic cards
     progress = {
         level = 1,
         score = 0,
@@ -27,7 +28,8 @@ function Main.load()
         debugMenu = require('src.scenes.debugMenu'),
         encounterTester = require('src.scenes.encounterTester'),
         deckViewer = require('src.scenes.deckViewer'),
-        game = require('src.scenes.game')
+        game = require('src.scenes.game'),
+        marketEncounter = require('src.scenes.marketEncounter')
     }
 
     -- Add scenes to manager
@@ -83,3 +85,5 @@ function love.keyboard.wasPressed(key)
 end
 
 return Main
+
+

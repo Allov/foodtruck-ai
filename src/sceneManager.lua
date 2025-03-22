@@ -38,5 +38,11 @@ function SceneManager:draw()
     end
 end
 
+function SceneManager:init()
+    -- Add all scenes here
+    self:add('market', require('src.scenes.marketEncounter'))
+    -- Add other scenes...
+end
+
 return SceneManager
 
