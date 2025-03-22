@@ -18,6 +18,7 @@ function Scene:updateConfirmDialog()
     if love.keyboard.wasPressed('left') or love.keyboard.wasPressed('right') then
         self.confirmDialogSelected = self.confirmDialogSelected == 1 and 2 or 1
     elseif love.keyboard.wasPressed('return') then
+        self.showingConfirmDialog = false  -- Hide dialog regardless of choice
         if self.confirmDialogSelected == 1 then  -- Yes
             -- Reset game state
             gameState = {
@@ -31,8 +32,6 @@ function Scene:updateConfirmDialog()
                 }
             }
             sceneManager:switch('mainMenu')
-        else  -- No
-            self.showingConfirmDialog = false
         end
     end
 end
@@ -91,5 +90,6 @@ function Scene:draw() end
 function Scene:destroy() end
 
 return Scene
+
 
 

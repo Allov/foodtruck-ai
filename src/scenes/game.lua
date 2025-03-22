@@ -12,12 +12,14 @@ function Game:init()
 end
 
 function Game:update(dt)
+    if self.showingConfirmDialog then
+        self:updateConfirmDialog()
+        return
+    end
+
     if love.keyboard.wasPressed('escape') then
-        if self.paused then
-            self.paused = false
-        else
-            sceneManager:switch('mainMenu')
-        end
+        self.showingConfirmDialog = true
+        return
     end
 end
 

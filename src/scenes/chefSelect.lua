@@ -7,16 +7,52 @@ function ChefSelect.new()
     return self
 end
 
-function ChefSelect:init()
-    self.chefs = {
-        {name = "Classic Chef", specialty = "French Cuisine"},
-        {name = "Street Food Vendor", specialty = "Fast Cooking"},
-        {name = "Fusion Master", specialty = "Mixed Cuisine"}
+function ChefSelect:loadChefs()
+    -- Return a list of predefined chefs with their specialties
+    return {
+        {
+            name = "Chef Antonio",
+            specialty = "Italian Cuisine",
+            description = "Master of pasta and traditional Italian dishes"
+        },
+        {
+            name = "Chef Mei",
+            specialty = "Asian Fusion",
+            description = "Expert in combining Eastern and Western flavors"
+        },
+        {
+            name = "Chef Pierre",
+            specialty = "French Cuisine",
+            description = "Classically trained in French cooking techniques"
+        },
+        {
+            name = "Chef Sofia",
+            specialty = "Street Food",
+            description = "Specializes in creative street food innovations"
+        }
     }
+end
+
+function ChefSelect:init()
+    -- Initialize existing chef selection state
+    self.chefs = self:loadChefs()
     self.selected = 1
+    
+    -- Initialize confirmation dialog
+    self:initConfirmDialog()
 end
 
 function ChefSelect:update(dt)
+    if self.showingConfirmDialog then
+        self:updateConfirmDialog()
+        return
+    end
+
+    if love.keyboard.wasPressed('escape') then
+        self.showingConfirmDialog = true
+        return
+    end
+
     if love.keyboard.wasPressed('up') then
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.chefs end
@@ -26,17 +62,10 @@ function ChefSelect:update(dt)
         if self.selected > #self.chefs then self.selected = 1 end
     end
     if love.keyboard.wasPressed('return') then
-        -- Store selected chef and move to map
         gameState.selectedChef = self.chefs[self.selected]
-        
-        -- Get the province map scene and set its seed
         local provinceMap = sceneManager.scenes['provinceMap']
         provinceMap:setSeed(gameState.mapSeed)
-        
         sceneManager:switch('provinceMap')
-    end
-    if love.keyboard.wasPressed('escape') then
-        sceneManager:switch('mainMenu')
     end
 end
 
@@ -57,7 +86,14 @@ function ChefSelect:draw()
             'center'
         )
     end
+
+    -- Draw confirmation dialog if active
+    if self.showingConfirmDialog then
+        self:drawConfirmDialog()
+    end
 end
 
 return ChefSelect
+
+
 

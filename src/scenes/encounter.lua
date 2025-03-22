@@ -117,6 +117,9 @@ function Encounter:init()
         options = {},
         currentOption = 1
     }
+
+    -- Initialize confirmation dialog
+    self:initConfirmDialog()
 end
 
 function Encounter:setupEncounter(encounterType)
@@ -158,6 +161,16 @@ function Encounter:generateEncounter()
 end
 
 function Encounter:update(dt)
+    if self.showingConfirmDialog then
+        self:updateConfirmDialog()
+        return
+    end
+
+    if love.keyboard.wasPressed('escape') then
+        self.showingConfirmDialog = true
+        return
+    end
+
     if love.keyboard.wasPressed('up') then
         self.state.currentOption = self.state.currentOption - 1
         if self.state.currentOption < 1 then 
@@ -174,10 +187,6 @@ function Encounter:update(dt)
     
     if love.keyboard.wasPressed('return') then
         self:resolveEncounter()
-    end
-    
-    if love.keyboard.wasPressed('escape') then
-        sceneManager:switch('provinceMap')
     end
 end
 
@@ -218,6 +227,11 @@ function Encounter:draw()
             'left'
         )
     end
+
+    -- Draw confirmation dialog if active
+    if self.showingConfirmDialog then
+        self:drawConfirmDialog()
+    end
 end
 
 function Encounter:resolveEncounter()
@@ -235,6 +249,7 @@ function Encounter:resolveEncounter()
 end
 
 return Encounter
+
 
 
 

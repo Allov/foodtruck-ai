@@ -10,6 +10,9 @@ function ProvinceMap.new()
 end
 
 function ProvinceMap:init()
+    -- Initialize confirmation dialog first
+    self:initConfirmDialog()
+    
     -- Store the original random state
     self.originalRandomState = love.math.getRandomState()
     
@@ -214,6 +217,18 @@ function ProvinceMap:canSelectNode(level, index)
 end
 
 function ProvinceMap:update(dt)
+    -- Handle confirmation dialog first
+    if self.showingConfirmDialog then
+        self:updateConfirmDialog()
+        return
+    end
+
+    -- Check for escape key
+    if love.keyboard.wasPressed('escape') then
+        self.showingConfirmDialog = true
+        return
+    end
+
     -- Check if keyboard input exists
     if not love.keyboard.wasPressed then
         love.keyboard.wasPressed = function(key)
@@ -341,6 +356,11 @@ function ProvinceMap:draw()
             'center'
         )
     end
+
+    -- Draw confirmation dialog if active
+    if self.showingConfirmDialog then
+        self:drawConfirmDialog()
+    end
 end
 
 function ProvinceMap:markNodeCompleted(level, index)
@@ -363,6 +383,8 @@ function ProvinceMap:getSeed()
 end
 
 return ProvinceMap
+
+
 
 
 
