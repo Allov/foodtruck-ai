@@ -1,6 +1,8 @@
 local Encounter = require('src.scenes.encounter')
-local MarketEncounter = setmetatable({}, Encounter)
+local MarketEncounter = {}
 MarketEncounter.__index = MarketEncounter
+MarketEncounter.__name = "marketEncounter"
+setmetatable(MarketEncounter, Scene)
 
 -- Card display constants
 local CARD_WIDTH = 160

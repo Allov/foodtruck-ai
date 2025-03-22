@@ -19,6 +19,45 @@ local Main = {
     debugConsole = nil  -- Initialize as nil
 }
 
+function Main:registerEncounters()
+    local EncounterRegistry = require('src.encounters.encounterRegistry')
+    local encounterConfigs = require('src.encounters.encounterConfigs')
+
+    -- Register general encounter types
+    EncounterRegistry:register("card_battle", 
+        require('src.scenes.battleEncounter'), 
+        encounterConfigs.food_critic)  -- Using food_critic as default config
+
+    EncounterRegistry:register("market", 
+        require('src.scenes.marketEncounter'), 
+        encounterConfigs.farmers_market)  -- Using farmers_market as default config
+
+    EncounterRegistry:register("negative", 
+        require('src.scenes.negativeEncounter'), 
+        encounterConfigs.equipment_malfunction)  -- Using equipment_malfunction as default config
+
+    EncounterRegistry:register("beneficial", 
+        require('src.scenes.beneficialEncounter'), 
+        encounterConfigs.food_festival)  -- Using food_festival as default config
+
+    EncounterRegistry:register("lore", 
+        require('src.scenes.loreEncounter'), 
+        {
+            name = "Story Event",
+            description = "A story unfolds...",
+            type = "lore"
+        })
+
+    -- Register specific encounter variants (for detailed encounters)
+    EncounterRegistry:register("food_critic", 
+        require('src.scenes.battleEncounter'), 
+        encounterConfigs.food_critic)
+    EncounterRegistry:register("rush_hour", 
+        require('src.scenes.battleEncounter'), 
+        encounterConfigs.rush_hour)
+    -- ... other specific encounters
+end
+
 function Main.load()
     -- Load all scenes
     local scenes = {
@@ -27,17 +66,21 @@ function Main.load()
         chefSelect = require('src.scenes.chefSelect'),
         provinceMap = require('src.scenes.provinceMap'),
         encounter = require('src.scenes.encounter'),
+        battleEncounter = require('src.scenes.battleEncounter'),
+        marketEncounter = require('src.scenes.marketEncounter'),
+        negativeEncounter = require('src.scenes.negativeEncounter'),
+        beneficialEncounter = require('src.scenes.beneficialEncounter'),
         debugMenu = require('src.scenes.debugMenu'),
         encounterTester = require('src.scenes.encounterTester'),
         deckViewer = require('src.scenes.deckViewer'),
-        game = require('src.scenes.game'),
-        marketEncounter = require('src.scenes.marketEncounter')
+        game = require('src.scenes.game')
     }
 
-    -- Add scenes to manager
-    for name, scene in pairs(scenes) do
-        sceneManager:add(name, scene)
-    end
+    -- Initialize scene manager with scenes
+    sceneManager:init(scenes)
+    
+    -- Register all encounters
+    Main:registerEncounters()
     
     -- Initialize game manager
     gameManager:init()
@@ -123,5 +166,9 @@ function love.keyboard.wasPressed(key)
 end
 
 return Main
+
+
+
+
 
 

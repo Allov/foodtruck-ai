@@ -1,3 +1,6 @@
+-- Enable debugging
+if arg[#arg] == "vsc_debug" then require("lldebugger").start() end
+
 local game = require('src.main')
 
 function love.load()
@@ -23,5 +26,6 @@ end
 function love.textinput(t)
     game.textinput(t)
 end
+
 
 

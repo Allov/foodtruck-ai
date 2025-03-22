@@ -1,22 +1,18 @@
 local Scene = require('src.scenes.scene')
-local ProvinceMap = setmetatable({}, Scene)
+local ProvinceMap = {}
 ProvinceMap.__index = ProvinceMap
+setmetatable(ProvinceMap, Scene)
+
+local EncounterRegistry = require('src.encounters.encounterRegistry')
 
 function ProvinceMap.new()
-    local self = setmetatable({}, ProvinceMap)
+    local self = Scene.new()  -- Create a new Scene instance as base
+    setmetatable(self, ProvinceMap)
+    
     -- Create a random generator with current time as seed
     self.randomGenerator = love.math.newRandomGenerator(os.time())
-    return self
-end
-
-function ProvinceMap:init()
-    -- Initialize confirmation dialog first
-    self:initConfirmDialog()
     
-    -- Store the original random state
-    self.originalRandomState = love.math.getRandomState()
-    
-    -- Define encounter types icons/symbols and colors for visualization
+    -- Initialize all required properties
     self.encounterSymbols = {
         card_battle = "!",    -- Combat/Challenge
         beneficial = "+",     -- Beneficial event
@@ -50,6 +46,21 @@ function ProvinceMap:init()
     self.currentLevel = 1
     self.selected = 1
     
+    -- Store the original random state
+    self.originalRandomState = love.math.getRandomState()
+    
+    self:init()  -- Call init right after creation
+    return self
+end
+
+function ProvinceMap:init()
+    -- Call parent init
+    Scene.init(self)
+    
+    -- Initialize confirmation dialog
+    self:initConfirmDialog()
+    
+    -- Generate the initial map
     self:generateMap()
 end
 
@@ -216,6 +227,36 @@ function ProvinceMap:canSelectNode(level, index)
     return true
 end
 
+function ProvinceMap:handleNodeSelection(selectedNode)
+    if not self:canSelectNode(self.currentLevel, self.selected) then
+        return
+    end
+
+    -- Store current state
+    gameState.currentEncounter = selectedNode.type
+    gameState.currentNodeLevel = self.currentLevel
+    gameState.currentNodeIndex = self.selected
+    gameState.previousScene = 'provinceMap'
+
+    -- Get the appropriate scene for this encounter
+    local EncounterRegistry = require('src.encounters.encounterRegistry')
+    local SceneClass = EncounterRegistry:getSceneClass(selectedNode.type)
+    
+    -- Debug print to help identify issues
+    print("Selected node type:", selectedNode.type)
+    print("Scene class:", SceneClass and SceneClass.__name or "nil")
+
+    if SceneClass then
+        local sceneName = SceneClass.__name or selectedNode.type
+        print("Switching to scene:", sceneName)
+        sceneManager:switch(sceneName)
+    else
+        print("Warning: No scene class found for encounter type:", selectedNode.type)
+        -- Fallback to generic encounter scene
+        sceneManager:switch('encounter')
+    end
+end
+
 function ProvinceMap:update(dt)
     -- Handle confirmation dialog first
     if self.showingConfirmDialog then
@@ -256,13 +297,7 @@ function ProvinceMap:update(dt)
     
     if love.keyboard.wasPressed('return') then
         local selectedNode = self.nodes[self.currentLevel][self.selected]
-        if self:canSelectNode(self.currentLevel, self.selected) then
-            gameState.currentEncounter = selectedNode.type
-            gameState.currentNodeLevel = self.currentLevel
-            gameState.currentNodeIndex = self.selected
-            gameState.previousScene = 'provinceMap'
-            sceneManager:switch('encounter')
-        end
+        self:handleNodeSelection(selectedNode)
     end
     
     -- Update node animations
@@ -405,6 +440,9 @@ function ProvinceMap:getEventTypeName(type)
 end
 
 return ProvinceMap
+
+
+
 
 
 

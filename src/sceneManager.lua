@@ -1,28 +1,26 @@
+-- This is what we expect to see in sceneManager
 local SceneManager = {
     scenes = {},
-    current = nil,
-    transitioning = false
+    current = nil
 }
 
-function SceneManager:add(name, scene)
-    -- Create a new instance of the scene
-    self.scenes[name] = scene.new()
-    -- Initialize the scene
-    self.scenes[name]:init()
+function SceneManager:init(scenes)
+    -- Initialize each scene
+    for name, sceneClass in pairs(scenes) do
+        self.scenes[name] = sceneClass.new()
+    end
 end
 
-function SceneManager:switch(name)
-    if self.transitioning then return end
-    if self.current then
-        self.current:exit()
-    end
-    -- Check if the scene exists before switching
-    if self.scenes[name] then
-        self.current = self.scenes[name]
-        print("Switching to scene:", name)
-        self.current:enter()
-    else
-        error("Scene '" .. name .. "' not found")
+function SceneManager:register(name, sceneClass)
+    self.scenes[name] = sceneClass.new()
+end
+
+function SceneManager:switch(sceneName)
+    if self.scenes[sceneName] then
+        self.current = self.scenes[sceneName]
+        if self.current.enter then
+            self.current:enter()
+        end
     end
 end
 
@@ -38,11 +36,8 @@ function SceneManager:draw()
     end
 end
 
-function SceneManager:init()
-    -- Add all scenes here
-    self:add('market', require('src.scenes.marketEncounter'))
-    -- Add other scenes...
-end
+-- Create a single instance
+local instance = setmetatable({}, {__index = SceneManager})
 
-return SceneManager
+return instance
 

@@ -9,9 +9,9 @@
             "type": "lua-local",
             "request": "launch",
             "program": {
-                "command": "love",
-                "file": "${workspaceFolder}"
-            }
+                "command": "love"
+            },
+            "args": ["${workspaceFolder}", "vsc_debug"]
         },
         {
             "name": "Debug Custom Lua Environment",

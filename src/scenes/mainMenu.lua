@@ -1,17 +1,24 @@
 local Scene = require('src.scenes.scene')
-local MainMenu = setmetatable({}, Scene)
+local MainMenu = {}
 MainMenu.__index = MainMenu
+setmetatable(MainMenu, Scene)
 
 function MainMenu.new()
-    local self = setmetatable({}, MainMenu)
+    local self = Scene.new()  -- Create a new Scene instance as base
+    setmetatable(self, MainMenu)  -- Set MainMenu as the metatable
+    self:init()  -- Call init right after creation
     return self
 end
 
 function MainMenu:init()
+    -- Initialize base scene stuff
+    Scene.init(self)
+    
+    -- Initialize MainMenu specific stuff
     self.options = {
         "Start Food Truck Journey",
         "Options",
-        "Debug Menu",  -- New debug option
+        "Debug Menu",  -- Debug option
         "Exit"
     }
     self.selected = 1
@@ -57,6 +64,7 @@ function MainMenu:draw()
 end
 
 return MainMenu
+
 
 
 
