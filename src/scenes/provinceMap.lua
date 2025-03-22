@@ -18,11 +18,11 @@ function ProvinceMap:init()
     
     -- Define encounter types icons/symbols and colors for visualization
     self.encounterSymbols = {
-        card_battle = "⚔️",    -- Combat/Challenge
-        beneficial = "🎁",     -- Beneficial event
-        negative = "⚠️",       -- Negative event
-        market = "🏪",        -- Shop/Market
-        lore = "📚"           -- Story/Lore
+        card_battle = "!",    -- Combat/Challenge
+        beneficial = "+",     -- Beneficial event
+        negative = "-",      -- Negative event
+        market = "$",        -- Shop/Market
+        lore = "?"          -- Story/Lore
     }
     
     self.encounterColors = {
@@ -297,7 +297,6 @@ function ProvinceMap:draw()
             for _, conn in ipairs(node.connections) do
                 if self.nodes[level + 1] and self.nodes[level + 1][conn] then
                     local nextNode = self.nodes[level + 1][conn]
-                    -- Draw path line in node color
                     love.graphics.setColor(self.encounterColors[node.type])
                     love.graphics.setLineWidth(2)
                     love.graphics.line(node.x, node.y, nextNode.x, nextNode.y)
@@ -343,6 +342,16 @@ function ProvinceMap:draw()
                 40,
                 'center'
             )
+            
+            -- Draw event name under the node
+            local eventName = self:getEventTypeName(node.type)
+            love.graphics.printf(
+                eventName,
+                node.x - 50,  -- wider area for text
+                node.y + self.BASE_NODE_SIZE + 5,  -- position below node
+                100,  -- width of text area
+                'center'
+            )
         end
     end
     
@@ -383,7 +392,26 @@ function ProvinceMap:getSeed()
     return self.randomGenerator:getSeed()
 end
 
+-- Add this helper function to get friendly names for event types
+function ProvinceMap:getEventTypeName(type)
+    local names = {
+        card_battle = "Battle",
+        beneficial = "Benefit",
+        negative = "Challenge",
+        market = "Market",
+        lore = "Story"
+    }
+    return names[type] or "Unknown"
+end
+
 return ProvinceMap
+
+
+
+
+
+
+
 
 
 
