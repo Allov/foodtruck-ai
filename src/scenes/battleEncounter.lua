@@ -1,4 +1,6 @@
 local Encounter = require('src.scenes.encounter')
+local Card = require('src.cards.card')
+
 local BattleEncounter = {}
 BattleEncounter.__index = BattleEncounter
 BattleEncounter.__name = "battleEncounter"
@@ -45,13 +47,14 @@ function BattleEncounter:enter()
     self.state.battleType = gameState.currentBattleType or "food_critic"
     self.state.difficulty = gameState.battleDifficulty or "normal"
     
-    -- Setup initial hand from player's deck
+    -- Use the current deck directly
+    self.state.deck = gameState.currentDeck
+    
+    -- Draw initial hand
     self:drawInitialHand()
     
     -- Set battle parameters based on type
     self:setupBattleParameters()
-    
-    print("[BattleEncounter:enter] After setup for instance", self.instanceId, "state:", self.state)
 end
 
 function BattleEncounter:setupBattleParameters()
@@ -172,23 +175,18 @@ function BattleEncounter:toggleCardSelection()
     local card = self.state.handCards[self.state.selectedCardIndex]
     if not card then return end
     
-    -- Check if card is already selected
-    local isSelected = false
-    local selectedIndex = nil
-    for i, selectedCard in ipairs(self.state.selectedCards) do
-        if selectedCard == card then
-            isSelected = true
-            selectedIndex = i
-            break
+    if card.isLocked then
+        card:setLocked(false)
+        -- Remove from selected cards
+        for i, selectedCard in ipairs(self.state.selectedCards) do
+            if selectedCard == card then
+                table.remove(self.state.selectedCards, i)
+                break
+            end
         end
-    end
-    
-    -- Toggle selection
-    if isSelected then
-        table.remove(self.state.selectedCards, selectedIndex)
     else
-        -- Only add if we haven't reached max cards
         if #self.state.selectedCards < self.state.maxSelectedCards then
+            card:setLocked(true)
             table.insert(self.state.selectedCards, card)
         end
     end
@@ -293,70 +291,60 @@ function BattleEncounter:drawCommonElements()
             'center'
         )
     end
+
+    -- Draw deck face down in top-right corner
+    local cardWidth = 100
+    local cardHeight = 150
+    local deckX = love.graphics.getWidth() - cardWidth - 20  -- 20px padding from right
+    local deckY = 20  -- 20px padding from top
+    
+    -- Draw multiple layers to give thickness effect
+    for i = 1, 5 do
+        love.graphics.setColor(0.2, 0.2, 0.2, 1)
+        love.graphics.rectangle('fill', deckX - i, deckY - i, cardWidth, cardHeight)
+    end
+    
+    -- Draw top card
+    love.graphics.setColor(0.3, 0.3, 0.3, 1)
+    love.graphics.rectangle('fill', deckX, deckY, cardWidth, cardHeight)
+    
+    -- Draw card border
+    love.graphics.setColor(0.8, 0.8, 0.8, 1)
+    love.graphics.rectangle('line', deckX, deckY, cardWidth, cardHeight)
+    
+    -- Draw card back pattern (simple cross pattern)
+    love.graphics.setColor(0.4, 0.4, 0.4, 1)
+    love.graphics.line(deckX, deckY, deckX + cardWidth, deckY + cardHeight)
+    love.graphics.line(deckX + cardWidth, deckY, deckX, deckY + cardHeight)
 end
 
 function BattleEncounter:drawInitialHand()
-    -- Initialize empty hand
+    -- Clear current hand
     self.state.handCards = {}
     
-    -- Get player's deck from gameState
-    local playerDeck = gameState.playerDeck or {}
-    
-    -- Draw initial cards (for example, 5 cards)
-    local handSize = 5
-    for i = 1, handSize do
-        -- If deck is empty, break
-        if #playerDeck == 0 then break end
-        
-        -- Random card from deck
-        local randomIndex = love.math.random(#playerDeck)
-        local card = table.remove(playerDeck, randomIndex)
-        table.insert(self.state.handCards, card)
+    -- Draw 5 cards from the current deck
+    local cardsToDraw = 5
+    for i = 1, cardsToDraw do
+        local card = self.state.deck:draw()
+        if card then
+            table.insert(self.state.handCards, card)
+        else
+            break
+        end
     end
 end
 
 function BattleEncounter:drawPreparationPhase()
-    -- Draw hand cards
-    local cardWidth = 100
-    local cardHeight = 150
+    local cardWidth, cardHeight = Card.getDimensions()
     local spacing = 20
+    local baseY = love.graphics.getHeight() - cardHeight - 50
     local startX = (love.graphics.getWidth() - ((cardWidth + spacing) * #self.state.handCards)) / 2
     
+    -- Update and draw cards
     for i, card in ipairs(self.state.handCards) do
+        card:update(dt)
         local x = startX + ((i-1) * (cardWidth + spacing))
-        local y = love.graphics.getHeight() - cardHeight - 50
-        
-        -- Check if card is selected
-        local isSelected = (i == self.state.selectedCardIndex)
-        local isInSelectedCards = false
-        for _, selectedCard in ipairs(self.state.selectedCards) do
-            if selectedCard == card then
-                isInSelectedCards = true
-                break
-            end
-        end
-        
-        -- Draw card background
-        if isSelected then
-            love.graphics.setColor(0.3, 0.3, 0.3, 1)
-        else
-            love.graphics.setColor(0.2, 0.2, 0.2, 1)
-        end
-        love.graphics.rectangle('fill', x, y, cardWidth, cardHeight)
-        
-        -- Draw card border
-        if isSelected then
-            love.graphics.setColor(1, 1, 0, 1)
-        elseif isInSelectedCards then
-            love.graphics.setColor(0, 1, 0, 1)
-        else
-            love.graphics.setColor(0.8, 0.8, 0.8, 1)
-        end
-        love.graphics.rectangle('line', x, y, cardWidth, cardHeight)
-        
-        -- Draw card content
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.printf(card.name or "Card", x, y + 20, cardWidth, 'center')
+        card:draw(x, baseY)
     end
     
     -- Draw instructions
@@ -438,6 +426,33 @@ function BattleEncounter:drawResultsPhase()
         love.graphics.getWidth(),
         'center'
     )
+end
+
+function BattleEncounter:selectNextCard()
+    if #self.state.handCards > 0 then
+        -- Deselect current card
+        if self.state.handCards[self.state.selectedCardIndex] then
+            self.state.handCards[self.state.selectedCardIndex]:setSelected(false)
+        end
+        
+        -- Update index
+        self.state.selectedCardIndex = self.state.selectedCardIndex + 1
+        if self.state.selectedCardIndex > #self.state.handCards then
+            self.state.selectedCardIndex = 1
+        end
+        
+        -- Select new card
+        self.state.handCards[self.state.selectedCardIndex]:setSelected(true)
+    end
+end
+
+function BattleEncounter:selectPreviousCard()
+    if #self.state.handCards > 0 then
+        self.state.selectedCardIndex = self.state.selectedCardIndex - 1
+        if self.state.selectedCardIndex < 1 then
+            self.state.selectedCardIndex = #self.state.handCards
+        end
+    end
 end
 
 return BattleEncounter  -- NOT return true/false

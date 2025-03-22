@@ -49,14 +49,25 @@ end
 
 function MarketEncounter:generateMarketStock()
     print("Generating market stock for type:", gameState.currentMarketType)
-    self.state.availableCards = PackFactory.generatePack(gameState.currentMarketType)
-    print("Generated stock:", self.state.availableCards)
+    local cards = PackFactory.generatePack(gameState.currentMarketType)
     
-    -- Add the Skip card at the end using proper Card object
+    -- Convert card data to Card objects with proper state management
+    self.state.availableCards = {}
+    for _, cardData in ipairs(cards) do
+        local card = Card.new(
+            love.math.random(1000, 9999),
+            cardData.name,
+            cardData.description
+        )
+        card.cardType = cardData.cardType
+        card.cost = cardData.cost
+        table.insert(self.state.availableCards, card)
+    end
+    
+    -- Add the Skip card
     local skipCard = Card.new(0, "Skip Market", "Leave this market without making a purchase")
     skipCard.cardType = "action"
     skipCard.cost = 0
-    
     table.insert(self.state.availableCards, skipCard)
 end
 
@@ -239,40 +250,46 @@ function MarketEncounter:tryPurchase(index)
 end
 
 function MarketEncounter:draw()
-    -- Draw the market title
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf(self.state.title, 0, 20, love.graphics.getWidth(), 'center')
+    local cardWidth, cardHeight = Card.getDimensions()
+    local spacing = CARD_SPACING
+    local cardsPerRow = CARDS_PER_ROW
     
-    -- Draw cash amount
-    love.graphics.printf(
-        "Cash: $" .. self.state.cash,
-        0,
-        50,
-        love.graphics.getWidth(),
-        'center'
-    )
-
-    -- Draw cards using drawCard function
+    -- Calculate starting position to center the grid
+    local totalWidth = (cardWidth + spacing) * cardsPerRow - spacing
+    local startX = (love.graphics.getWidth() - totalWidth) / 2
+    local startY = START_Y
+    
+    -- Draw title
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf(self.state.title, 0, 30, love.graphics.getWidth(), 'center')
+    
+    -- Draw available cards in a grid
     for i, card in ipairs(self.state.availableCards) do
-        local row = math.floor((i-1) / CARDS_PER_ROW)
-        local col = (i-1) % CARDS_PER_ROW
+        -- Calculate row and column
+        local row = math.floor((i-1) / cardsPerRow)
+        local col = (i-1) % cardsPerRow
         
-        local x = (love.graphics.getWidth() - (CARDS_PER_ROW * (CARD_WIDTH + CARD_SPACING))) / 2 
-            + col * (CARD_WIDTH + CARD_SPACING)
-        local y = START_Y + row * (CARD_HEIGHT + CARD_SPACING)
+        -- Calculate position
+        local x = startX + (col * (cardWidth + spacing))
+        local y = startY + (row * (cardHeight + spacing))
         
-        self:drawCard(card, x, y, i == self.state.selectedIndex)
+        -- Update card selection state
+        card:setSelected(i == self.state.selectedIndex)
+        card:update(dt)
+        
+        -- Draw card
+        card:draw(x, y)
+        
+        -- Draw price
+        love.graphics.setColor(1, 1, 0, 1)
+        love.graphics.printf(
+            "Cost: " .. (card.cost or 0) .. " coins",
+            x,
+            y + cardHeight + 5,
+            cardWidth,
+            'center'
+        )
     end
-
-    -- Draw help text for deck viewing
-    love.graphics.setColor(0.7, 0.7, 0.7, 1)
-    love.graphics.printf(
-        "Press TAB to view your deck",
-        0,
-        love.graphics.getHeight() - 30,
-        love.graphics.getWidth(),
-        'center'
-    )
 end
 
 return MarketEncounter

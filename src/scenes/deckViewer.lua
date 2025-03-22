@@ -107,7 +107,8 @@ function DeckViewer:update(dt)
         end
         if newCategory >= 1 then
             self.state.selectedCategory = newCategory
-            self:startScrollAnimation(math.max(0, self.sectionPositions[newCategory]))
+            -- Negate the scroll value
+            self:startScrollAnimation(-math.max(0, self.sectionPositions[newCategory]))
         end
     end
     
@@ -118,7 +119,8 @@ function DeckViewer:update(dt)
         end
         if newCategory <= #self.cardTypes then
             self.state.selectedCategory = newCategory
-            self:startScrollAnimation(math.max(0, self.sectionPositions[newCategory]))
+            -- Negate the scroll value
+            self:startScrollAnimation(-math.max(0, self.sectionPositions[newCategory]))
         end
     end
     
@@ -153,63 +155,68 @@ function DeckViewer:update(dt)
 end
 
 function DeckViewer:draw()
-    love.graphics.push()
-    love.graphics.translate(0, -self.state.scroll)
+    local cardWidth, cardHeight = Card.getDimensions()
+    local spacing = 20
     
-    local currentY = 20
-    
+    -- Draw categories
     for i, cardType in ipairs(self.cardTypes) do
-        local cards = self.organizedCards[cardType]
-        if #cards > 0 then
-            -- Draw section title with highlight if selected
-            if i == self.state.selectedCategory then
-                love.graphics.setColor(1, 1, 0, 1)
-            else
-                love.graphics.setColor(1, 1, 1, 1)
+        local cards = self:getCardsByType(cardType)
+        -- Apply negative scroll offset to move content up when scrolling down
+        local startY = (100 + (i-1) * (cardHeight + spacing * 2)) + self.state.scroll
+        
+        -- Draw category title with scroll offset
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.printf(
+            string.upper(cardType),
+            50,
+            startY - 30,
+            love.graphics.getWidth() - 100,
+            'left'
+        )
+        
+        -- Draw cards in this category
+        local startX = 50
+        for j, card in ipairs(cards) do
+            -- Calculate position
+            local x = startX + (j-1) * (cardWidth + spacing)
+            local y = startY
+            
+            -- Only draw if card is visible
+            if y + cardHeight > 0 and y < love.graphics.getHeight() then
+                card:update(dt)
+                card:draw(x, y)
             end
-            
-            love.graphics.printf(
-                string.upper(cardType) .. " (" .. #cards .. ")",
-                0,
-                currentY,
-                love.graphics.getWidth(),
-                'center'
-            )
-            currentY = currentY + 40
-            
-            -- Draw cards
-            for j, card in ipairs(cards) do
-                local row = math.floor((j-1) / CARDS_PER_ROW)
-                local col = (j-1) % CARDS_PER_ROW
-                
-                local x = (love.graphics.getWidth() - (CARDS_PER_ROW * (CARD_WIDTH + CARD_SPACING))) / 2
-                x = x + col * (CARD_WIDTH + CARD_SPACING)
-                local y = currentY + row * (CARD_HEIGHT + CARD_SPACING)
-                
-                -- Use card's draw method
-                card:draw(x, y, i == self.state.selectedCategory)
-            end
-            
-            local rows = math.ceil(#cards / CARDS_PER_ROW)
-            currentY = currentY + (rows * (CARD_HEIGHT + CARD_SPACING)) + SECTION_SPACING
         end
     end
     
-    love.graphics.pop()
-    
-    -- Draw scroll indicators
+    -- Draw scroll indicators if needed
     if self.state.maxScroll > 0 then
-        love.graphics.setColor(1, 1, 1, 0.5)
-        if self.state.scroll > 0 then
-            love.graphics.printf("▲", 0, 10, love.graphics.getWidth(), 'center')
-        end
-        if self.state.scroll < self.state.maxScroll then
+        if self.state.scroll > -self.state.maxScroll then  -- Changed condition
+            love.graphics.setColor(1, 1, 1, 0.5)
             love.graphics.printf("▼", 0, love.graphics.getHeight() - 30, love.graphics.getWidth(), 'center')
+        end
+        if self.state.scroll < 0 then
+            love.graphics.setColor(1, 1, 1, 0.5)
+            love.graphics.printf("▲", 0, 10, love.graphics.getWidth(), 'center')
         end
     end
 end
 
+function DeckViewer:getCardsByType(cardType)
+    local cards = {}
+    -- Assuming gameState.currentDeck.cards is your collection of cards
+    for _, card in ipairs(gameState.currentDeck.cards) do
+        if card.cardType == cardType then
+            table.insert(cards, card)
+        end
+    end
+    return cards
+end
+
 return DeckViewer
+
+
+
 
 
 
