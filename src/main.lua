@@ -15,7 +15,9 @@ gameState = {
     }
 }
 
-local Main = {}
+local Main = {
+    debugConsole = nil  -- Initialize as nil
+}
 
 function Main.load()
     -- Load all scenes
@@ -40,6 +42,9 @@ function Main.load()
     -- Initialize game manager
     gameManager:init()
     
+    -- Initialize debug tools
+    Main:initializeTools()
+    
     -- Start with main menu
     sceneManager:switch('mainMenu')
 end
@@ -50,6 +55,11 @@ function Main.update(dt)
     -- Then update current scene
     sceneManager:update(dt)
     
+    -- Update debug console
+    if _DEBUG and Main.debugConsole then
+        Main.debugConsole:update(dt)
+    end
+    
     -- Reset keyboard states
     love.keyboard.keysPressed = {}
     love.keyboard.keysReleased = {}
@@ -57,9 +67,22 @@ end
 
 function Main.draw()
     sceneManager:draw()
+    if _DEBUG and Main.debugConsole then
+        Main.debugConsole:draw()
+    end
 end
 
 function Main.keypressed(key)
+    if _DEBUG and Main.debugConsole then
+        if key == '`' then
+            Main.debugConsole:toggle()
+            return
+        end
+        if Main.debugConsole.visible then
+            Main.debugConsole:handleInput(key)
+            return
+        end
+    end
     love.keyboard.keysPressed[key] = true
 end
 
@@ -68,11 +91,26 @@ function Main.keyreleased(key)
 end
 
 function Main.textinput(t)
+    if _DEBUG and Main.debugConsole and Main.debugConsole.visible then
+        Main.debugConsole:textInput(t)
+        return
+    end
+    
     if sceneManager.current and sceneManager.current.inputtingSeed then
-        -- Only allow alphanumeric characters and some basic punctuation
         if t:match("^[%w%s%-_%.]+$") then
             sceneManager.current.seedInput = sceneManager.current.seedInput .. t
         end
+    end
+end
+
+function Main:initializeTools()
+    if _DEBUG then
+        self.debugConsole = require('src.tools.debugConsole')
+        self.debugConsole:init()
+        
+        -- Initialize content manager
+        self.contentManager = require('src.tools.contentManager')
+        self.contentManager:init()
     end
 end
 

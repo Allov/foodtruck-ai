@@ -7,3 +7,6 @@ function love.conf(t)
     -- For debugging
     t.console = true
 end
+
+-- Set global debug flag
+_DEBUG = true
