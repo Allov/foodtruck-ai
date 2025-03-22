@@ -1,4 +1,5 @@
 local Scene = require('src.scenes.scene')
+local Deck = require('src.cards.deck')
 local DebugMenu = setmetatable({}, Scene)
 DebugMenu.__index = DebugMenu
 
@@ -10,6 +11,7 @@ end
 function DebugMenu:init()
     self.options = {
         "Encounter Tester",
+        "View Test Deck",
         "Back to Main Menu"
     }
     self.selected = 1
@@ -33,6 +35,11 @@ function DebugMenu:update(dt)
         if self.selected == 1 then
             sceneManager:switch('encounterTester')
         elseif self.selected == 2 then
+            -- Generate and set a test deck
+            gameState.currentDeck = Deck.generateTestDeck()
+            gameState.previousScene = 'debugMenu'
+            sceneManager:switch('deckViewer')
+        elseif self.selected == 3 then
             sceneManager:switch('mainMenu')
         end
     end

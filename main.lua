@@ -38,7 +38,8 @@ function love.load()
         provinceMap = require('src.scenes.provinceMap'),
         encounter = require('src.scenes.encounter'),
         debugMenu = require('src.scenes.debugMenu'),
-        encounterTester = require('src.scenes.encounterTester')
+        encounterTester = require('src.scenes.encounterTester'),
+        deckViewer = require('src.scenes.deckViewer')
     }
 
     -- Add scenes to manager
@@ -71,6 +72,7 @@ end
 function love.draw()
     sceneManager:draw()
 end
+
 
 
 

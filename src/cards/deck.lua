@@ -55,4 +55,49 @@ function Deck:getCounts()
     }
 end
 
+-- Add this function to generate a test deck
+function Deck.generateTestDeck()
+    local deck = Deck.new()
+    
+    local cardTypes = {"ingredient", "technique", "recipe"}
+    local ingredients = {"Tomato", "Onion", "Garlic", "Beef", "Chicken", "Rice", "Potato"}
+    local techniques = {"Dice", "Slice", "Grill", "Fry", "Boil", "Bake", "Sauté"}
+    local recipes = {"Burger", "Stir Fry", "Soup", "Curry", "Pasta", "Salad"}
+    
+    -- Add 15 ingredient cards
+    for i = 1, 15 do
+        local name = ingredients[love.math.random(#ingredients)]
+        deck:addCard({
+            id = love.math.random(1000),
+            name = name,
+            description = "A fresh " .. string.lower(name),
+            cardType = "ingredient"
+        })
+    end
+    
+    -- Add 10 technique cards
+    for i = 1, 10 do
+        local name = techniques[love.math.random(#techniques)]
+        deck:addCard({
+            id = love.math.random(1000),
+            name = name,
+            description = name .. " your ingredients",
+            cardType = "technique"
+        })
+    end
+    
+    -- Add 5 recipe cards
+    for i = 1, 5 do
+        local name = recipes[love.math.random(#recipes)]
+        deck:addCard({
+            id = love.math.random(1000),
+            name = name,
+            description = "Create a delicious " .. string.lower(name),
+            cardType = "recipe"
+        })
+    end
+    
+    return deck
+end
+
 return Deck
