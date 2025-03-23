@@ -33,6 +33,14 @@ local CardVisuals = {
             TITLE_BG = {0.9, 0.3, 0.5, 0.2},    -- Light pink
             TEXT = {0.3, 0.2, 0.2, 1},          -- Dark pink-grey
             BORDER = {0.9, 0.3, 0.5, 1}         -- Medium pink
+        },
+        action = {
+            PRIMARY = {0.3, 0.3, 0.35, 1},    -- Dark slate
+            SECONDARY = {0.4, 0.4, 0.45, 1},  -- Medium slate
+            ACCENT = {0.5, 0.5, 0.55, 1},     -- Light slate
+            TITLE_BG = {0.35, 0.35, 0.4, 0.2}, -- Semi-transparent slate
+            TEXT = {0.8, 0.8, 0.85, 1},       -- Light grey
+            BORDER = {0.45, 0.45, 0.5, 1}     -- Medium-light slate
         }
     },
 
@@ -134,6 +142,11 @@ function CardVisuals.new()
 end
 
 function CardVisuals:setState(newState)
+    -- Don't change state if it's the same as current
+    if self.currentState == newState then
+        return
+    end
+    
     -- If card is locked, only allow changing to unlocked (DEFAULT) state
     if self.currentState == self.STATES.LOCKED and newState ~= self.STATES.DEFAULT then
         return

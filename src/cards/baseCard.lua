@@ -5,7 +5,8 @@ local BaseCard = {
     CARD_TYPES = {
         INGREDIENT = "ingredient",
         TECHNIQUE = "technique",
-        RECIPE = "recipe"
+        RECIPE = "recipe",
+        ACTION = "action"     -- Add action type
     }
 }
 BaseCard.__index = BaseCard

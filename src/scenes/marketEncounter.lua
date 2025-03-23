@@ -1,4 +1,5 @@
 local Encounter = require('src.scenes.encounter')
+local BaseCard = require('src.cards.baseCard')
 local Card = require('src.cards.card')
 local PackFactory = require('src.cards.packFactory')
 local MarketEncounter = {}
@@ -62,42 +63,35 @@ function MarketEncounter:generateMarketStock()
     -- Convert card data to Card objects with proper state management
     self.state.availableCards = {}
     for _, cardData in ipairs(cards) do
+        -- Create new card with all components properly initialized
         local card = Card.new(
-            love.math.random(1000, 9999),
+            cardData.id,
             cardData.name,
             cardData.description
         )
         card.cardType = cardData.cardType
         card.cost = cardData.cost
+        card.value = cardData.value
+        
+        -- Initialize scoring based on card type
+        if card.cardType == "ingredient" then
+            card.scoring.whiteScore = cardData.value
+        elseif card.cardType == "technique" then
+            card.scoring.redScore = cardData.value
+        end
+        
         table.insert(self.state.availableCards, card)
     end
     
     -- Add the Skip card
     local skipCard = Card.new(0, "Skip Market", "Leave this market without making a purchase")
-    skipCard.cardType = "action"
+    skipCard.cardType = BaseCard.CARD_TYPES.ACTION
     skipCard.cost = 0
     table.insert(self.state.availableCards, skipCard)
 end
 
-function MarketEncounter:drawCard(cardData, x, y, isSelected)
-    -- Create a temporary Card object for drawing
-    local tempCard = Card.new(0, cardData.name, cardData.description)
-    tempCard.cardType = cardData.cardType
-    tempCard.cost = cardData.cost
-    
-    -- Use the Card class's draw method
-    tempCard:draw(x, y, isSelected)
-    
-    -- Draw cost (since it's market-specific)
-    love.graphics.setColor(1, 0.8, 0, 1)  -- Gold color for cost
-    love.graphics.printf(
-        "$" .. cardData.cost,
-        x + 10,
-        y + CARD_HEIGHT - 40,
-        CARD_WIDTH - 20,
-        'center'
-    )
-end
+-- Remove the drawCard function since we're now using the Card class's draw method directly
+-- Delete or comment out the old drawCard function
 
 function MarketEncounter:handleOption(optionIndex)
     print("Handling option: " .. optionIndex)
@@ -217,8 +211,9 @@ function MarketEncounter:update(dt)
     end
 
     -- Update all cards
-    for _, card in ipairs(self.state.availableCards) do
-        card:update(dt)
+    for i, card in ipairs(self.state.availableCards) do
+        card:setSelected(i == self.state.selectedIndex)  -- Set selection state
+        card:update(dt)  -- Update animations
     end
 end
 
@@ -289,10 +284,6 @@ function MarketEncounter:draw()
         -- Calculate position
         local x = startX + (col * (cardWidth + spacing))
         local y = startY + (row * (cardHeight + spacing))
-        
-        -- Update card selection state
-        card:setSelected(i == self.state.selectedIndex)
-        -- Remove the update call from here - it shouldn't be in draw
         
         -- Draw card
         card:draw(x, y)

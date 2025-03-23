@@ -18,7 +18,8 @@ function DeckViewer.new()
     self.cardTypes = {
         "ingredient",
         "technique",
-        "recipe"
+        "recipe",
+        "action"      -- Add action type
     }
     -- Initialize other properties
     self.sectionPositions = {}
@@ -213,6 +214,7 @@ function DeckViewer:getCardsByType(cardType)
 end
 
 return DeckViewer
+
 
 
 

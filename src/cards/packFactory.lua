@@ -45,6 +45,7 @@ function PackFactory.generatePack(marketType, size)
             local card = Card.new(itemData.id, itemData.name, itemData.description)
             card.cardType = itemData.cardType
             card.cost = itemData.cost
+            card.value = itemData.value
             table.insert(pack, card)
         end
     end
@@ -58,6 +59,7 @@ function PackFactory.generatePack(marketType, size)
         local card = Card.new(itemData.id, itemData.name, itemData.description)
         card.cardType = itemData.cardType
         card.cost = itemData.cost
+        card.value = itemData.value
         table.insert(pack, card)
         
         -- Remove used item to avoid duplicates
