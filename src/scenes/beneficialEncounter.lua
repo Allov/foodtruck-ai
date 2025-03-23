@@ -14,16 +14,14 @@ local COLORS = {
 function BeneficialEncounter.new()
     local self = Scene.new()
     setmetatable(self, BeneficialEncounter)
-    return self
-end
-
-function BeneficialEncounter:init()
     self.state = {
         config = nil,
         resolved = false
     }
+    return self
 end
 
+-- Remove the separate init function since we're initializing in new()
 function BeneficialEncounter:enter()
     -- Get encounter configuration
     local EncounterRegistry = require('src.encounters.encounterRegistry')

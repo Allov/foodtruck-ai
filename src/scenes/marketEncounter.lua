@@ -1,10 +1,10 @@
 local Encounter = require('src.scenes.encounter')
-local Card = require('src.cards.card')  -- Add this at the top with other requires
+local Card = require('src.cards.card')
 local PackFactory = require('src.cards.packFactory')
 local MarketEncounter = {}
 MarketEncounter.__index = MarketEncounter
 MarketEncounter.__name = "marketEncounter"
-setmetatable(MarketEncounter, Scene)
+setmetatable(MarketEncounter, Encounter)  -- Changed from Scene to Encounter
 
 -- Card display constants
 local CARD_WIDTH = 160
@@ -21,7 +21,8 @@ local COLORS = {
 }
 
 function MarketEncounter.new()
-    local self = setmetatable({}, MarketEncounter)
+    local self = Encounter.new()  -- Call Encounter.new() instead of creating empty table
+    setmetatable(self, MarketEncounter)
     self.state = {
         availableCards = {},  -- Cards currently for sale
         selectedIndex = 1,    -- Currently selected card
@@ -214,6 +215,11 @@ function MarketEncounter:update(dt)
     if love.keyboard.wasPressed('escape') then
         self.state.selectedIndex = #self.state.availableCards  -- Select Skip card
     end
+
+    -- Update all cards
+    for _, card in ipairs(self.state.availableCards) do
+        card:update(dt)
+    end
 end
 
 function MarketEncounter:tryPurchase(index)
@@ -303,14 +309,4 @@ function MarketEncounter:draw()
     end
 end
 
--- Add update method
-function MarketEncounter:update(dt)
-    -- Update all cards
-    for _, card in ipairs(self.state.availableCards) do
-        card:update(dt)
-    end
-end
-
 return MarketEncounter
-
-

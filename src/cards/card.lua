@@ -39,8 +39,9 @@ function Card:draw(x, y)
     local style = self.visuals.STYLE
     local visualState = self.visuals:getVisualState()
     
-    -- Apply lift animation
-    y = y - visualState.lift
+    -- Apply lift animation and hover effect
+    local hoverOffset = math.sin(visualState.hover) * self.visuals.ANIMATION.HOVER.AMOUNT
+    y = y - visualState.lift - hoverOffset
     
     -- Get current color based on state
     local bgColor = style.COLORS[visualState.state:upper()] or style.COLORS.DEFAULT
