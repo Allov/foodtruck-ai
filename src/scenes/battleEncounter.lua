@@ -22,17 +22,13 @@ local FONTS = {
 }
 
 BattleEncounter.PHASES = {
-    PREPARATION = "PREPARATION",
-    COOKING = "COOKING",
-    JUDGING = "JUDGING",
-    RESULTS = "RESULTS"
+    PREPARATION = "PREPARATION",  -- Select cards for your combination
+    JUDGING = "JUDGING",         -- Calculate scores and effects
+    RESULTS = "RESULTS"          -- Show round results and check win/loss
 }
 
-BattleEncounter.ACTIONS = {
-    SELECT = "SELECT",
-    DISCARD = "DISCARD",
-    COOK = "COOK"
-}
+-- Remove ACTIONS as they're no longer needed
+-- BattleEncounter.ACTIONS = { ... }
 
 function BattleEncounter.new()
     local self = setmetatable(Encounter.new(), BattleEncounter)
@@ -40,23 +36,17 @@ function BattleEncounter.new()
     
     self.state = {
         currentPhase = BattleEncounter.PHASES.PREPARATION,
-        currentAction = BattleEncounter.ACTIONS.SELECT,
         selectedCards = {},
         handCards = {},
         discardPile = {},
-        selectedForDiscard = {},
         selectedCardIndex = 1,
-        currentCookingIndex = 1,
-        timeRemaining = 60,
         currentScore = 0,
         roundNumber = 1,
         maxRounds = 3,
         actionFeedback = nil,
         comboMultiplier = 1
     }
-    -- Remove maxSelectedCards from here since it will be set by setupBattleParameters
     
-    -- Call setupBattleParameters during initialization
     self:setupBattleParameters()
     
     if self.init then
@@ -168,8 +158,6 @@ function BattleEncounter:update(dt)
     -- Phase-specific updates
     if self.state.currentPhase == BattleEncounter.PHASES.PREPARATION then
         self:updatePreparationPhase()
-    elseif self.state.currentPhase == BattleEncounter.PHASES.COOKING then
-        self:updateCookingPhase(dt)
     elseif self.state.currentPhase == BattleEncounter.PHASES.JUDGING then
         self:updateJudgingPhase()
     elseif self.state.currentPhase == BattleEncounter.PHASES.RESULTS then
@@ -178,10 +166,14 @@ function BattleEncounter:update(dt)
 end
 
 function BattleEncounter:updatePreparationPhase()
-    if self.state.currentAction == self.ACTIONS.SELECT then
-        self:handleCardSelection()
-    elseif self.state.currentAction == self.ACTIONS.DISCARD then
-        self:handleCardDiscard()
+    if love.keyboard.wasPressed('left') then
+        self:selectPreviousCard()
+    elseif love.keyboard.wasPressed('right') then
+        self:selectNextCard()
+    elseif love.keyboard.wasPressed('space') then
+        self:toggleCardSelection()
+    elseif love.keyboard.wasPressed('return') and #self.state.selectedCards > 0 then
+        self:transitionToPhase(self.PHASES.JUDGING)
     end
 end
 
@@ -193,7 +185,7 @@ function BattleEncounter:handleCardSelection()
     elseif love.keyboard.wasPressed('space') then
         self:toggleCardSelection()
     elseif love.keyboard.wasPressed('return') and #self.state.selectedCards > 0 then
-        self:transitionToPhase(self.PHASES.COOKING)
+        self:transitionToPhase(self.PHASES.JUDGING)
     end
     -- Discard action disabled
     --[[ elseif love.keyboard.wasPressed('d') then
@@ -247,7 +239,8 @@ end
 
 function BattleEncounter:handleCardDiscard()
     if love.keyboard.wasPressed('escape') then
-        self.state.currentAction = self.ACTIONS.SELECT
+        -- Return to selection mode
+        self.state.selectedForDiscard = {}
     elseif love.keyboard.wasPressed('space') then
         self:discardAndDrawNew()
     end
@@ -299,16 +292,15 @@ function BattleEncounter:updateCookingPhase(dt)
 end
 
 function BattleEncounter:updateJudgingPhase()
-    -- Auto-transition after showing results
     if love.keyboard.wasPressed('return') then
-        self:transitionToPhase(BattleEncounter.PHASES.RESULTS)
+        self:transitionToPhase(self.PHASES.RESULTS)
     end
 end
 
 function BattleEncounter:updateResultsPhase()
     if love.keyboard.wasPressed('return') then
         if self:isBattleComplete() then
-            self:endBattle()
+            self:endBattle(self.state.currentScore >= self.state.targetScore)
         else
             self:startNextRound()
         end
@@ -865,19 +857,11 @@ function BattleEncounter:transitionToPhase(newPhase)
     -- Handle cleanup of current phase
     if self.state.currentPhase == self.PHASES.PREPARATION then
         -- Reset any preparation phase specific states
-        self.state.currentAction = self.ACTIONS.SELECT
         self.state.selectedForDiscard = {}
-    elseif self.state.currentPhase == self.PHASES.COOKING then
-        -- Reset cooking specific states
-        self.state.currentCookingIndex = 1
     end
 
     -- Set up new phase
-    if newPhase == self.PHASES.COOKING then
-        -- Initialize cooking phase
-        self.state.timeRemaining = 60
-        self.state.currentCookingIndex = 1
-    elseif newPhase == self.PHASES.JUDGING then
+    if newPhase == self.PHASES.JUDGING then
         -- Calculate final score for the round
         self:calculateRoundScore()
     end
@@ -887,10 +871,22 @@ function BattleEncounter:transitionToPhase(newPhase)
 end
 
 function BattleEncounter:calculateRoundScore()
-    -- Basic score calculation
     local baseScore = 0
+    local combinations = self:identifyCombinations(self.state.selectedCards)
+    
+    -- Calculate base score from cards
     for _, card in ipairs(self.state.selectedCards) do
         baseScore = baseScore + (card.value or 0)
+    end
+    
+    -- Apply combination bonuses
+    for _, combo in ipairs(combinations) do
+        baseScore = baseScore + combo.bonus
+    end
+    
+    -- Apply enemy preference multipliers
+    if self.state.enemy.preferences.primary == self.state.battleType then
+        baseScore = baseScore * 1.5
     end
     
     -- Apply combo multiplier
@@ -901,6 +897,15 @@ function BattleEncounter:calculateRoundScore()
     
     -- Reset combo multiplier for next round
     self.state.comboMultiplier = 1
+    
+    return finalScore
+end
+
+function BattleEncounter:identifyCombinations(cards)
+    local combinations = {}
+    -- Add combination detection logic here
+    -- Example: matching ingredients, complementary flavors, etc.
+    return combinations
 end
 
 return BattleEncounter  -- NOT return true/false

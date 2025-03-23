@@ -47,10 +47,13 @@ function ProvinceMap.new()
     self.ICON_SIZE = 32  -- Assuming icons are 32x32 pixels
     
     self.encounterNames = {
-        card_battle = "Food Competition",
+        starting_market = "Starting Market",
+        farmers_market = "Farmers Market",
+        food_critic = "Food Critic Challenge",
+        rush_hour = "Rush Hour Service",
+        final_showdown = "Final Showdown",
         beneficial = "Food Festival",
         negative = "Road Trouble",
-        market = "Local Market",
         lore = "Local Story"
     }
     
@@ -90,8 +93,8 @@ function ProvinceMap.new()
     self.originalRandomState = love.math.getRandomState()
     
     -- Map configuration
-    self.NUM_LEVELS = 8  -- Increased from 4
-    self.LEVEL_HEIGHT = 120  -- Increased for better spacing
+    self.NUM_LEVELS = 15  -- Changed from 8 to match actual number of rows
+    self.LEVEL_HEIGHT = 120  -- Vertical spacing between levels
     self.HORIZONTAL_PADDING = 100
     
     -- Camera/scroll properties
@@ -131,76 +134,112 @@ function ProvinceMap:setSeed(seed)
     self:generateMap()
 end
 
+function ProvinceMap:generateNodesPerRow()
+    local nodesPerRow = {}
+    
+    -- First row: 2 nodes
+    nodesPerRow[1] = 2
+    
+    -- Middle rows: alternate between 2 and 3 nodes
+    for i = 2, self.NUM_LEVELS - 1 do
+        -- Use the random generator to maintain consistency with seed
+        nodesPerRow[i] = self.randomGenerator:random() < 0.6 and 3 or 2
+    end
+    
+    -- Last row: always 1 node (final boss/encounter)
+    nodesPerRow[self.NUM_LEVELS] = 1
+    
+    return nodesPerRow
+end
+
 function ProvinceMap:generateMap()
-    -- Store current random state
-    local oldState = love.math.getRandomState()
-    love.math.setRandomState(self.randomGenerator:getState())
-    
+    -- Clear existing nodes
     self.nodes = {}
-    local screenW, screenH = love.graphics.getWidth(), love.graphics.getHeight()
-    local START_Y = screenH - self.LEVEL_HEIGHT
     
-    -- Calculate total map height
-    self.mapHeight = self.LEVEL_HEIGHT * self.NUM_LEVELS
+    -- Generate node distribution using same seed
+    local nodesPerRow = self:generateNodesPerRow()
     
-    -- 1. Generate node positions level by level
-    for level = 1, self.NUM_LEVELS do
-        self.nodes[level] = {}
-        -- Calculate Y position from top to bottom
-        local currentY = self.LEVEL_HEIGHT * (self.NUM_LEVELS - level)
+    -- Calculate total map height using class properties
+    self.mapHeight = (self.NUM_LEVELS - 1) * self.LEVEL_HEIGHT + 200
+    
+    for row = 1, self.NUM_LEVELS do
+        local rowNodes = {}
         
-        -- Determine number of nodes for this level
-        local nodeCount
-        if level == 1 or level == self.NUM_LEVELS then
-            nodeCount = 2  -- First and last levels always have 2 nodes
-        else
-            nodeCount = love.math.random(3, 4)  -- Middle levels have 3-4 nodes
-        end
-        
-        -- Calculate horizontal spacing
-        local usableWidth = screenW - (2 * self.HORIZONTAL_PADDING)
-        local spacing = usableWidth / (nodeCount + 1)
-        
-        -- Generate nodes for this level
-        for i = 1, nodeCount do
-            -- Calculate base position
-            local baseX = self.HORIZONTAL_PADDING + (i * spacing)
-            -- Add small random offset but ensure it stays within bounds
-            local offsetX = love.math.random(-20, 20)
-            local finalX = math.max(self.HORIZONTAL_PADDING, 
-                                  math.min(baseX + offsetX, screenW - self.HORIZONTAL_PADDING))
+        for col = 1, nodesPerRow[row] do
+            local node = {
+                x = 0,  -- Will be set later
+                y = self.mapHeight - ((row - 1) * self.LEVEL_HEIGHT + 100),
+                completed = false,
+                available = row == 1,
+                connections = {},
+            }
             
-            -- Determine node type
-            local nodeType
-            if level == 1 then
-                nodeType = "market"  -- Starting nodes are markets
-            elseif level == self.NUM_LEVELS then
-                nodeType = "card_battle"  -- Final nodes are battles
+            -- Force battle encounters for row 2
+            if row == 2 then
+                node.type = "card_battle"
+                node.encounterType = self.randomGenerator:random() < 0.5 and "food_critic" or "rush_hour"
             else
-                nodeType = self:randomEncounterType()
+                -- Random encounter type for other rows
+                node.type = self:getRandomEncounterType(row)
+                node.encounterType = self:getSpecificEncounter(node.type)
             end
             
-            -- Create node
-            table.insert(self.nodes[level], {
-                x = finalX,
-                y = currentY,
-                type = nodeType,
-                connections = {}
-            })
+            table.insert(rowNodes, node)
         end
+        
+        -- Position nodes horizontally
+        self:distributeNodesInRow(rowNodes)
+        
+        -- Add row to map
+        self.nodes[row] = rowNodes
     end
     
-    -- 2. Create connections between levels
-    for level = 1, self.NUM_LEVELS - 1 do
+    -- Create connections between rows
+    self:createConnections()
+end
+
+function ProvinceMap:createConnections()
+    -- Create connections between each level
+    for level = 1, #self.nodes - 1 do
         self:connectLevels(level)
     end
-    
-    -- Initialize camera position
-    self.camera.y = 0
-    self.camera.targetY = 0
-    
-    -- Restore the original random state
-    love.math.setRandomState(oldState)
+end
+
+function ProvinceMap:getRandomEncounterType(row)
+    -- Define possible encounter types for each row
+    local encounterPool
+    if row == 1 then
+        -- First row: always market
+        return "market"
+    elseif row == self.NUM_LEVELS then
+        -- Final row: showdown (special battle)
+        return "card_battle"  -- We can add a special "showdown" type later if needed
+    elseif row == 2 then
+        -- Second row: keep as battle encounters
+        return "card_battle"
+    else
+        -- Other rows: mix of encounters
+        encounterPool = {"card_battle", "market", "beneficial", "negative", "lore"}
+        return encounterPool[self.randomGenerator:random(#encounterPool)]
+    end
+end
+
+function ProvinceMap:getSpecificEncounter(encounterType)
+    -- Return specific encounter based on type
+    if encounterType == "card_battle" then
+        if self.currentLevel == self.NUM_LEVELS then
+            return "final_showdown"  -- New encounter type for final battle
+        else
+            return self.randomGenerator:random() < 0.5 and "food_critic" or "rush_hour"
+        end
+    elseif encounterType == "market" then
+        if self.currentLevel == 1 then
+            return "starting_market"  -- Special first market type
+        else
+            return "farmers_market"
+        end
+    end
+    return encounterType
 end
 
 function ProvinceMap:connectLevels(level)
@@ -663,7 +702,7 @@ function ProvinceMap:drawNode(level, i, node)
     end
     
     -- Draw event name with better visibility
-    local eventName = self.encounterNames[node.type] or "Unknown"
+    local eventName = self.encounterNames[node.encounterType] or self.encounterNames[node.type] or "Unknown"
     
     -- Draw text shadow/outline for better contrast
     love.graphics.setFont(love.graphics.newFont(12))  -- Slightly larger font
@@ -748,6 +787,26 @@ end
 function ProvinceMap:screenToWorld(x, y)
     -- Invert Y transformation
     return x, y + self.camera.y
+end
+
+function ProvinceMap:distributeNodesInRow(nodes)
+    local screenWidth = love.graphics.getWidth()
+    local margin = 100  -- Reduced from previous value
+    local usableWidth = screenWidth - (margin * 2)
+    local spacing = usableWidth / (math.max(3, #nodes + 1))  -- Ensure minimum spacing even with fewer nodes
+    
+    -- Position nodes evenly across the screen
+    for i, node in ipairs(nodes) do
+        node.x = margin + spacing * i  -- Adjusted spacing calculation
+    end
+    
+    -- Center the nodes horizontally
+    local totalWidth = spacing * (#nodes + 1)
+    local offset = (screenWidth - totalWidth) / 2
+    
+    for _, node in ipairs(nodes) do
+        node.x = node.x + offset
+    end
 end
 
 return ProvinceMap
