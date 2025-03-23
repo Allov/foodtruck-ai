@@ -20,6 +20,9 @@ function Deck:draw()
         print("[Deck:draw] Draw pile empty, reshuffling", #self.discardPile, "cards")
         -- Shuffle discard pile back into draw pile
         for _, card in ipairs(self.discardPile) do
+            -- Reset card states before adding back to draw pile
+            card:setLocked(false)
+            card:setSelected(false)
             table.insert(self.drawPile, card)
         end
         self.discardPile = {}
@@ -33,6 +36,11 @@ function Deck:draw()
     
     -- Draw and return top card
     local card = table.remove(self.drawPile)
+    if card then
+        -- Reset card states when drawing
+        card:setLocked(false)
+        card:setSelected(false)
+    end
     print("[Deck:draw] Drawing card", card and card.name, "Cards left:", #self.drawPile)
     return card
 end
@@ -47,6 +55,7 @@ function Deck:discard(card)
 end
 
 return Deck
+
 
 
 

@@ -200,7 +200,17 @@ function BattleEncounter:discardCurrentCard()
     local card = self.state.handCards[self.state.selectedCardIndex]
     if not card then return end
     
-    print("[BattleEncounter] Before discard - Hand size:", #self.state.handCards)
+    -- Reset card's internal states
+    card:setSelected(false)
+    card:setLocked(false)
+    
+    -- Remove from selected cards if it exists there
+    for i = #self.state.selectedCards, 1, -1 do
+        if self.state.selectedCards[i] == card then
+            table.remove(self.state.selectedCards, i)
+            break
+        end
+    end
     
     -- Remove current card and add to discard pile
     self:removeCardFromHand(self.state.selectedCardIndex)
@@ -211,8 +221,6 @@ function BattleEncounter:discardCurrentCard()
     
     -- Update selection
     self:adjustSelectionAfterDiscard()
-    
-    print("[BattleEncounter] After operations - Hand size:", #self.state.handCards)
 end
 
 function BattleEncounter:removeCardFromHand(index)
@@ -222,6 +230,9 @@ end
 function BattleEncounter:drawAndAddNewCard(index)
     local newCard = self.state.deck:draw()
     if newCard then
+        -- Reset card states when drawing
+        newCard:setSelected(false)
+        newCard:setLocked(false)  -- Make sure the card is unlocked when drawn
         table.insert(self.state.handCards, index, newCard)
     end
 end
