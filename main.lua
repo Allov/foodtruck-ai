@@ -9,6 +9,15 @@ if arg[#arg] == "vsc_debug" then
     end
 end
 
+if arg[#arg] == "test" then
+    -- Run tests
+    local testRunner = require('tests.settings_test')
+    local success = testRunner:runAll()
+    love.event.quit(success and 0 or 1)
+    return
+end
+
+
 local game = require('src.main')
 
 function love.load()

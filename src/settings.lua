@@ -61,7 +61,8 @@ end
 function Settings:save()
     local data = "return " .. self:serialize(self)
     local encoded = love.data.encode("string", "base64", data)
-    love.filesystem.write(self.filepath, encoded)
+    local success = love.filesystem.write(self.filepath, encoded)
+    return success  -- Return whether the write was successful
 end
 
 function Settings:load()
@@ -74,7 +75,9 @@ function Settings:load()
                 self[k] = v
             end
         end
+        return true  -- Add return value for successful load
     end
+    return false  -- Already returns false for failure case
 end
 
 function Settings:serialize(tbl)
@@ -97,4 +100,6 @@ end
 
 -- Return the module without initializing
 return Settings
+
+
 
