@@ -204,7 +204,15 @@ function Main:initializeTools()
         self.contentManager = require('src.tools.contentManager')
         self.contentManager:init()
         
-        -- Log initialization
+        -- Add startup logs
+        self.debugConsole:info("===============================")
+        self.debugConsole:info("=== Food Truck Journey ===")
+        self.debugConsole:info("Version: " .. love.getVersion())
+        self.debugConsole:info("Game Resolution: " .. love.graphics.getWidth() .. "x" .. love.graphics.getHeight())
+        self.debugConsole:info("OS: " .. love.system.getOS())
+        self.debugConsole:info("GPU: " .. love.graphics.getRendererInfo())
+        self.debugConsole:info("Memory: " .. string.format("%.2f MB", collectgarbage("count") / 1024))
+        self.debugConsole:info("===============================")
         self.debugConsole:info("Debug tools initialized")
     end
 end
