@@ -6,7 +6,7 @@ Chef.RATINGS = {'S', 'A', 'B', 'C', 'D', 'F'}  -- From best to worst
 
 function Chef.new(data)
     local self = setmetatable({}, Chef)
-    
+
     -- Initialize with default values, overridden by provided data
     self.name = data.name or "Unknown Chef"
     self.specialty = data.specialty or "None"
@@ -15,7 +15,7 @@ function Chef.new(data)
     self.maxRating = data.maxRating or self.rating
     self.experience = data.experience or 0
     self.cash = data.cash or 0
-    
+
     -- Track achievements and stats
     self.stats = {
         battlesWon = 0,
@@ -23,7 +23,7 @@ function Chef.new(data)
         totalScore = 0,
         perfectDishes = 0
     }
-    
+
     return self
 end
 

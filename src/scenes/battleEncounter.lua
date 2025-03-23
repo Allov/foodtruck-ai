@@ -1,4 +1,5 @@
 local Encounter = require('src.scenes.encounter')
+local Chef = require('src.entities.chef')
 local Card = require('src.cards.card')
 local encounterConfigs = require('src.encounters.encounterConfigs')
 local CombinationSystem = require('src.cards.combinationSystem')
@@ -50,6 +51,8 @@ function BattleEncounter.new()
         discardPile = {},
         selectedCardIndex = 1,
         currentScore = 0,
+        totalScore = 0,  -- Initialize totalScore
+        roundScore = 0,  -- Initialize roundScore
         roundNumber = 1,
         maxRounds = 3,
         actionFeedback = nil,
@@ -372,7 +375,7 @@ function BattleEncounter:scoreNextCard()
     -- Check if we still have cards to score
     if scoringState.currentCardIndex <= #self.state.selectedCards then
         local card = self.state.selectedCards[scoringState.currentCardIndex]
-        local scoreValue = scoringState.cardScores[scoringState.currentCardIndex]
+        local scoreValue = card.scoring:getValue()  -- Get the actual score value from the card
 
         -- Only check combinations when scoring the last card
         if scoringState.currentCardIndex == #self.state.selectedCards then
@@ -380,35 +383,72 @@ function BattleEncounter:scoreNextCard()
             scoringState.combinations = CombinationSystem:identifyCombinations(self.state.selectedCards)
         end
 
-        print("[BattleEncounter:scoreNextCard] Scoring card", card.name, "with scoring value", card.scoring)
-
+        -- Apply the score
         self:applyCardScore(card)
+
+        -- Show animation with the actual score value
         card:showScoreAnimation(scoreValue)
         scoringState.animationTimer = self.PHASE_TIMINGS.CARD_SCORE_ANIMATION
+
+        -- Update the display total
+        scoringState.displayTotal = self.state.roundScore
     end
 end
 
 function BattleEncounter:applyCardScore(card)
-    local scoreValue = card.scoring:getValue()
+    -- Get base score from card
+    local baseScore = card.scoring:getValue()
 
-    if card.cardType == "ingredient" then
-        self.state.roundScore = (self.state.roundScore or 0) + scoreValue
-    elseif card.cardType == "technique" or card.cardType == "recipe" then
-        self.state.roundScore = (self.state.roundScore or 0) * scoreValue
+    -- For technique cards, they act as multipliers
+    if card.cardType == "technique" then
+        -- Technique cards don't add to base score directly
+        return
+    elseif card.cardType == "recipe" then
+        -- Recipe cards act as multipliers
+        return
+    else
+        -- Add score for ingredient cards
+        self.state.roundScore = self.state.roundScore + baseScore
+    end
+end
+
+function BattleEncounter:scoreCards()
+    -- Reset round score
+    self.state.roundScore = 0
+
+    -- First pass: Calculate base scores from ingredients
+    for _, card in ipairs(self.state.selectedCards) do
+        if card.cardType == "ingredient" then
+            self.state.roundScore = self.state.roundScore + card.scoring:getValue()
+        end
     end
 
-    -- Apply combination bonuses only after all cards are scored
-    local scoringState = self.state.scoringState
-    if scoringState and
-       scoringState.currentCardIndex == #self.state.selectedCards and
-       scoringState.combinations then
-        -- Simple 10% bonus per combination for now
-        local combinationBonus = 1 + (#scoringState.combinations * 0.1)
-        self.state.roundScore = self.state.roundScore * combinationBonus
+    -- Apply technique and recipe multipliers
+    local multiplier = 1.0
+    for _, card in ipairs(self.state.selectedCards) do
+        if card.cardType == "technique" or card.cardType == "recipe" then
+            multiplier = multiplier * card.scoring:getValue()
+        end
     end
 
-    self.state.currentScore = self.state.roundScore
-    self.state.scoringState.displayTotal = self.state.currentScore
+    -- Apply base multipliers
+    self.state.roundScore = self.state.roundScore * multiplier
+
+    -- Get combinations and apply their bonuses
+    local combinations = CombinationSystem:identifyCombinations(self.state.selectedCards)
+    if combinations and #combinations > 0 then
+        local bonusMultiplier = CombinationSystem:calculateBonusMultiplier(combinations)
+
+        -- Apply bonus multiplier
+        self.state.roundScore = self.state.roundScore * bonusMultiplier
+    end
+
+    -- Store combinations for display in scoring state if it exists
+    if self.state.scoringState then
+        self.state.scoringState.combinations = combinations
+    end
+
+    return self.state.roundScore
 end
 
 function BattleEncounter:updateResultsPhase(dt)
@@ -1161,6 +1201,19 @@ function BattleEncounter:drawPileView()
 end
 
 return BattleEncounter  -- NOT return true/false
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

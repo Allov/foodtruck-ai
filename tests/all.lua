@@ -4,7 +4,9 @@ local TestRunner = require('tests.init')
 require('tests.settings_test')
 require('tests.deck_factory_test')
 require('tests.scenes.provinceMap_test')
-
--- Add new test suites here
+require('tests.scenes.battleEncounter_test')
+require('tests.cards.combinationSystem_test')
 
 return TestRunner
+
+
