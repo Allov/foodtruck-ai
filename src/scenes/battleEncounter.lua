@@ -764,7 +764,7 @@ function BattleEncounter:drawJudgingPhase()
         love.graphics.setFont(FONTS.LARGE)
         love.graphics.setColor(COLORS.HIGHLIGHT)
         love.graphics.printf(
-            tostring(math.floor(self.state.scoringState.animatedTotal)),
+            tostring(math.ceil(self.state.scoringState.animatedTotal)),
             0,
             centerY + cardHeight + 40,
             screenWidth,
