@@ -530,8 +530,8 @@ function ProvinceMap:drawMapInfo()
     local x = padding
     local y = padding
     
-    -- Semi-transparent background
-    love.graphics.setColor(0, 0, 0, 0.7)
+    -- Semi-transparent dark blue background
+    love.graphics.setColor(0.1, 0.15, 0.2, 0.7)  -- Dark blue-gray with transparency
     love.graphics.rectangle('fill', x, y, panelWidth, panelHeight)
     love.graphics.setColor(1, 1, 1, 0.8)
     love.graphics.rectangle('line', x, y, panelWidth, panelHeight)
@@ -606,6 +606,10 @@ function ProvinceMap:drawMapInfo()
 end
 
 function ProvinceMap:draw()
+    -- Draw background
+    love.graphics.setColor(0.12, 0.15, 0.25, 1)  -- Deep blue background
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    
     love.graphics.push()
     love.graphics.translate(0, -self.camera.y)
     
