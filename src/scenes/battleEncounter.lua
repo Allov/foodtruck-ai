@@ -544,10 +544,13 @@ function BattleEncounter:drawDeckInfo()
         local numCardsToShow = math.min(5, #self.state.deck.drawPile)
         for i = numCardsToShow, 1, -1 do
             love.graphics.setColor(1, 1, 1, 1)
-            Card.new(0, "", ""):drawBack(
-                drawPileX - (i * stackOffset),
-                pilesY - (i * stackOffset)
-            )
+            local tempCard = Card.new(0, "", "")
+            if tempCard then
+                tempCard:drawBack(
+                    drawPileX - (i * stackOffset),
+                    pilesY - (i * stackOffset)
+                )
+            end
         end
     end
     
@@ -561,11 +564,13 @@ function BattleEncounter:drawDeckInfo()
         'center'
     )
     
-    -- Discard pile visualization and count (face down)
+    -- Discard pile visualization and count
     if #self.state.deck.discardPile > 0 then
         local topCard = self.state.deck.discardPile[#self.state.deck.discardPile]
-        love.graphics.setColor(1, 1, 1, 1)
-        topCard:drawBack(discardPileX, pilesY)  -- Changed to drawBack for face-down cards
+        if topCard then
+            love.graphics.setColor(1, 1, 1, 1)
+            topCard:drawBack(discardPileX, pilesY)
+        end
     end
     
     -- Discard pile count

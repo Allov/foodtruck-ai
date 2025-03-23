@@ -1,10 +1,11 @@
 local Scene = require('src.scenes.scene')
+local BaseCard = require('src.cards.baseCard')
 local Card = require('src.cards.card')
 local DeckViewer = setmetatable({}, Scene)
 DeckViewer.__index = DeckViewer
 
--- Get card dimensions from Card class
-local CARD_WIDTH, CARD_HEIGHT = Card.getDimensions()
+-- Get card dimensions from BaseCard class
+local CARD_WIDTH, CARD_HEIGHT = BaseCard.CARD_WIDTH, BaseCard.CARD_HEIGHT
 local CARD_SPACING = 10
 local CARDS_PER_ROW = 6
 local SECTION_SPACING = 40
@@ -155,16 +156,16 @@ function DeckViewer:update(dt)
 end
 
 function DeckViewer:draw()
-    local cardWidth, cardHeight = Card.getDimensions()
+    local cardWidth, cardHeight = BaseCard.getDimensions()
     local spacing = 20
+    local dt = love.timer.getDelta()  -- Get delta time for animations
     
     -- Draw categories
     for i, cardType in ipairs(self.cardTypes) do
         local cards = self:getCardsByType(cardType)
-        -- Apply negative scroll offset to move content up when scrolling down
         local startY = (100 + (i-1) * (cardHeight + spacing * 2)) + self.state.scroll
         
-        -- Draw category title with scroll offset
+        -- Draw category title
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf(
             string.upper(cardType),
@@ -174,16 +175,14 @@ function DeckViewer:draw()
             'left'
         )
         
-        -- Draw cards in this category
+        -- Draw cards
         local startX = 50
         for j, card in ipairs(cards) do
-            -- Calculate position
             local x = startX + (j-1) * (cardWidth + spacing)
             local y = startY
             
-            -- Only draw if card is visible
             if y + cardHeight > 0 and y < love.graphics.getHeight() then
-                card:update(dt)
+                card:update(dt)  -- Pass dt to update
                 card:draw(x, y)
             end
         end
@@ -214,6 +213,9 @@ function DeckViewer:getCardsByType(cardType)
 end
 
 return DeckViewer
+
+
+
 
 
 
