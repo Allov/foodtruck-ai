@@ -45,7 +45,9 @@ function BattleEncounter.new()
         roundNumber = 1,
         maxRounds = 3,
         actionFeedback = nil,
-        comboMultiplier = 1
+        comboMultiplier = 1,
+        viewingPile = nil,  -- 'draw' or 'discard' when viewing piles
+        pileCardIndex = 1   -- Selected card index when viewing piles
     }
     
     self:setupBattleParameters()
@@ -156,6 +158,11 @@ function BattleEncounter:update(dt)
         return
     end
 
+    if self.state.viewingPile then
+        self:updatePileView()
+        return
+    end
+
     -- Phase-specific updates
     if self.state.currentPhase == BattleEncounter.PHASES.PREPARATION then
         self:updatePreparationPhase()
@@ -163,6 +170,15 @@ function BattleEncounter:update(dt)
         self:updateJudgingPhase()
     elseif self.state.currentPhase == BattleEncounter.PHASES.RESULTS then
         self:updateResultsPhase()
+    end
+
+    -- Add pile viewing controls
+    if love.keyboard.wasPressed('d') then
+        self.state.viewingPile = 'draw'
+        self.state.pileCardIndex = 1
+    elseif love.keyboard.wasPressed('r') then
+        self.state.viewingPile = 'discard'
+        self.state.pileCardIndex = 1
     end
 end
 
@@ -401,6 +417,11 @@ function BattleEncounter:applyCookingEffect(card)
 end
 
 function BattleEncounter:draw()
+    if self.state.viewingPile then
+        self:drawPileView()
+        return
+    end
+    
     love.graphics.setColor(1, 1, 1, 1)
     
     -- Draw phase-specific elements
@@ -967,6 +988,127 @@ function BattleEncounter:shuffleDiscardIntoDeck()
         self.state.deck.drawPile[i], self.state.deck.drawPile[j] = 
         self.state.deck.drawPile[j], self.state.deck.drawPile[i]
     end
+end
+
+function BattleEncounter:updatePileView()
+    local pile = self.state.viewingPile == 'draw' and self.state.deck.drawPile or self.state.deck.discardPile
+    local CARDS_PER_ROW = 5
+
+    -- Initialize sorted display array if not exists or pile changed
+    if not self.displayOrder or not self.lastViewingPile or self.lastViewingPile ~= self.state.viewingPile then
+        self.displayOrder = {}
+        for i = 1, #pile do
+            self.displayOrder[i] = i
+        end
+        -- Sort by card names
+        table.sort(self.displayOrder, function(a, b)
+            return pile[a].name < pile[b].name
+        end)
+        self.lastViewingPile = self.state.viewingPile
+    end
+
+    if love.keyboard.wasPressed('escape') then
+        self.state.viewingPile = nil
+        self.displayOrder = nil  -- Clear display order when exiting
+        self.lastViewingPile = nil
+    elseif love.keyboard.wasPressed('tab') then
+        -- Toggle between draw and discard piles
+        self.state.viewingPile = self.state.viewingPile == 'draw' and 'discard' or 'draw'
+        self.state.pileCardIndex = 1
+        self.displayOrder = nil  -- Force new sort on pile switch
+        self.lastViewingPile = nil
+    else
+        -- Grid-based navigation
+        local currentRow = math.ceil(self.state.pileCardIndex / CARDS_PER_ROW)
+        local currentCol = ((self.state.pileCardIndex - 1) % CARDS_PER_ROW) + 1
+        local totalRows = math.ceil(#pile / CARDS_PER_ROW)
+
+        if love.keyboard.wasPressed('left') then
+            if currentCol > 1 then
+                self.state.pileCardIndex = self.state.pileCardIndex - 1
+            elseif currentRow > 1 then
+                self.state.pileCardIndex = self.state.pileCardIndex - 1
+            end
+        elseif love.keyboard.wasPressed('right') then
+            if self.state.pileCardIndex < #pile and currentCol < CARDS_PER_ROW then
+                self.state.pileCardIndex = self.state.pileCardIndex + 1
+            end
+        elseif love.keyboard.wasPressed('up') then
+            if currentRow > 1 then
+                local newIndex = self.state.pileCardIndex - CARDS_PER_ROW
+                if newIndex > 0 then
+                    self.state.pileCardIndex = newIndex
+                end
+            end
+        elseif love.keyboard.wasPressed('down') then
+            local newIndex = self.state.pileCardIndex + CARDS_PER_ROW
+            if newIndex <= #pile then
+                self.state.pileCardIndex = newIndex
+            end
+        end
+    end
+end
+
+function BattleEncounter:drawPileView()
+    -- Get card dimensions and spacing
+    local cardWidth, cardHeight = Card.getDimensions()
+    local spacing = 20
+    local CARDS_PER_ROW = 5
+    local startX = 50
+    local startY = 80
+
+    -- Draw semi-transparent background
+    love.graphics.setColor(0, 0, 0, 0.8)
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+
+    -- Draw pile title
+    love.graphics.setColor(1, 1, 1, 1)
+    local title = self.state.viewingPile == 'draw' and 'Draw Pile' or 'Discard Pile'
+    love.graphics.printf(title, 0, 20, love.graphics.getWidth(), 'center')
+
+    -- Get current pile
+    local pile = self.state.viewingPile == 'draw' and self.state.deck.drawPile or self.state.deck.discardPile
+
+    -- Draw cards in grid using displayOrder
+    for displayIndex, i in ipairs(self.displayOrder or {}) do
+        local card = pile[i]
+        if card then
+            local row = math.floor((displayIndex-1) / CARDS_PER_ROW)
+            local col = (displayIndex-1) % CARDS_PER_ROW
+            
+            local x = startX + col * (cardWidth + spacing)
+            local y = startY + row * (cardHeight + spacing)
+            
+            -- Highlight the currently selected card
+            if displayIndex == self.state.pileCardIndex then
+                love.graphics.setColor(1, 1, 0, 0.3)
+                love.graphics.rectangle('fill', 
+                    x - 5, y - 5, 
+                    cardWidth + 10, cardHeight + 10
+                )
+            end
+            
+            love.graphics.setColor(1, 1, 1, 1)
+            card:draw(x, y)
+        end
+    end
+
+    -- Draw total card count
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf(
+        string.format("Total Cards: %d", #pile),
+        0, love.graphics.getHeight() - 60,
+        love.graphics.getWidth(),
+        'center'
+    )
+
+    -- Draw controls help
+    love.graphics.printf(
+        "← → ↑ ↓ Navigate cards | Tab: Switch pile | Esc: Return to battle",
+        0, love.graphics.getHeight() - 30,
+        love.graphics.getWidth(),
+        'center'
+    )
 end
 
 return BattleEncounter  -- NOT return true/false
