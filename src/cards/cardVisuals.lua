@@ -37,28 +37,26 @@ local CardVisuals = {
         },
         COLORS = {
             -- Main card colors
-            DEFAULT = {0.98, 0.98, 0.98, 1},    -- Almost white
-            SELECTED = {1, 0.95, 0.8, 1},       -- Warm highlight
-            LOCKED = {0.92, 0.92, 0.92, 1},     -- Light gray
-            DISABLED = {0.85, 0.85, 0.85, 0.7}, -- Grayed out
-            HIGHLIGHTED = {1, 0.9, 0.7, 1},     -- Highlighted state
-            
-            -- Text colors
-            TITLE = {0.2, 0.2, 0.2, 1},         -- Dark gray for title
-            DESCRIPTION = {0.3, 0.3, 0.3, 1},   -- Slightly lighter for description
-            
-            -- Borders and accents
-            BORDER = {0.8, 0.8, 0.8, 1},        -- Light gray border
-            ACCENT = {0.4, 0.5, 0.9},           -- Fixed: Added ACCENT color
-            
-            -- Special states
-            HIGHLIGHT = {1, 0.85, 0.4, 1},      -- Golden highlight
-            ERROR = {0.9, 0.3, 0.3, 1}          -- Error red
+            DEFAULT = {1, 1, 1, 1},
+            SELECTED = {1, 0.9, 0.4, 1},
+            LOCKED = {0.6, 0.6, 0.7, 1},
+            DISABLED = {0.5, 0.5, 0.5, 0.7},
+            HIGHLIGHTED = {0.4, 0.8, 1, 1},
+            BORDER = {0.2, 0.2, 0.25, 1},
+            HIGHLIGHT = {1, 0.6, 0, 1},
+            ACCENT = {0.3, 0.5, 0.9, 1},
+            TITLE = {0.1, 0.1, 0.15, 1},
+            DESCRIPTION = {0.2, 0.2, 0.25, 1}
         },
         FONTS = {
             TITLE = love.graphics.newFont(14),
             DESCRIPTION = love.graphics.newFont(12),
             STATS = love.graphics.newFont(11)
+        },
+        ICONS = {
+            -- For now, we'll use a simple text character as a lock icon
+            -- Later you can replace this with actual icon images
+            LOCK = "🔒"
         }
     }
 }
@@ -91,22 +89,26 @@ function CardVisuals.new()
 end
 
 function CardVisuals:setState(newState)
-    if self.STATES[newState] then
-        self.previousState = self.currentState
-        self.currentState = newState
-        self:updateAnimationTargets()
+    -- If card is locked, only allow changing to unlocked (DEFAULT) state
+    if self.currentState == self.STATES.LOCKED and newState ~= self.STATES.DEFAULT then
+        return
     end
+    
+    self.previousState = self.currentState
+    self.currentState = newState
+    print("[CardVisuals:setState] State changed from", self.previousState, "to", self.currentState)
+    self:updateAnimationTargets()
 end
 
 function CardVisuals:updateAnimationTargets()
     local lift = self.animations.lift
     
     if self.currentState == self.STATES.LOCKED then
-        lift.target = self.ANIMATION.LIFT.AMOUNT
+        lift.target = self.ANIMATION.LIFT.AMOUNT  -- Full lift amount for locked cards
     elseif self.currentState == self.STATES.SELECTED then
-        lift.target = self.ANIMATION.LIFT.AMOUNT / 2
+        lift.target = self.ANIMATION.LIFT.AMOUNT / 2  -- Half lift for selected cards
     else
-        lift.target = 0
+        lift.target = 0  -- No lift for default state
     end
 end
 
@@ -155,5 +157,12 @@ function CardVisuals:update(dt)
 end
 
 return CardVisuals
+
+
+
+
+
+
+
 
 

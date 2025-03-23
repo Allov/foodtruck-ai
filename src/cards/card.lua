@@ -45,9 +45,12 @@ function Card:draw(x, y)
     
     -- Get current color based on state
     local bgColor = style.COLORS[visualState.state:upper()] or style.COLORS.DEFAULT
+
+
     
-    -- Draw shadow
-    love.graphics.setColor(0, 0, 0, 0.1)
+    -- Draw shadow (reduce shadow opacity for disabled state)
+    local shadowOpacity = visualState.state == "disabled" and 0.05 or 0.1
+    love.graphics.setColor(0, 0, 0, shadowOpacity)
     love.graphics.rectangle(
         "fill",
         x + 2,
@@ -57,7 +60,7 @@ function Card:draw(x, y)
         style.DIMENSIONS.CORNER_RADIUS
     )
     
-    -- Draw card background
+    -- Draw card background with state-specific color
     love.graphics.setColor(bgColor)
     love.graphics.rectangle(
         "fill",
@@ -68,8 +71,14 @@ function Card:draw(x, y)
         style.DIMENSIONS.CORNER_RADIUS
     )
     
-    -- Draw border
-    love.graphics.setColor(style.COLORS.BORDER)
+    -- Draw border (highlight for selected/highlighted states)
+    local borderColor = style.COLORS.BORDER
+    if visualState.state == "selected" then
+        borderColor = style.COLORS.HIGHLIGHT or {1, 1, 0, 1}
+    elseif visualState.state == "highlighted" then
+        borderColor = style.COLORS.ACCENT or {0.4, 0.5, 0.9, 1}
+    end
+    love.graphics.setColor(borderColor)
     love.graphics.rectangle(
         "line",
         x,
@@ -79,9 +88,10 @@ function Card:draw(x, y)
         style.DIMENSIONS.CORNER_RADIUS
     )
     
-    -- Draw title background with safe accent color access
+    -- Draw title background
     local accentColor = style.COLORS.ACCENT or {0.4, 0.5, 0.9}
-    love.graphics.setColor(accentColor[1], accentColor[2], accentColor[3], 0.1)
+    local accentAlpha = visualState.state == "disabled" and 0.05 or 0.1
+    love.graphics.setColor(accentColor[1], accentColor[2], accentColor[3], accentAlpha)
     love.graphics.rectangle(
         "fill",
         x + style.DIMENSIONS.BORDER_WIDTH,
@@ -91,9 +101,10 @@ function Card:draw(x, y)
         style.DIMENSIONS.CORNER_RADIUS
     )
     
-    -- Draw title
+    -- Draw title with state-specific opacity
+    local textAlpha = visualState.state == "disabled" and 0.5 or 1
     love.graphics.setFont(style.FONTS.TITLE)
-    love.graphics.setColor(style.COLORS.TITLE)
+    love.graphics.setColor(style.COLORS.TITLE[1], style.COLORS.TITLE[2], style.COLORS.TITLE[3], textAlpha)
     love.graphics.printf(
         self.name,
         x + style.DIMENSIONS.INNER_MARGIN,
@@ -102,9 +113,9 @@ function Card:draw(x, y)
         "center"
     )
     
-    -- Draw description
+    -- Draw description with state-specific opacity
     love.graphics.setFont(style.FONTS.DESCRIPTION)
-    love.graphics.setColor(style.COLORS.DESCRIPTION)
+    love.graphics.setColor(style.COLORS.DESCRIPTION[1], style.COLORS.DESCRIPTION[2], style.COLORS.DESCRIPTION[3], textAlpha)
     love.graphics.printf(
         self.description,
         x + style.DIMENSIONS.INNER_MARGIN,
@@ -113,7 +124,7 @@ function Card:draw(x, y)
         "left"
     )
     
-    -- Draw card type and stats
+    -- Draw card type and stats with state-specific opacity
     love.graphics.setFont(style.FONTS.STATS)
     love.graphics.printf(
         self.cardType:upper(),
@@ -135,6 +146,19 @@ function Card:draw(x, y)
             "center"
         )
     end
+
+    -- Draw locked state indicator if needed
+    if visualState.state == "locked" then
+        love.graphics.setColor(1, 1, 1, 0.3)
+        -- Temporary visual indicator for locked state
+        love.graphics.rectangle(
+            "fill",
+            x + style.DIMENSIONS.WIDTH - 24,
+            y + 4,
+            20,
+            20
+        )
+    end
 end
 
 function Card:drawBack(x, y)
@@ -153,14 +177,17 @@ end
 
 function Card:setSelected(selected)
     if self.visuals then
-        self.visuals.isSelected = selected
-        self.visuals.targetOffset = selected and self.visuals.LIFT_AMOUNT or 0
+        -- Don't change state if card is locked
+        if self.visuals.currentState == self.visuals.STATES.LOCKED then
+            return
+        end
+        self.visuals:setState(selected and self.visuals.STATES.SELECTED or self.visuals.STATES.DEFAULT)
     end
 end
 
 function Card:setLocked(locked)
     if self.visuals then
-        self.visuals.isLocked = locked
+        self.visuals:setState(locked and self.visuals.STATES.LOCKED or self.visuals.STATES.DEFAULT)
     end
 end
 
