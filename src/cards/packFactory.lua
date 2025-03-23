@@ -1,35 +1,33 @@
 local Card = require('src.cards.card')
+local CardConstants = require('src.cards.cardConstants')
 
 local PackFactory = {}
 
 -- Common items available in all markets
 local commonStock = {
-    {id = 1001, name = "Salt", description = "Basic seasoning", cardType = "ingredient", cost = 2},
-    {id = 1002, name = "Pepper", description = "Common spice", cardType = "ingredient", cost = 2},
-    {id = 1003, name = "Cooking Oil", description = "All-purpose oil", cardType = "ingredient", cost = 3}
+    {id = 1001, name = "Table Salt", description = "Basic seasoning", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.BASIC, cost = 1},
+    {id = 1002, name = "Ground Pepper", description = "Basic spice", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.BASIC, cost = 1},
+    {id = 1003, name = "Vegetable Oil", description = "Basic cooking oil", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.BASIC, cost = 2}
 }
 
 -- Market-specific items
 local marketStock = {
     ["farmers_market"] = {
-        {id = 2001, name = "Fresh Tomatoes", description = "Basic but versatile", cardType = "ingredient", cost = 3},
-        {id = 2002, name = "Local Herbs", description = "Adds flavor to any dish", cardType = "ingredient", cost = 4},
-        {id = 2003, name = "Fresh Fish", description = "Caught this morning", cardType = "ingredient", cost = 6},
-        {id = 2004, name = "Seasonal Vegetables", description = "A mix of local produce", cardType = "ingredient", cost = 3},
-        {id = 2005, name = "Farm Eggs", description = "Fresh from the coop", cardType = "ingredient", cost = 2},
-        {id = 2006, name = "Wild Mushrooms", description = "Locally foraged", cardType = "ingredient", cost = 5}
+        {id = 2001, name = "Heirloom Tomatoes", description = "Premium local variety", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.QUALITY, cost = 4},
+        {id = 2002, name = "Fresh Herbs", description = "Just picked herbs", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.STANDARD, cost = 3},
+        {id = 2003, name = "Wild-Caught Fish", description = "Today's catch", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.QUALITY, cost = 5},
+        {id = 2004, name = "Seasonal Vegetables", description = "Peak season produce", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.STANDARD, cost = 3}
     },
     ["specialty_shop"] = {
-        -- Premium ingredients
-        {id = 3001, name = "Truffle", description = "Rare delicacy", cardType = "ingredient", cost = 8},
-        {id = 3002, name = "Saffron", description = "Precious spice", cardType = "ingredient", cost = 7},
-        {id = 3003, name = "Aged Vinegar", description = "Artisanal product", cardType = "ingredient", cost = 5}
+        {id = 3001, name = "Black Truffle", description = "Rare delicacy", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.EXOTIC, cost = 8},
+        {id = 3002, name = "Saffron", description = "Premium spice", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.PREMIUM, cost = 7},
+        {id = 3003, name = "Aged Balsamic", description = "25-year aged vinegar", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.PREMIUM, cost = 6},
+        {id = 3004, name = "Wagyu Beef", description = "A5 grade beef", cardType = "ingredient", value = CardConstants.DEFAULT_VALUES.INGREDIENT.EXOTIC, cost = 9}
     },
-    ["supply_store"] = {
-        -- Tools and bulk items
-        {id = 4001, name = "Sharp Knife", description = "Improved cutting speed", cardType = "technique", cost = 5},
-        {id = 4002, name = "Steel Pan", description = "Better heat control", cardType = "technique", cost = 6},
-        {id = 4003, name = "Stock Pot", description = "For soups and stocks", cardType = "technique", cost = 7}
+    ["culinary_school"] = {
+        {id = 4001, name = "Sous Vide", description = "Precise temperature control", cardType = "technique", value = CardConstants.DEFAULT_VALUES.TECHNIQUE.ADVANCED, cost = 6},
+        {id = 4002, name = "Molecular Gastronomy", description = "Scientific cooking approach", cardType = "technique", value = CardConstants.DEFAULT_VALUES.TECHNIQUE.EXPERT, cost = 8},
+        {id = 4003, name = "Classical French", description = "Traditional techniques", cardType = "technique", value = CardConstants.DEFAULT_VALUES.TECHNIQUE.ADVANCED, cost = 5}
     }
 }
 

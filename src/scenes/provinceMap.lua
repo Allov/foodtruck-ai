@@ -499,8 +499,8 @@ function ProvinceMap:drawMapInfo()
     -- Set up constants for info panel
     local padding = 10
     local lineHeight = 20
-    local panelWidth = 200
-    local panelHeight = 100
+    local panelWidth = 250  -- Increased width to accommodate chef stats
+    local panelHeight = 160  -- Increased height for additional info
     local x = padding
     local y = padding
     
@@ -522,10 +522,44 @@ function ProvinceMap:drawMapInfo()
     love.graphics.print(string.format("Seed: %d", self:getSeed()), textX, textY)
     textY = textY + lineHeight
     
-    -- Display chef name
-    local chefName = gameState.selectedChef and gameState.selectedChef.name or "Unknown Chef"
-    love.graphics.print(string.format("Chef: %s", chefName), textX, textY)
-    textY = textY + lineHeight
+    -- Draw separator line
+    love.graphics.setColor(1, 1, 1, 0.3)
+    love.graphics.line(textX, textY, textX + panelWidth - padding * 2, textY)
+    love.graphics.setColor(1, 1, 1, 1)
+    textY = textY + lineHeight/2
+    
+    -- Display chef info
+    local chef = gameState.selectedChef
+    if chef then
+        -- Chef name with title styling
+        love.graphics.setColor(1, 0.8, 0.2, 1)  -- Gold color for name
+        love.graphics.print("Chef " .. chef.name, textX, textY)
+        textY = textY + lineHeight
+        
+        -- Specialty
+        love.graphics.setColor(0.8, 0.8, 1, 1)  -- Light blue for specialty
+        love.graphics.print("Specialty: " .. chef.specialty, textX, textY)
+        textY = textY + lineHeight
+        
+        -- Rating with color coding
+        local ratingColor = {1, 1, 1, 1}  -- Default white
+        if chef.rating == 'S' then
+            ratingColor = {1, 0.8, 0, 1}  -- Gold
+        elseif chef.rating == 'A' then
+            ratingColor = {0.8, 0.8, 1, 1}  -- Light blue
+        elseif chef.rating == 'F' then
+            ratingColor = {1, 0.2, 0.2, 1}  -- Red
+        end
+        love.graphics.setColor(ratingColor)
+        love.graphics.print("Rating: " .. chef.rating, textX, textY)
+        textY = textY + lineHeight
+    end
+    
+    -- Draw separator line
+    love.graphics.setColor(1, 1, 1, 0.3)
+    love.graphics.line(textX, textY, textX + panelWidth - padding * 2, textY)
+    love.graphics.setColor(1, 1, 1, 1)
+    textY = textY + lineHeight/2
     
     -- Display progress
     love.graphics.print(string.format("Level: %d/%d", self.currentLevel, self.NUM_LEVELS), textX, textY)

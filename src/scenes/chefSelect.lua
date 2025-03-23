@@ -42,22 +42,26 @@ function ChefSelect:loadChefs()
         {
             name = "Chef Antonio",
             specialty = "Italian Cuisine",
-            description = "Master of pasta and traditional Italian dishes"
+            description = "Master of pasta and traditional Italian dishes",
+            rating = "C"  -- Add default rating
         },
         {
             name = "Chef Mei",
             specialty = "Asian Fusion",
-            description = "Expert in combining Eastern and Western flavors"
+            description = "Expert in combining Eastern and Western flavors",
+            rating = "C"
         },
         {
             name = "Chef Pierre",
             specialty = "French Cuisine",
-            description = "Classically trained in French cooking techniques"
+            description = "Classically trained in French cooking techniques",
+            rating = "C"
         },
         {
             name = "Chef Sofia",
             specialty = "Street Food",
-            description = "Specializes in creative street food innovations"
+            description = "Specializes in creative street food innovations",
+            rating = "C"
         }
     }
 end
@@ -185,6 +189,7 @@ function ChefSelect:draw()
 end
 
 return ChefSelect
+
 
 
 

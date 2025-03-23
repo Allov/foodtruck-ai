@@ -1,3 +1,5 @@
+local CardConstants = require('src.cards.cardConstants')
+
 -- Base card class
 local Card = {}
 Card.__index = Card
@@ -8,6 +10,20 @@ local CARD_HEIGHT = 180
 local LIFT_AMOUNT = 20  -- Reduced from 30 for subtler effect
 local ANIMATION_SPEED = 8
 
+-- Score type constants
+Card.SCORE_TYPES = {
+    WHITE = "white",   -- Base score from ingredients
+    RED = "red",      -- Multiplier from techniques
+    PINK = "pink"     -- Additional multiplier from recipes
+}
+
+-- Score color constants
+Card.SCORE_COLORS = {
+    WHITE = {1, 1, 1, 1},           -- White
+    RED = {1, 0.4, 0.4, 1},         -- Red
+    PINK = {1, 0.7, 0.85, 1}        -- Pink
+}
+
 -- Animation constants (matching menu style)
 local HOVER_SPEED = 2
 local HOVER_AMOUNT = 3
@@ -17,7 +33,12 @@ function Card.new(id, name, description)
     self.id = id                -- Unique identifier
     self.name = name            -- Card name
     self.description = description  -- Card description
-    self.cardType = "base"      -- Base type, to be overridden by specific cards
+    self.cardType = "base"      -- "ingredient", "technique", or "recipe"
+    
+    -- Scoring properties
+    self.whiteScore = CardConstants.DEFAULT_VALUES.INGREDIENT.BASIC
+    self.redScore = CardConstants.DEFAULT_VALUES.TECHNIQUE.BASIC
+    self.pinkScore = CardConstants.DEFAULT_VALUES.RECIPE.BASIC
     
     -- Animation and state properties
     self.currentOffset = 0      -- Current vertical offset
@@ -27,6 +48,71 @@ function Card.new(id, name, description)
     self.hoverOffset = 0        -- New property for hover animation
     
     return self
+end
+
+-- Factory methods for different card types
+function Card.createIngredient(id, name, description, baseScore)
+    local card = Card.new(id, name, description)
+    card.cardType = "ingredient"
+    card.whiteScore = baseScore or 1
+    return card
+end
+
+function Card.createTechnique(id, name, description, multiplier)
+    local card = Card.new(id, name, description)
+    card.cardType = "technique"
+    card.redScore = multiplier or 1.1
+    return card
+end
+
+function Card.createRecipe(id, name, description, recipeMultiplier)
+    local card = Card.new(id, name, description)
+    card.cardType = "recipe"
+    card.pinkScore = recipeMultiplier or 1.2
+    return card
+end
+
+-- Helper methods for scoring
+function Card:getScoreType()
+    if self.cardType == "ingredient" then
+        return Card.SCORE_TYPES.WHITE
+    elseif self.cardType == "technique" then
+        return Card.SCORE_TYPES.RED
+    elseif self.cardType == "recipe" then
+        return Card.SCORE_TYPES.PINK
+    end
+    return nil
+end
+
+function Card:getScoreValue()
+    if self.cardType == "ingredient" then
+        return self.whiteScore
+    elseif self.cardType == "technique" then
+        return self.redScore
+    elseif self.cardType == "recipe" then
+        return self.pinkScore
+    end
+    return 0
+end
+
+-- Example score calculation helper (might be moved to battle system)
+function Card.calculateCombinedScore(cards)
+    local totalWhite = 0
+    local totalRed = 1  -- Start at 1 as it's a multiplier
+    local totalPink = 1 -- Start at 1 as it's a multiplier
+    
+    for _, card in ipairs(cards) do
+        if card.cardType == "ingredient" then
+            totalWhite = totalWhite + card.whiteScore
+        elseif card.cardType == "technique" then
+            totalRed = totalRed + (card.redScore - 1) -- Subtract 1 to make multipliers additive
+        elseif card.cardType == "recipe" then
+            totalPink = totalPink + (card.pinkScore - 1) -- Subtract 1 to make multipliers additive
+        end
+    end
+    
+    -- Final calculation: base * technique * recipe
+    return totalWhite * totalRed * totalPink
 end
 
 function Card:update(dt)
@@ -92,7 +178,7 @@ function Card:draw(x, y)
     end
     love.graphics.rectangle('line', x, actualY, CARD_WIDTH, CARD_HEIGHT)
     
-    -- Draw card content
+    -- Draw card name
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf(
         self.name,
@@ -102,6 +188,41 @@ function Card:draw(x, y)
         'center'
     )
     
+    -- Draw score based on card type
+    local scoreY = actualY + CARD_HEIGHT - 90
+    local fontSize = love.graphics.getFont():getHeight()
+    
+    if self.cardType == "ingredient" then
+        love.graphics.setColor(unpack(Card.SCORE_COLORS.WHITE))
+        love.graphics.printf(
+            string.format("%d", self.whiteScore),
+            x + 5,
+            scoreY,
+            CARD_WIDTH - 10,
+            'center'
+        )
+    elseif self.cardType == "technique" then
+        love.graphics.setColor(unpack(Card.SCORE_COLORS.RED))
+        love.graphics.printf(
+            string.format("×%.1f", self.redScore),
+            x + 5,
+            scoreY,
+            CARD_WIDTH - 10,
+            'center'
+        )
+    elseif self.cardType == "recipe" then
+        love.graphics.setColor(unpack(Card.SCORE_COLORS.PINK))
+        love.graphics.printf(
+            string.format("×%.1f", self.pinkScore),
+            x + 5,
+            scoreY,
+            CARD_WIDTH - 10,
+            'center'
+        )
+    end
+    
+    -- Draw card description
+    love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf(
         self.description,
         x + 5,

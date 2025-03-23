@@ -13,7 +13,8 @@ local COLORS = {
     HIGHLIGHT = {1, 0.8, 0, 1},  -- Gold for important numbers
     SUCCESS = {0, 1, 0, 1},      -- Green for positive feedback
     FAILURE = {1, 0.3, 0.3, 1},  -- Red for negative feedback
-    ACCENT = {1, 0.5, 0.5, 1}    -- Light red for accents
+    ACCENT = {1, 0.5, 0.5, 1},    -- Light red for accents
+    DANGER = {1, 0, 0, 1}        -- Red for danger
 }
 
 local FONTS = {
@@ -72,14 +73,7 @@ function BattleEncounter:enter()
     -- Initialize enemy based on battle type
     self.state.enemy = {
         name = self.state.battleType == "food_critic" and "Food Critic" or "Lunch Rush",
-        specialty = self.state.battleType == "food_critic" and "Fine Dining" or "Speed Service",
-        targetScore = self.state.battleType == "food_critic" and 100 or 150,
-        preferences = {
-            -- Preferences affect scoring
-            primary = self.state.battleType == "food_critic" and "quality" or "speed",
-            bonus = self.state.battleType == "food_critic" and "presentation" or "efficiency"
-        },
-        satisfaction = 100  -- Starts at 100, changes based on performance
+        specialty = self.state.battleType == "food_critic" and "Fine Dining" or "Speed Service"
     }
     
     -- Use the current deck directly
@@ -106,16 +100,15 @@ function BattleEncounter:setupBattleParameters()
         food_critic = {
             rounds = 3,
             timePerRound = 60,
-            maxCards = 5,  -- Updated to 5 cards
-            targetScore = 100
+            maxCards = 5,
+            targetScore = 150
         },
         rush_hour = {
             rounds = 5,
-            timePerRound = 45,
-            maxCards = 5,  -- Updated to 5 cards
-            targetScore = 150
+            timePerRound = 60,
+            maxCards = 5,
+            targetScore = 100
         }
-        -- Add more battle types as needed
     }
     
     local config = battleConfigs[self.state.battleType] or battleConfigs.food_critic
@@ -123,14 +116,55 @@ function BattleEncounter:setupBattleParameters()
     self.state.timeRemaining = config.timePerRound
     self.state.maxSelectedCards = config.maxCards
     self.state.targetScore = config.targetScore
+    
+    -- Initialize enemy based on battle type
+    self.state.enemy = {
+        name = self.state.battleType == "food_critic" and "Food Critic" or "Lunch Rush",
+        specialty = self.state.battleType == "food_critic" and "Fine Dining" or "Speed Service"
+    }
+end
+
+function BattleEncounter:updateRating(finalScore)
+    local chef = gameState.selectedChef
+    local previousRating = chef.rating
+    local targetScore = self.state.targetScore
+    
+    if finalScore < targetScore then
+        -- Decrease rating
+        local currentIndex = self:getRatingIndex(chef.rating)
+        if currentIndex < #self.RATINGS then
+            chef.rating = self.RATINGS[currentIndex + 1]
+        end
+    elseif finalScore >= (targetScore * 2) then
+        -- Increase rating for doubling the target score
+        local currentIndex = self:getRatingIndex(chef.rating)
+        if currentIndex > 1 then
+            chef.rating = self.RATINGS[currentIndex - 1]
+        end
+    end
+    
+    -- Store the rating change for UI feedback
+    self.state.previousRating = previousRating
+    self.state.ratingChanged = chef.rating ~= previousRating
+    
+    -- Check for game over condition
+    if chef.rating == 'F' then
+        self:gameOver()
+    end
 end
 
 function BattleEncounter:endBattle(won)
+    -- Update rating based on final score
+    self:updateRating(self.state.currentScore)
+    
     -- Store battle results
     gameState.battleResults = {
         won = won,
         score = self.state.currentScore,
-        rounds = self.state.roundNumber
+        rounds = self.state.roundNumber,
+        rating = gameState.selectedChef.rating,
+        previousRating = self.state.previousRating,
+        ratingChanged = self.state.ratingChanged
     }
     
     -- Mark node as completed if from province map
@@ -304,20 +338,21 @@ function BattleEncounter:discardAndDrawNew()
     self.state.currentAction = self.ACTIONS.SELECT
 end
 
-function BattleEncounter:updateCookingPhase(dt)
-    -- Update timer
-    self.state.timeRemaining = self.state.timeRemaining - dt
-    
-    -- Handle cooking actions
-    if love.keyboard.wasPressed('space') then
-        self:performCookingAction()
-    end
-    
-    -- Check for phase end
-    if self.state.timeRemaining <= 0 then
-        self:transitionToPhase(BattleEncounter.PHASES.JUDGING)
-    end
-end
+-- Remove these functions as they're no longer used:
+-- function BattleEncounter:updateCookingPhase(dt)
+--     -- Update timer
+--     self.state.timeRemaining = self.state.timeRemaining - dt
+--     
+--     -- Handle cooking actions
+--     if love.keyboard.wasPressed('space') then
+--         self:performCookingAction()
+--     end
+--     
+--     -- Check for phase end
+--     if self.state.timeRemaining <= 0 then
+--         self:transitionToPhase(BattleEncounter.PHASES.JUDGING)
+--     end
+-- end
 
 function BattleEncounter:updateJudgingPhase()
     if love.keyboard.wasPressed('return') then
@@ -358,63 +393,64 @@ function BattleEncounter:toggleCardSelection()
     end
 end
 
-function BattleEncounter:performCookingAction()
-    local currentCard = self.state.selectedCards[self.state.currentCookingIndex]
-    if not currentCard then return end
-    
-    -- Apply card effects
-    local success = self:applyCookingEffect(currentCard)
-    
-    -- Move to next card
-    if success then
-        self.state.currentCookingIndex = self.state.currentCookingIndex + 1
-        if self.state.currentCookingIndex > #self.state.selectedCards then
-            self.state.currentCookingIndex = 1
-        end
-    end
-end
+-- Remove these functions as they're no longer used:
+-- function BattleEncounter:performCookingAction()
+--     local currentCard = self.state.selectedCards[self.state.currentCookingIndex]
+--     if not currentCard then return end
+--     
+--     -- Apply card effects
+--     local success = self:applyCookingEffect(currentCard)
+--     
+--     -- Move to next card
+--     if success then
+--         self.state.currentCookingIndex = self.state.currentCookingIndex + 1
+--         if self.state.currentCookingIndex > #self.state.selectedCards then
+--             self.state.currentCookingIndex = 1
+--         end
+--     end
+-- end
 
-function BattleEncounter:applyCookingEffect(card)
-    -- Calculate success based on enemy preferences
-    local baseChance = 70
-    local enemy = self.state.enemy
-    
-    -- Modify chance based on card type and enemy preferences
-    if card.type == enemy.preferences.primary then
-        baseChance = baseChance + 15
-    elseif card.type == enemy.preferences.bonus then
-        baseChance = baseChance + 10
-    end
-    
-    -- Additional modifiers based on card quality and technique level
-    if card.quality then
-        baseChance = baseChance + (card.quality * 2)
-    end
-    
-    -- Roll for success
-    local roll = love.math.random(100)
-    local success = roll <= baseChance
-    
-    -- Apply effects
-    if success then
-        local scoreGain = (card.quality or 10)
-        -- Bonus points if matching preferences
-        if card.type == enemy.preferences.primary then
-            scoreGain = scoreGain * 1.5
-        elseif card.type == enemy.preferences.bonus then
-            scoreGain = scoreGain * 1.25
-        end
-        
-        self.state.currentScore = self.state.currentScore + scoreGain
-        -- Adjust satisfaction based on performance
-        self.state.enemy.satisfaction = math.min(100, self.state.enemy.satisfaction + 5)
-    else
-        self.state.currentScore = self.state.currentScore - 5
-        self.state.enemy.satisfaction = math.max(0, self.state.enemy.satisfaction - 10)
-    end
-    
-    return success
-end
+-- function BattleEncounter:applyCookingEffect(card)
+--     -- Calculate success based on enemy preferences
+--     local baseChance = 70
+--     local enemy = self.state.enemy
+--     
+--     -- Modify chance based on card type and enemy preferences
+--     if card.type == enemy.preferences.primary then
+--         baseChance = baseChance + 15
+--     elseif card.type == enemy.preferences.bonus then
+--         baseChance = baseChance + 10
+--     end
+--     
+--     -- Additional modifiers based on card quality and technique level
+--     if card.quality then
+--         baseChance = baseChance + (card.quality * 2)
+--     end
+--     
+--     -- Roll for success
+--     local roll = love.math.random(100)
+--     local success = roll <= baseChance
+--     
+--     -- Apply effects
+--     if success then
+--         local scoreGain = (card.quality or 10)
+--         -- Bonus points if matching preferences
+--         if card.type == enemy.preferences.primary then
+--             scoreGain = scoreGain * 1.5
+--         elseif card.type == enemy.preferences.bonus then
+--             scoreGain = scoreGain * 1.25
+--         end
+--         
+--         self.state.currentScore = self.state.currentScore + scoreGain
+--         -- Adjust satisfaction based on performance
+--         self.state.enemy.satisfaction = math.min(100, self.state.enemy.satisfaction + 5)
+--     else
+--         self.state.currentScore = self.state.currentScore - 5
+--         self.state.enemy.satisfaction = math.max(0, self.state.enemy.satisfaction - 10)
+--     end
+--     
+--     return success
+-- end
 
 function BattleEncounter:draw()
     if self.state.viewingPile then
@@ -427,8 +463,6 @@ function BattleEncounter:draw()
     -- Draw phase-specific elements
     if self.state.currentPhase == BattleEncounter.PHASES.PREPARATION then
         self:drawPreparationPhase()
-    elseif self.state.currentPhase == BattleEncounter.PHASES.COOKING then
-        self:drawCookingPhase()
     elseif self.state.currentPhase == BattleEncounter.PHASES.JUDGING then
         self:drawJudgingPhase()
     elseif self.state.currentPhase == BattleEncounter.PHASES.RESULTS then
@@ -437,6 +471,8 @@ function BattleEncounter:draw()
     
     -- Always draw common elements
     self:drawCommonElements()
+    -- Draw deck info (piles)
+    self:drawDeckInfo()
 end
 
 function BattleEncounter:drawCommonElements()
@@ -446,8 +482,6 @@ function BattleEncounter:drawCommonElements()
 
     -- Constants for UI layout
     local TOP_MARGIN = 20
-    local GAUGE_HEIGHT = 15
-    local GAUGE_WIDTH = 200
     local STATS_HEIGHT = 120
 
     -- Draw enemy stats in top-left corner
@@ -460,45 +494,14 @@ function BattleEncounter:drawCommonElements()
         love.graphics.setColor(COLORS.TEXT)
         love.graphics.print(self.state.enemy.name, statsX, statsY)
         
-        -- Specialty and preferences in smaller font
+        -- Specialty in smaller font
         love.graphics.setFont(FONTS.SMALL)
         love.graphics.setColor(COLORS.ACCENT)
         love.graphics.print(
-            string.format("Specialty: %s\nPrefers: %s, %s",
-                self.state.enemy.specialty,
-                self.state.enemy.preferences.primary,
-                self.state.enemy.preferences.bonus
+            string.format("Specialty: %s",
+                self.state.enemy.specialty
             ),
             statsX, statsY + 25
-        )
-
-        -- Satisfaction gauge
-        local gaugeY = statsY + 65
-        local satisfaction = self.state.enemy.satisfaction
-        
-        -- Gauge background
-        love.graphics.setColor(0.2, 0.2, 0.2, 0.8)
-        love.graphics.rectangle('fill', statsX, gaugeY, GAUGE_WIDTH, GAUGE_HEIGHT)
-        
-        -- Gauge fill
-        local fillWidth = (satisfaction / 100) * GAUGE_WIDTH
-        local r, g, b = 1, 0, 0
-        if satisfaction >= 50 then
-            r = 2 * (1 - satisfaction/100)
-            g = 1
-        else
-            r = 1
-            g = 2 * (satisfaction/100)
-        end
-        love.graphics.setColor(r, g, b, 1)
-        love.graphics.rectangle('fill', statsX, gaugeY, fillWidth, GAUGE_HEIGHT)
-        
-        -- Gauge text
-        love.graphics.setColor(COLORS.TEXT)
-        love.graphics.printf(
-            string.format("Satisfaction: %d%%", satisfaction),
-            statsX, gaugeY - 20,
-            GAUGE_WIDTH, 'left'
         )
     end
 
@@ -531,29 +534,28 @@ function BattleEncounter:drawCommonElements()
         statsX, statsY + statSpacing,
         200, 'right'
     )
+
+    -- Draw rating in top-right corner
+    local ratingX = love.graphics.getWidth() - 220
+    local ratingY = TOP_MARGIN + (statSpacing * 2)
     
-    -- Phase indicator
-    love.graphics.setFont(FONTS.SMALL)
-    love.graphics.setColor(COLORS.ACCENT)
+    -- Draw rating with appropriate color
+    local rating = gameState.selectedChef.rating
+    local ratingColor = COLORS.TEXT
+    if rating == 'S' then
+        ratingColor = {1, 0.8, 0, 1}  -- Gold
+    elseif rating == 'A' then
+        ratingColor = {0.8, 0.8, 1, 1}  -- Light blue
+    elseif rating == 'F' then
+        ratingColor = COLORS.DANGER
+    end
+    
+    love.graphics.setColor(ratingColor)
     love.graphics.printf(
-        self.state.currentPhase,
-        statsX, statsY + statSpacing * 2,
+        "Rating: " .. rating,
+        ratingX, ratingY,
         200, 'right'
     )
-    
-    -- Timer when in cooking phase
-    if self.state.currentPhase == BattleEncounter.PHASES.COOKING then
-        local timeColor = self.state.timeRemaining <= 10 and COLORS.FAILURE or COLORS.TEXT
-        love.graphics.setColor(timeColor)
-        love.graphics.printf(
-            string.format("%.1fs", self.state.timeRemaining),
-            statsX, statsY + statSpacing * 3,
-            200, 'right'
-        )
-    end
-
-    -- Draw deck/discard info at bottom right (rest of the function remains unchanged)
-    self:drawDeckInfo()
 end
 
 -- Helper function to separate deck drawing logic
@@ -579,30 +581,31 @@ function BattleEncounter:drawDeckInfo()
         end
     end
     
-    -- Discard pile visualization and count
-    if #self.state.deck.discardPile > 0 then
-        local numCardsToShow = math.min(5, #self.state.deck.discardPile)
-        for i = numCardsToShow, 1, -1 do
-            love.graphics.setColor(1, 1, 1, 0.8)
-            Card.new(0, "", ""):drawBack(
-                discardPileX - (i * stackOffset),
-                pilesY - (i * stackOffset)
-            )
-        end
-    end
-    
-    -- Draw counts
-    love.graphics.setFont(FONTS.SMALL)
+    -- Draw pile count
     love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(
-        #self.state.deck.drawPile,
-        drawPileX, pilesY - 25,
-        cardWidth, 'center'
+        tostring(#self.state.deck.drawPile),
+        drawPileX - cardWidth/2,
+        pilesY + cardHeight + 5,
+        cardWidth,
+        'center'
     )
+    
+    -- Discard pile visualization and count (face down)
+    if #self.state.deck.discardPile > 0 then
+        local topCard = self.state.deck.discardPile[#self.state.deck.discardPile]
+        love.graphics.setColor(1, 1, 1, 1)
+        topCard:drawBack(discardPileX, pilesY)  -- Changed to drawBack for face-down cards
+    end
+    
+    -- Discard pile count
+    love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(
-        #self.state.deck.discardPile,
-        discardPileX, pilesY - 25,
-        cardWidth, 'center'
+        tostring(#self.state.deck.discardPile),
+        discardPileX - cardWidth/2,
+        pilesY + cardHeight + 5,
+        cardWidth,
+        'center'
     )
 end
 
@@ -740,40 +743,41 @@ function BattleEncounter:drawDiscardUI()
     end
 end
 
-function BattleEncounter:drawCookingPhase()
-    -- Draw active cards
-    local cardWidth = 100
-    local cardHeight = 150
-    local spacing = 20
-    local startX = (love.graphics.getWidth() - ((cardWidth + spacing) * #self.state.selectedCards)) / 2
-    
-    for i, card in ipairs(self.state.selectedCards) do
-        local x = startX + ((i-1) * (cardWidth + spacing))
-        local y = love.graphics.getHeight() - cardHeight - 50
-        
-        -- Highlight current cooking card
-        if i == self.state.currentCookingIndex then
-            love.graphics.setColor(0.3, 0.8, 0.3, 1)
-        else
-            love.graphics.setColor(0.2, 0.2, 0.2, 1)
-        end
-        love.graphics.rectangle('fill', x, y, cardWidth, cardHeight)
-        
-        -- Draw card content
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.printf(card.name or "Card", x, y + 20, cardWidth, 'center')
-    end
-    
-    -- Draw instructions
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf(
-        "Press SPACE to cook!",
-        0,
-        love.graphics.getHeight() - 30,
-        love.graphics.getWidth(),
-        'center'
-    )
-end
+-- Remove these functions as they're no longer used:
+-- function BattleEncounter:drawCookingPhase()
+--     -- Draw active cards
+--     local cardWidth = 100
+--     local cardHeight = 150
+--     local spacing = 20
+--     local startX = (love.graphics.getWidth() - ((cardWidth + spacing) * #self.state.selectedCards)) / 2
+--     
+--     for i, card in ipairs(self.state.selectedCards) do
+--         local x = startX + ((i-1) * (cardWidth + spacing))
+--         local y = love.graphics.getHeight() - cardHeight - 50
+--         
+--         -- Highlight current cooking card
+--         if i == self.state.currentCookingIndex then
+--             love.graphics.setColor(0.3, 0.8, 0.3, 1)
+--         else
+--             love.graphics.setColor(0.2, 0.2, 0.2, 1)
+--         end
+--         love.graphics.rectangle('fill', x, y, cardWidth, cardHeight)
+--         
+--         -- Draw card content
+--         love.graphics.setColor(1, 1, 1, 1)
+--         love.graphics.printf(card.name or "Card", x, y + 20, cardWidth, 'center')
+--     end
+--     
+--     -- Draw instructions
+--     love.graphics.setColor(1, 1, 1, 1)
+--     love.graphics.printf(
+--         "Press SPACE to cook!",
+--         0,
+--         love.graphics.getHeight() - 30,
+--         love.graphics.getWidth(),
+--         'center'
+--     )
+-- end
 
 function BattleEncounter:drawJudgingPhase()
     -- Draw results
@@ -795,10 +799,22 @@ function BattleEncounter:drawResultsPhase()
         message = "Battle Complete!\n"
         message = message .. (self.state.currentScore >= self.state.targetScore and "Victory!" or "Defeat!")
         message = message .. "\nFinal Score: " .. self.state.currentScore
+        message = message .. "\nRating: " .. gameState.selectedChef.rating
+        
+        -- Show rating change if any
+        if self.state.ratingChanged then
+            local ratingColor = self:getRatingIndex(gameState.selectedChef.rating) < 
+                              self:getRatingIndex(self.state.previousRating) and COLORS.SUCCESS or COLORS.DANGER
+            love.graphics.setColor(ratingColor)
+            message = message .. string.format("\nRating changed: %s → %s", 
+                self.state.previousRating, 
+                gameState.selectedChef.rating)
+        end
     else
         message = "Round " .. self.state.roundNumber .. " Complete!\n"
         message = message .. "Current Score: " .. self.state.currentScore .. "\n"
-        message = message .. "Target Score: " .. self.state.targetScore
+        message = message .. "Target Score: " .. self.state.targetScore .. "\n"
+        message = message .. "Current Rating: " .. gameState.selectedChef.rating
     end
     
     love.graphics.printf(
@@ -877,48 +893,44 @@ function BattleEncounter:transitionToPhase(newPhase)
 end
 
 function BattleEncounter:calculateRoundScore()
-    local baseScore = 0
-    local combinations = self:identifyCombinations(self.state.selectedCards)
+    -- Initialize score components
+    local baseScore = 0      -- White score (ingredients)
+    local techMultiplier = 1 -- Red score (techniques)
+    local recipeMultiplier = 1 -- Pink score (recipes)
     
-    -- Calculate base score from cards
+    -- Calculate scores by card type
     for _, card in ipairs(self.state.selectedCards) do
-        baseScore = baseScore + (card.value or 0)
+        local scoreType = card:getScoreType()
+        local value = card:getScoreValue()
+        
+        if scoreType == Card.SCORE_TYPES.WHITE then
+            baseScore = baseScore + value
+        elseif scoreType == Card.SCORE_TYPES.RED then
+            techMultiplier = techMultiplier + (value - 1)
+        elseif scoreType == Card.SCORE_TYPES.PINK then
+            recipeMultiplier = recipeMultiplier + (value - 1)
+        end
     end
     
-    -- Apply combination bonuses
-    for _, combo in ipairs(combinations) do
-        baseScore = baseScore + combo.bonus
-    end
-    
-    -- Apply enemy preference multipliers
-    if self.state.enemy.preferences.primary == self.state.battleType then
-        baseScore = baseScore * 1.5
-    end
-    
-    -- Apply combo multiplier
-    local finalScore = baseScore * self.state.comboMultiplier
+    -- Calculate final score
+    local finalScore = math.floor(baseScore * techMultiplier * recipeMultiplier)
     
     -- Update total score
     self.state.currentScore = self.state.currentScore + finalScore
     
-    -- Discard all played cards
+    -- Discard played cards
     for _, card in ipairs(self.state.selectedCards) do
-        -- Remove from hand if it exists there
         for i = #self.state.handCards, 1, -1 do
             if self.state.handCards[i] == card then
                 table.remove(self.state.handCards, i)
                 break
             end
         end
-        -- Add to discard pile
         self.state.deck:discard(card)
     end
     
     -- Clear selected cards
     self.state.selectedCards = {}
-    
-    -- Reset combo multiplier for next round
-    self.state.comboMultiplier = 1
     
     return finalScore
 end
@@ -938,6 +950,8 @@ function BattleEncounter:startNextRound()
     self.state.selectedCards = {}
     self.state.comboMultiplier = 1
     self.state.actionFeedback = nil
+    
+    -- Note: We no longer reset currentScore here
     
     -- Get max hand size from battle parameters
     local config = encounterConfigs[self.state.battleType] or encounterConfigs.food_critic

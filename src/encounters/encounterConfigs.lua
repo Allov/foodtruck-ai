@@ -6,17 +6,15 @@ return {
         description = "Impress a demanding food critic with your culinary skills.",
         rounds = 3,
         maxCards = 5,
-        targetScore = 100,
-        scoringFocus = "quality"
+        targetScore = 150  -- Higher target score
     },
     rush_hour = {
         type = "card_battle",
         name = "Rush Hour Service",
         description = "Handle the pressure of a busy restaurant rush!",
         rounds = 5,
-        maxCards = 3,
-        targetScore = 150,
-        scoringFocus = "efficiency"
+        maxCards = 5,
+        targetScore = 100  -- Lower target score
     },
 
     -- Market encounters
