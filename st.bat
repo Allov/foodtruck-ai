@@ -8,5 +8,5 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo Checks passed! Launching game...
-love .
+lovec . %*
 

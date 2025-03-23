@@ -9,9 +9,10 @@
             "type": "lua-local",
             "request": "launch",
             "program": {
-                "command": "love"
+                "command": "${workspaceFolder}/st.bat"
             },
-            "args": ["${workspaceFolder}", "vsc_debug"]
+            "args": ["vsc_debug"],
+            "cwd": "${workspaceFolder}"
         },
         {
             "name": "Debug Custom Lua Environment",

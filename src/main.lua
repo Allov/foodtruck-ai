@@ -26,24 +26,24 @@ function Main:registerEncounters()
     local encounterConfigs = require('src.encounters.encounterConfigs')
 
     -- Register general encounter types
-    EncounterRegistry:register("card_battle", 
-        require('src.scenes.battleEncounter'), 
+    EncounterRegistry:register("card_battle",
+        require('src.scenes.battleEncounter'),
         encounterConfigs.food_critic)  -- Using food_critic as default config
 
-    EncounterRegistry:register("market", 
-        require('src.scenes.marketEncounter'), 
+    EncounterRegistry:register("market",
+        require('src.scenes.marketEncounter'),
         encounterConfigs.farmers_market)  -- Using farmers_market as default config
 
-    EncounterRegistry:register("negative", 
-        require('src.scenes.negativeEncounter'), 
+    EncounterRegistry:register("negative",
+        require('src.scenes.negativeEncounter'),
         encounterConfigs.equipment_malfunction)  -- Using equipment_malfunction as default config
 
-    EncounterRegistry:register("beneficial", 
-        require('src.scenes.beneficialEncounter'), 
+    EncounterRegistry:register("beneficial",
+        require('src.scenes.beneficialEncounter'),
         encounterConfigs.food_festival)  -- Using food_festival as default config
 
-    EncounterRegistry:register("lore", 
-        require('src.scenes.loreEncounter'), 
+    EncounterRegistry:register("lore",
+        require('src.scenes.loreEncounter'),
         {
             name = "Story Event",
             description = "A story unfolds...",
@@ -51,26 +51,35 @@ function Main:registerEncounters()
         })
 
     -- Register specific encounter variants (for detailed encounters)
-    EncounterRegistry:register("food_critic", 
-        require('src.scenes.battleEncounter'), 
+    EncounterRegistry:register("food_critic",
+        require('src.scenes.battleEncounter'),
         encounterConfigs.food_critic)
-    EncounterRegistry:register("rush_hour", 
-        require('src.scenes.battleEncounter'), 
+    EncounterRegistry:register("rush_hour",
+        require('src.scenes.battleEncounter'),
         encounterConfigs.rush_hour)
     -- ... other specific encounters
 end
 
 function Main.load()
-    -- Initialize global CRT shader
-    Main.crtShader = love.graphics.newShader("src/shaders/scanline.glsl")
-    
-    -- Create global canvas for CRT effect
-    Main.canvas = love.graphics.newCanvas()
-    
-    -- Load settings
-    local Settings = require('src.settings')
-    Settings:load()  -- Add this line to load saved settings
-    
+    -- Initialize debug tools first, before any other operations
+    if _DEBUG then
+        -- Initialize debug console first
+        Main.debugConsole = require('src.tools.debugConsole')
+        Main.debugConsole:init()
+
+        -- Initialize print override immediately after debug console
+        local initializePrintOverride = require('src.tools.printOverride')
+        initializePrintOverride(Main.debugConsole)
+
+        -- Print launch arguments after logger is ready
+        Main.debugConsole:info("Launch Arguments:")
+        for i, v in ipairs(arg) do
+            Main.debugConsole:info(string.format("arg[%d]: %s", i, tostring(v)))
+        end
+        Main.debugConsole:info("Total arguments: " .. #arg)
+        Main.debugConsole:info("------------------------")
+    end
+
     -- Load all scenes
     local scenes = {
         mainMenu = require('src.scenes.mainMenu'),
@@ -91,16 +100,19 @@ function Main.load()
 
     -- Initialize scene manager with scenes
     sceneManager:init(scenes)
-    
+
     -- Register all encounters
     Main:registerEncounters()
-    
+
     -- Initialize game manager
     gameManager:init()
-    
-    -- Initialize debug tools
-    Main:initializeTools()
-    
+
+    -- Initialize global CRT shader
+    Main.crtShader = love.graphics.newShader("src/shaders/scanline.glsl")
+
+    -- Create global canvas for CRT effect
+    Main.canvas = love.graphics.newCanvas()
+
     -- Start with main menu
     sceneManager:switch('mainMenu')
 end
@@ -110,12 +122,12 @@ function Main.update(dt)
     gameManager:update(dt)
     -- Then update current scene
     sceneManager:update(dt)
-    
+
     -- Update debug console
     if _DEBUG and Main.debugConsole then
         Main.debugConsole:update(dt)
     end
-    
+
     -- Reset keyboard states
     love.keyboard.keysPressed = {}
     love.keyboard.keysReleased = {}
@@ -123,31 +135,31 @@ end
 
 function Main.draw()
     local Settings = require('src.settings')
-    
+
     if Settings.crtEnabled then
         -- Draw everything except global overlays to the canvas
         love.graphics.setCanvas(Main.canvas)
         love.graphics.clear()
-        
+
         -- Draw current scene
         sceneManager:draw()
-        
+
         -- Reset canvas and apply CRT effect
         love.graphics.setCanvas()
-        
+
         -- Update shader uniforms
         Main.crtShader:send("time", love.timer.getTime())
         Main.crtShader:send("screen_size", {love.graphics.getWidth(), love.graphics.getHeight()})
-        
+
         -- Draw canvas with CRT shader
         love.graphics.setShader(Main.crtShader)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(Main.canvas, 0, 0)
         love.graphics.setShader()
-        
+
         -- Draw global overlays after post-processing
         Main:drawGlobalOverlays()
-        
+
         -- Draw debug console last
         if _DEBUG and Main.debugConsole then
             Main.debugConsole:draw()
@@ -156,7 +168,7 @@ function Main.draw()
         -- Draw directly without CRT effect
         sceneManager:draw()
         Main:drawGlobalOverlays()
-        
+
         if _DEBUG and Main.debugConsole then
             Main.debugConsole:draw()
         end
@@ -172,15 +184,15 @@ function Main:drawGlobalOverlays()
         string.format("Resolution: %dx%d", love.graphics.getWidth(), love.graphics.getHeight()),
         string.format("Version: %s (LÖVE %s)", "0.1.0-prototype", love.getVersion())
     }
-    
+
     -- Save current graphics state
     local prevFont = love.graphics.getFont()
     local r, g, b, a = love.graphics.getColor()
-    
+
     -- Draw stats
     love.graphics.setFont(love.graphics.newFont(12))
     love.graphics.setColor(0.6, 0.6, 0.6, 0.8)
-    
+
     local bottomMargin = 80
     for i, stat in ipairs(stats) do
         love.graphics.printf(
@@ -191,7 +203,7 @@ function Main:drawGlobalOverlays()
             'left'
         )
     end
-    
+
     -- Restore graphics state
     love.graphics.setFont(prevFont)
     love.graphics.setColor(r, g, b, a)
@@ -220,7 +232,7 @@ function Main.textinput(t)
         Main.debugConsole:textInput(t)
         return
     end
-    
+
     if sceneManager.current and sceneManager.current.inputtingSeed then
         if t:match("^[%w%s%-_%.]+$") then
             sceneManager.current.seedInput = sceneManager.current.seedInput .. t
@@ -233,18 +245,18 @@ function Main:initializeTools()
         -- Initialize debug console first
         self.debugConsole = require('src.tools.debugConsole')
         self.debugConsole:init()
-        
+
         -- Initialize print override
         local initializePrintOverride = require('src.tools.printOverride')
         initializePrintOverride(self.debugConsole)
-        
+
         -- Initialize content manager
         self.contentManager = require('src.tools.contentManager')
         self.contentManager:init()
-        
+
         -- Get project stats
         local stats = self.contentManager:getProjectStats()
-        
+
         -- Add startup logs
         self.debugConsole:info("===============================")
         self.debugConsole:info("=== Food Truck Journey ===")
@@ -277,10 +289,10 @@ end
 function love.load()
     -- Initialize global CRT shader
     Main.crtShader = love.graphics.newShader("src/shaders/scanline.glsl")
-    
+
     -- Create global canvas for CRT effect
     Main.canvas = love.graphics.newCanvas()
-    
+
     -- Load the game
     game.load()
 end
@@ -293,6 +305,7 @@ function Main.wheelmoved(x, y)
 end
 
 return Main
+
 
 
 

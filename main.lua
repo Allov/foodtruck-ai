@@ -1,5 +1,13 @@
 -- Enable debugging
-if arg[#arg] == "vsc_debug" then require("lldebugger").start() end
+if arg[#arg] == "vsc_debug" then
+    local lldebugger = require "lldebugger"
+    lldebugger.start()
+    local run = love.run
+    function love.run(...)
+        local f = lldebugger.call(run, false, ...)
+        return function(...) return lldebugger.call(f, false, ...) end
+    end
+end
 
 local game = require('src.main')
 
@@ -30,3 +38,12 @@ end
 function love.wheelmoved(x, y)
     game.wheelmoved(x, y)
 end
+
+-- Add quit callback
+function love.quit()
+    if game.debugConsole then
+        game.debugConsole:cleanup()
+    end
+end
+
+

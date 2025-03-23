@@ -8,7 +8,8 @@ local DebugConsole = {
     cursorBlink = 0,
     scrollOffset = 0,
     maxVisibleLines = 20,
-    isFullscreen = false,  -- New: tracks if console is fullscreen
+    isFullscreen = false,
+    logFile = nil,  -- Add log file handle
     LOG_LEVELS = {
         DEBUG = {name = "DEBUG", color = {0.5, 0.5, 0.5, 1}},
         INFO = {name = "INFO", color = {0.8, 0.8, 1, 1}},      -- Softer blue-white
@@ -58,39 +59,61 @@ local DebugConsole = {
     }
 }
 
-function DebugConsole:init()
-    self.commands = {
-        -- Help and utility commands
-        help = function() self:showHelp() end,
-        clear = function() self.history = {} end,
-        version = function() self:showVersion() end,
-        stats = function() self:showStats() end,
+function DebugConsole:cleanupOldLogs(maxLogs)
+    maxLogs = maxLogs or 50
 
-        -- Game state commands
-        give_cash = function(amount) self:giveCash(amount) end,
-        show_state = function() self:showGameState() end,
-        set_level = function(level) self:setLevel(level) end,
-        set_score = function(score) self:setScore(score) end,
-        
-        -- Debug commands
-        toggle_fps = function() self:toggleFPS() end,
-        toggle_hitbox = function() self:toggleHitbox() end,
-        toggle_debug = function() self:toggleDebugInfo() end,
-        
-        -- Scene management
-        goto_scene = function(sceneName) self:gotoScene(sceneName) end,
-        list_scenes = function() self:listScenes() end,
-        
-        -- Game testing
-        spawn_enemy = function(type, x, y) self:spawnEnemy(type, x, y) end,
-        win_battle = function() self:winCurrentBattle() end,
-        lose_battle = function() self:loseCurrentBattle() end,
-        
-        -- Performance commands
-        mem = function() self:showMemoryUsage() end,
-        gc = function() self:forceGC() end
-    }
-    self:updateMaxVisibleLines()
+    -- Get all files in the logs directory
+    local items = love.filesystem.getDirectoryItems("logs")
+    local logFiles = {}
+
+    -- Filter and get details for log files
+    for _, item in ipairs(items) do
+        if item:match("^log_%d+_%d+%.txt$") then
+            local info = love.filesystem.getInfo("logs/" .. item)
+            if info then
+                table.insert(logFiles, {
+                    name = item,
+                    modtime = info.modtime
+                })
+            end
+        end
+    end
+
+    -- Sort by modification time (newest first)
+    table.sort(logFiles, function(a, b)
+        return a.modtime > b.modtime
+    end)
+
+    -- Remove excess log files
+    if #logFiles > maxLogs then
+        for i = maxLogs + 1, #logFiles do
+            love.filesystem.remove("logs/" .. logFiles[i].name)
+        end
+    end
+end
+
+function DebugConsole:init()
+    -- Create logs directory if it doesn't exist
+    love.filesystem.createDirectory("logs")
+
+    -- Clean up old log files
+    self:cleanupOldLogs(50)
+
+    -- Create a new log file with timestamp
+    local timestamp = os.date("%Y%m%d_%H%M%S")
+    local logFileName = string.format("log_%s.txt", timestamp)
+
+    -- Open log file in append mode
+    self.logFile = love.filesystem.newFile("logs/" .. logFileName, "w")
+
+    -- Write initial log header
+    if self.logFile then
+        self.logFile:write(string.format("=== Game Log Started at %s ===\n", os.date("%Y-%m-%d %H:%M:%S")))
+        self.logFile:write(string.format("Game Version: %s\n", love.getVersion()))
+        self.logFile:write(string.format("OS: %s\n", love.system.getOS()))
+        self.logFile:write("===============================\n\n")
+        self.logFile:flush()
+    end
 end
 
 function DebugConsole:toggle()
@@ -104,10 +127,10 @@ function DebugConsole:executeCommand(cmd)
     for part in cmd:gmatch("%S+") do
         table.insert(parts, part)
     end
-    
+
     local command = parts[1]
     table.remove(parts, 1)
-    
+
     if self.commands[command] then
         local success, result = pcall(self.commands[command], unpack(parts))
         if not success then
@@ -127,29 +150,49 @@ end
 function DebugConsole:log(message, level)
     level = level or self.LOG_LEVELS.INFO
     local currentTime = love.timer.getTime()
-    
+
     -- Check if this is a duplicate message within the debounce time
-    if message == self.lastMessage and 
+    if message == self.lastMessage and
        (currentTime - self.lastMessageTime) < self.debounceTime then
         -- Update the last message to include the count
         self.messageCount = self.messageCount + 1
-        self.history[#self.history].message = string.format("%s (x%d)", 
+        self.history[#self.history].message = string.format("%s (x%d)",
             message, self.messageCount)
+
+        -- Update log file with duplicate count
+        if self.logFile then
+            -- Get file size
+            local size = self.logFile:getSize()
+            self.logFile:seek(size)
+            self.logFile:write(string.format("[%s][%s] %s (x%d)\n",
+                self:formatTimestamp(), level.name, message, self.messageCount))
+            self.logFile:flush()
+        end
         return
     end
-    
+
     -- New message or outside debounce time
     local entry = {
         timestamp = self:formatTimestamp(),
         message = tostring(message),
         level = level
     }
-    
+
     table.insert(self.history, entry)
     if #self.history > self.maxHistory then
         table.remove(self.history, 1)
     end
-    
+
+    -- Write to log file
+    if self.logFile then
+        -- Get file size
+        local size = self.logFile:getSize()
+        self.logFile:seek(size)
+        self.logFile:write(string.format("[%s][%s] %s\n",
+            entry.timestamp, level.name, entry.message))
+        self.logFile:flush()
+    end
+
     -- Reset debounce tracking
     self.lastMessage = message
     self.lastMessageTime = currentTime
@@ -179,7 +222,7 @@ end
 
 function DebugConsole:handleInput(key)
     if not self.visible then return end
-    
+
     if key == "return" and self.input ~= "" then
         self:executeCommand(self.input)
         self.input = ""
@@ -217,13 +260,13 @@ function DebugConsole:updateScroll(dt)
     local spring = displacement * self.scroll.SPRING_STIFFNESS
     local damping = self.scroll.velocity * self.scroll.SPRING_DAMPING
     local force = spring - damping
-    
+
     self.scroll.velocity = self.scroll.velocity + force * dt
     self.scroll.current = self.scroll.current + self.scroll.velocity * dt
-    
+
     -- Update actual scroll offset (rounded for display)
     self.scrollOffset = math.floor(self.scroll.current + 0.5)
-    
+
     -- Stop tiny oscillations
     if math.abs(self.scroll.velocity) < 0.01 and math.abs(displacement) < 0.01 then
         self.scroll.velocity = 0
@@ -234,10 +277,10 @@ end
 
 function DebugConsole:update(dt)
     if not self.visible then return end
-    
+
     -- Update cursor blink
     self.cursorBlink = (self.cursorBlink + dt) % 1
-    
+
     -- Update scroll animation
     self:updateScroll(dt)
 end
@@ -245,7 +288,7 @@ end
 -- Separate wheel movement handler
 function DebugConsole:wheelmoved(x, y)
     if not self.visible then return end
-    
+
     -- Update scroll target based on wheel movement
     self.scroll.target = math.max(0, math.min(
         self.scroll.target - y * self.scroll.SCROLL_SPEED,
@@ -262,7 +305,7 @@ function DebugConsole:drawKeybindHelp()
         "`: Toggle console",
         "Enter: Execute command",
     }
-    
+
     love.graphics.setColor(self.STYLES.HELP_TEXT)
     for i, text in ipairs(helpText) do
         love.graphics.printf(
@@ -277,68 +320,68 @@ end
 
 function DebugConsole:draw()
     if not self.visible then return end
-    
+
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
     local scale = Settings.getScale()
-    
+
     -- Get actual values from layout functions
     local padding = self.LAYOUT.PADDING()
     local messageHeight = self.LAYOUT.MESSAGE_HEIGHT()
-    
+
     local consoleHeight = self.isFullscreen and height or (height * 0.3)
-    
+
     -- Draw main background
     love.graphics.setColor(self.STYLES.BACKGROUND)
     love.graphics.rectangle("fill", 0, 0, width, consoleHeight)
-    
+
     -- Draw separator line
     love.graphics.setColor(self.STYLES.SEPARATOR)
     love.graphics.rectangle(
-        "fill", 
-        padding, 
+        "fill",
+        padding,
         consoleHeight - self.LAYOUT.BOTTOM_MARGIN,
         width - (padding * 2),
         1
     )
-    
+
     -- Draw keybind help
     self:drawKeybindHelp()
-    
+
     -- Draw input box background with rounded corners
     love.graphics.setColor(self.STYLES.INPUT_BG)
     love.graphics.rectangle(
-        "fill", 
-        padding, 
+        "fill",
+        padding,
         consoleHeight - self.LAYOUT.BOTTOM_MARGIN + 5,
         width - (padding * 2),
         self.LAYOUT.INPUT_HEIGHT,
         self.LAYOUT.ROUNDED_CORNERS
     )
-    
+
     -- Draw command history with scrolling
     local y = consoleHeight - self.LAYOUT.BOTTOM_MARGIN - messageHeight
     local startIndex = #self.history - self.scrollOffset
     local endIndex = math.max(1, startIndex - self.maxVisibleLines + 1)
-    
+
     -- Draw scrollbar if needed
     if #self.history > self.maxVisibleLines then
         local scrollbarHeight = consoleHeight - self.LAYOUT.TOP_MARGIN - self.LAYOUT.BOTTOM_MARGIN
         local thumbHeight = (self.maxVisibleLines / #self.history) * scrollbarHeight
         local scrollProgress = 1 - (self.scrollOffset / (#self.history - self.maxVisibleLines))
         local thumbPosition = scrollProgress * (scrollbarHeight - thumbHeight)
-        
+
         -- Scrollbar background
-        love.graphics.setColor(self.STYLES.SCROLLBAR[1], self.STYLES.SCROLLBAR[2], 
+        love.graphics.setColor(self.STYLES.SCROLLBAR[1], self.STYLES.SCROLLBAR[2],
                              self.STYLES.SCROLLBAR[3], self.STYLES.SCROLLBAR[4] * 0.5)
         love.graphics.rectangle(
-            "fill", 
+            "fill",
             width - padding - self.LAYOUT.SCROLLBAR_WIDTH,
             self.LAYOUT.TOP_MARGIN,
             self.LAYOUT.SCROLLBAR_WIDTH,
             scrollbarHeight
         )
-        
+
         -- Scrollbar thumb
         love.graphics.setColor(self.STYLES.SCROLLBAR)
         love.graphics.rectangle(
@@ -349,32 +392,32 @@ function DebugConsole:draw()
             thumbHeight
         )
     end
-    
+
     -- Draw messages with proper column alignment
     for i = startIndex, endIndex, -1 do
         local entry = self.history[i]
         if entry then
             local x = padding
-            
+
             -- Draw timestamp
             love.graphics.setColor(self.STYLES.TIMESTAMP)
             love.graphics.print("[" .. entry.timestamp .. "]", x, y)
             x = x + self.LAYOUT.TIMESTAMP_WIDTH
-            
+
             -- Draw level indicator
             love.graphics.setColor(entry.level.color)
             love.graphics.print("[" .. entry.level.name .. "]", x, y)
             x = x + self.LAYOUT.LEVEL_WIDTH
-            
+
             -- Draw message
-            love.graphics.setColor(entry.level.color[1], entry.level.color[2], 
+            love.graphics.setColor(entry.level.color[1], entry.level.color[2],
                                  entry.level.color[3], 1)
             love.graphics.print(entry.message, x, y)
-            
+
             y = y - messageHeight
         end
     end
-    
+
     -- Draw input line with blinking cursor
     love.graphics.setColor(self.STYLES.PROMPT)
     love.graphics.print(
@@ -382,7 +425,7 @@ function DebugConsole:draw()
         padding + 5,
         consoleHeight - self.LAYOUT.BOTTOM_MARGIN + 12
     )
-    
+
     love.graphics.setColor(self.STYLES.INPUT_TEXT)
     local cursor = self.cursorBlink < 0.5 and "│" or ""
     love.graphics.print(
@@ -426,7 +469,7 @@ end
 -- Add mouse wheel support
 function DebugConsole:wheelmoved(x, y)
     if not self.visible then return end
-    
+
     -- Update scroll target based on wheel movement
     self.scroll.target = math.max(0, math.min(
         self.scroll.target - y * self.scroll.SCROLL_SPEED,
@@ -540,7 +583,19 @@ function DebugConsole:forceGC()
     self:info(string.format("Garbage collected: %.2f MB", (before-after)/1024))
 end
 
+-- Add cleanup function
+function DebugConsole:cleanup()
+    if self.logFile then
+        self.logFile:write("\n=== Game Log Ended at " .. os.date("%Y-%m-%d %H:%M:%S") .. " ===\n")
+        self.logFile:close()
+        self.logFile = nil
+    end
+end
+
 return DebugConsole
+
+
+
 
 
 
