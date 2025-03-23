@@ -104,7 +104,7 @@ function MainMenu:draw()
     -- Draw title with floating animation and shimmer
     love.graphics.setFont(FONTS.TITLE)
     love.graphics.setColor(COLORS.TITLE[1], COLORS.TITLE[2], COLORS.TITLE[3], self.titleAlpha)
-    love.graphics.printf("Choose Seed Type", 0, 100 + self.titleOffset, love.graphics.getWidth(), 'center')
+    love.graphics.printf(GAME_TITLE, 0, 100 + self.titleOffset, love.graphics.getWidth(), 'center')
     
     -- Draw menu options
     love.graphics.setFont(FONTS.MENU)
