@@ -236,6 +236,13 @@ function love.load()
     game.load()
 end
 
+function Main.wheelmoved(x, y)
+    if _DEBUG and Main.debugConsole and Main.debugConsole.visible then
+        Main.debugConsole:wheelmoved(x, y)
+        return
+    end
+end
+
 return Main
 
 
