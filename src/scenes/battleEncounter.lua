@@ -29,6 +29,11 @@ BattleEncounter.PHASES = {
     RESULTS = "RESULTS"          -- Show round results and check win/loss
 }
 
+BattleEncounter.PHASE_TIMINGS = {
+    JUDGING = 2.0,  -- 2 seconds to show scoring
+    RESULTS = 3.0   -- 3 seconds to show results
+}
+
 -- Remove ACTIONS as they're no longer needed
 -- BattleEncounter.ACTIONS = { ... }
 
@@ -201,9 +206,9 @@ function BattleEncounter:update(dt)
     if self.state.currentPhase == BattleEncounter.PHASES.PREPARATION then
         self:updatePreparationPhase()
     elseif self.state.currentPhase == BattleEncounter.PHASES.JUDGING then
-        self:updateJudgingPhase()
+        self:updateJudgingPhase(dt)
     elseif self.state.currentPhase == BattleEncounter.PHASES.RESULTS then
-        self:updateResultsPhase()
+        self:updateResultsPhase(dt)
     end
 
     -- Add pile viewing controls
@@ -354,18 +359,26 @@ end
 --     end
 -- end
 
-function BattleEncounter:updateJudgingPhase()
-    if love.keyboard.wasPressed('return') then
-        self:transitionToPhase(self.PHASES.RESULTS)
+function BattleEncounter:updateJudgingPhase(dt)
+    if self.state.phaseTimer then
+        self.state.phaseTimer = self.state.phaseTimer - dt
+        if self.state.phaseTimer <= 0 then
+            self.state.phaseTimer = nil
+            self:transitionToPhase(self.PHASES.RESULTS)
+        end
     end
 end
 
-function BattleEncounter:updateResultsPhase()
-    if love.keyboard.wasPressed('return') then
-        if self:isBattleComplete() then
-            self:endBattle(self.state.currentScore >= self.state.targetScore)
-        else
-            self:startNextRound()
+function BattleEncounter:updateResultsPhase(dt)
+    if self.state.phaseTimer then
+        self.state.phaseTimer = self.state.phaseTimer - dt
+        if self.state.phaseTimer <= 0 then
+            self.state.phaseTimer = nil
+            if self:isBattleComplete() then
+                self:endBattle(self.state.currentScore >= self.state.targetScore)
+            else
+                self:startNextRound()
+            end
         end
     end
 end
@@ -476,40 +489,57 @@ function BattleEncounter:draw()
 end
 
 function BattleEncounter:drawCommonElements()
+    -- Draw base background
+    self:drawBattleBackground()
+    
+    -- Draw top HUD elements
+    self:drawTopHUD()
+    
+    -- Draw bottom HUD elements (hand and deck info)
+    self:drawBottomHUD()
+end
+
+function BattleEncounter:drawBattleBackground()
     -- Draw semi-transparent background overlay
     love.graphics.setColor(COLORS.PRIMARY[1], COLORS.PRIMARY[2], COLORS.PRIMARY[3], 0.1)
     love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+end
 
-    -- Constants for UI layout
+function BattleEncounter:drawTopHUD()
     local TOP_MARGIN = 20
-    local STATS_HEIGHT = 120
+    local LEFT_MARGIN = 20
+    
+    -- Draw enemy info (left side)
+    self:drawEnemyInfo(LEFT_MARGIN, TOP_MARGIN)
+    
+    -- Draw battle stats (right side)
+    self:drawBattleStats(TOP_MARGIN)
+end
 
-    -- Draw enemy stats in top-left corner
-    if self.state.enemy then
-        local statsX = 20
-        local statsY = TOP_MARGIN
-        
-        -- Enemy name
-        love.graphics.setFont(FONTS.MEDIUM)
-        love.graphics.setColor(COLORS.TEXT)
-        love.graphics.print(self.state.enemy.name, statsX, statsY)
-        
-        -- Specialty in smaller font
-        love.graphics.setFont(FONTS.SMALL)
-        love.graphics.setColor(COLORS.ACCENT)
-        love.graphics.print(
-            string.format("Specialty: %s",
-                self.state.enemy.specialty
-            ),
-            statsX, statsY + 25
-        )
-    end
+function BattleEncounter:drawEnemyInfo(x, y)
+    love.graphics.setFont(FONTS.MEDIUM)
+    love.graphics.setColor(COLORS.TEXT)
+    
+    -- Enemy name
+    love.graphics.print(
+        self.state.enemy.name,
+        x,
+        y
+    )
+    
+    -- Enemy specialty
+    love.graphics.setFont(FONTS.SMALL)
+    love.graphics.print(
+        "Specialty: " .. self.state.enemy.specialty,
+        x,
+        y + 30
+    )
+end
 
-    -- Draw battle stats in top-right corner
+function BattleEncounter:drawBattleStats(y)
     local statsX = love.graphics.getWidth() - 220
-    local statsY = TOP_MARGIN
     local statSpacing = 25
-
+    
     love.graphics.setFont(FONTS.MEDIUM)
     
     -- Round counter
@@ -519,11 +549,11 @@ function BattleEncounter:drawCommonElements()
             self.state.roundNumber,
             self.state.maxRounds
         ),
-        statsX, statsY,
+        statsX, y,
         200, 'right'
     )
     
-    -- Score with dynamic color
+    -- Score
     local scoreColor = self.state.currentScore >= self.state.targetScore and COLORS.SUCCESS or COLORS.HIGHLIGHT
     love.graphics.setColor(scoreColor)
     love.graphics.printf(
@@ -531,31 +561,17 @@ function BattleEncounter:drawCommonElements()
             self.state.currentScore,
             self.state.targetScore
         ),
-        statsX, statsY + statSpacing,
+        statsX, y + statSpacing,
         200, 'right'
     )
+end
 
-    -- Draw rating in top-right corner
-    local ratingX = love.graphics.getWidth() - 220
-    local ratingY = TOP_MARGIN + (statSpacing * 2)
+function BattleEncounter:drawBottomHUD()
+    -- Draw the player's hand
+    self:drawHand()
     
-    -- Draw rating with appropriate color
-    local rating = gameState.selectedChef.rating
-    local ratingColor = COLORS.TEXT
-    if rating == 'S' then
-        ratingColor = {1, 0.8, 0, 1}  -- Gold
-    elseif rating == 'A' then
-        ratingColor = {0.8, 0.8, 1, 1}  -- Light blue
-    elseif rating == 'F' then
-        ratingColor = COLORS.DANGER
-    end
-    
-    love.graphics.setColor(ratingColor)
-    love.graphics.printf(
-        "Rating: " .. rating,
-        ratingX, ratingY,
-        200, 'right'
-    )
+    -- Draw deck information
+    self:drawDeckInfo()
 end
 
 -- Helper function to separate deck drawing logic
@@ -630,7 +646,7 @@ function BattleEncounter:drawInitialHand()
     end
 end
 
-function BattleEncounter:drawPreparationPhase()
+function BattleEncounter:drawHand()
     local cardWidth, cardHeight = Card.getDimensions()
     local padding = 20
     local baseY = love.graphics.getHeight() - cardHeight - padding
@@ -700,25 +716,11 @@ function BattleEncounter:drawPreparationPhase()
         card:draw(0, 0)
         love.graphics.pop()
     end
-    
-    -- Draw UI elements
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf(
-        string.format("Selected: %d/%d", #self.state.selectedCards, self.state.maxSelectedCards),
-        0,
-        baseY - 70,
-        love.graphics.getWidth(),
-        'center'
-    )
-    
-    -- Draw instructions at the very bottom
-    love.graphics.printf(
-        "← → to move  |  SPACE to select  |  ENTER to confirm",
-        0,
-        love.graphics.getHeight() - 30,
-        love.graphics.getWidth(),
-        'center'
-    )
+end
+
+function BattleEncounter:drawPreparationPhase()
+    -- Draw preparation-specific UI elements only
+    -- (hand is now drawn in drawCommonElements)
 end
 
 function BattleEncounter:drawDiscardUI()
@@ -780,50 +782,97 @@ end
 -- end
 
 function BattleEncounter:drawJudgingPhase()
-    -- Draw results
-    love.graphics.setColor(1, 1, 1, 1)
+    -- Draw hand score results
+    love.graphics.setFont(FONTS.LARGE)
+    love.graphics.setColor(COLORS.TEXT)
+    
+    -- Show current hand score calculation
+    local baseScore = self.state.lastHandScore or 0
+    local techBonus = self.state.lastTechBonus or 1
+    local recipeBonus = self.state.lastRecipeBonus or 1
+    
+    local centerY = love.graphics.getHeight() / 2 - 100
+    local lineHeight = 40
+    
+    -- Base score
+    love.graphics.setColor(Card.SCORE_COLORS.WHITE)
     love.graphics.printf(
-        "Round Complete!\nScore: " .. self.state.currentScore .. "\nPress ENTER to continue",
-        0,
-        love.graphics.getHeight() / 2 - 50,
+        string.format("Base Score: %d", baseScore),
+        0, centerY,
+        love.graphics.getWidth(),
+        'center'
+    )
+    
+    -- Tech multiplier
+    if techBonus > 1 then
+        love.graphics.setColor(Card.SCORE_COLORS.RED)
+        love.graphics.printf(
+            string.format("Technique Bonus: ×%.1f", techBonus),
+            0, centerY + lineHeight,
+            love.graphics.getWidth(),
+            'center'
+        )
+    end
+    
+    -- Recipe multiplier
+    if recipeBonus > 1 then
+        love.graphics.setColor(Card.SCORE_COLORS.PINK)
+        love.graphics.printf(
+            string.format("Recipe Bonus: ×%.1f", recipeBonus),
+            0, centerY + lineHeight * 2,
+            love.graphics.getWidth(),
+            'center'
+        )
+    end
+    
+    -- Final hand score
+    love.graphics.setColor(COLORS.HIGHLIGHT)
+    love.graphics.printf(
+        string.format("Hand Score: %d", math.floor(baseScore * techBonus * recipeBonus)),
+        0, centerY + lineHeight * 3,
         love.graphics.getWidth(),
         'center'
     )
 end
 
 function BattleEncounter:drawResultsPhase()
-    -- Draw final results
-    love.graphics.setColor(1, 1, 1, 1)
-    local message
+    love.graphics.setFont(FONTS.LARGE)
+    local centerY = love.graphics.getHeight() / 2 - 40
+    local lineHeight = 40
+    
     if self:isBattleComplete() then
-        message = "Battle Complete!\n"
-        message = message .. (self.state.currentScore >= self.state.targetScore and "Victory!" or "Defeat!")
-        message = message .. "\nFinal Score: " .. self.state.currentScore
-        message = message .. "\nRating: " .. gameState.selectedChef.rating
+        -- Battle completion results
+        local isVictory = self.state.currentScore >= self.state.targetScore
+        love.graphics.setColor(isVictory and COLORS.SUCCESS or COLORS.FAILURE)
+        love.graphics.printf(
+            isVictory and "Victory!" or "Defeat!",
+            0, centerY,
+            love.graphics.getWidth(),
+            'center'
+        )
         
         -- Show rating change if any
         if self.state.ratingChanged then
             local ratingColor = self:getRatingIndex(gameState.selectedChef.rating) < 
-                              self:getRatingIndex(self.state.previousRating) and COLORS.SUCCESS or COLORS.DANGER
+                              self:getRatingIndex(self.state.previousRating) and COLORS.SUCCESS or COLORS.FAILURE
             love.graphics.setColor(ratingColor)
-            message = message .. string.format("\nRating changed: %s → %s", 
-                self.state.previousRating, 
-                gameState.selectedChef.rating)
+            love.graphics.printf(
+                string.format("%s → %s", self.state.previousRating, gameState.selectedChef.rating),
+                0, centerY + lineHeight,
+                love.graphics.getWidth(),
+                'center'
+            )
         end
     else
-        message = "Round " .. self.state.roundNumber .. " Complete!\n"
-        message = message .. "Current Score: " .. self.state.currentScore .. "\n"
-        message = message .. "Target Score: " .. self.state.targetScore .. "\n"
-        message = message .. "Current Rating: " .. gameState.selectedChef.rating
+        -- Just show "Next Round" message
+        love.graphics.setColor(COLORS.PRIMARY)
+        love.graphics.printf(
+            "Next Round",
+            0, centerY,
+            love.graphics.getWidth(),
+            'center'
+        )
     end
-    
-    love.graphics.printf(
-        message .. "\nPress ENTER to continue",
-        0,
-        love.graphics.getHeight() / 2 - 50,
-        love.graphics.getWidth(),
-        'center'
-    )
 end
 
 function BattleEncounter:selectNextCard()
@@ -886,6 +935,10 @@ function BattleEncounter:transitionToPhase(newPhase)
     if newPhase == self.PHASES.JUDGING then
         -- Calculate final score for the round
         self:calculateRoundScore()
+        -- Start phase timer
+        self.state.phaseTimer = self.PHASE_TIMINGS.JUDGING
+    elseif newPhase == self.PHASES.RESULTS then
+        self.state.phaseTimer = self.PHASE_TIMINGS.RESULTS
     end
 
     -- Update the phase
@@ -911,6 +964,11 @@ function BattleEncounter:calculateRoundScore()
             recipeMultiplier = recipeMultiplier + (value - 1)
         end
     end
+    
+    -- Store the components for display
+    self.state.lastHandScore = baseScore
+    self.state.lastTechBonus = techMultiplier
+    self.state.lastRecipeBonus = recipeMultiplier
     
     -- Calculate final score
     local finalScore = math.floor(baseScore * techMultiplier * recipeMultiplier)
