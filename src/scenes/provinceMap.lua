@@ -136,19 +136,17 @@ end
 
 function ProvinceMap:generateNodesPerRow()
     local nodesPerRow = {}
-    
     -- First row: 2 nodes
     nodesPerRow[1] = 2
-    
     -- Middle rows: alternate between 2 and 3 nodes
     for i = 2, self.NUM_LEVELS - 1 do
-        -- Use the random generator to maintain consistency with seed
-        nodesPerRow[i] = self.randomGenerator:random() < 0.6 and 3 or 2
+        -- More varied node distribution
+        local baseNodes = self.randomGenerator:random() < 0.6 and 3 or 2
+        -- Occasionally add an extra node for more variety
+        nodesPerRow[i] = self.randomGenerator:random() < 0.2 and baseNodes + 1 or baseNodes
     end
-    
     -- Last row: always 1 node (final boss/encounter)
     nodesPerRow[self.NUM_LEVELS] = 1
-    
     return nodesPerRow
 end
 
@@ -206,22 +204,50 @@ function ProvinceMap:createConnections()
 end
 
 function ProvinceMap:getRandomEncounterType(row)
-    -- Define possible encounter types for each row
-    local encounterPool
-    if row == 1 then
-        -- First row: always market
-        return "market"
-    elseif row == self.NUM_LEVELS then
-        -- Final row: showdown (special battle)
-        return "card_battle"  -- We can add a special "showdown" type later if needed
-    elseif row == 2 then
-        -- Second row: keep as battle encounters
-        return "card_battle"
+    -- Define encounter weights for different rows
+    local weights = {
+        early = {
+            card_battle = 0.3,
+            market = 0.3,
+            beneficial = 0.2,
+            lore = 0.2
+        },
+        mid = {
+            card_battle = 0.4,
+            market = 0.2,
+            beneficial = 0.2,
+            negative = 0.1,
+            lore = 0.1
+        },
+        late = {
+            card_battle = 0.5,
+            market = 0.1,
+            beneficial = 0.1,
+            negative = 0.2,
+            lore = 0.1
+        }
+    }
+    
+    -- Select weight table based on progress
+    local weightTable
+    if row < self.NUM_LEVELS * 0.3 then
+        weightTable = weights.early
+    elseif row < self.NUM_LEVELS * 0.7 then
+        weightTable = weights.mid
     else
-        -- Other rows: mix of encounters
-        encounterPool = {"card_battle", "market", "beneficial", "negative", "lore"}
-        return encounterPool[self.randomGenerator:random(#encounterPool)]
+        weightTable = weights.late
     end
+    
+    -- Use weights to select encounter type
+    local roll = self.randomGenerator:random()
+    local cumulative = 0
+    for type, weight in pairs(weightTable) do
+        cumulative = cumulative + weight
+        if roll <= cumulative then
+            return type
+        end
+    end
+    return "card_battle" -- fallback
 end
 
 function ProvinceMap:getSpecificEncounter(encounterType)
@@ -723,6 +749,30 @@ function ProvinceMap:drawNode(level, i, node)
         love.graphics.setColor(1, 1, 1, 0.3)
         love.graphics.setLineWidth(1)
         love.graphics.circle('line', node.x, node.y, size)
+    end
+    
+    -- Add node glow effect
+    if level == self.currentLevel and i == self.selected then
+        -- Outer glow
+        local glowColor = self.encounterColors[node.type]
+        for radius = size + 10, size + 5, -1 do
+            love.graphics.setColor(glowColor[1], glowColor[2], glowColor[3], 
+                                 0.1 * (1 - (radius - size - 5) / 5))
+            love.graphics.circle('fill', node.x, node.y, radius)
+        end
+    end
+    
+    -- Add completion effects
+    if self.completedNodes[level .. "," .. i] then
+        -- Draw completion sparkles
+        local time = love.timer.getTime()
+        for j = 1, 5 do
+            local angle = (time * 2 + j * math.pi * 0.4) % (math.pi * 2)
+            local sparkleX = node.x + math.cos(angle) * (size + 2)
+            local sparkleY = node.y + math.sin(angle) * (size + 2)
+            love.graphics.setColor(1, 1, 1, 0.6 + math.sin(time * 4 + j) * 0.4)
+            love.graphics.circle('fill', sparkleX, sparkleY, 2)
+        end
     end
     
     -- Draw encounter icon
