@@ -28,6 +28,45 @@ Card.SCORE_COLORS = {
 local HOVER_SPEED = 2
 local HOVER_AMOUNT = 3
 
+-- Add to Card class constants at the top
+Card.ANIMATION = {
+    SCORE_DURATION = 0.5,    -- Duration of score animation in seconds
+    SCORE_SCALE = 1.15,      -- Reduced from 1.2 for subtler scaling
+    SCORE_FLOAT = 20,        -- Reduced from 30 for subtler float
+    SHAKE = {
+        AMOUNT = 0.02,       -- Maximum rotation in radians (about 1.15 degrees)
+        FREQUENCY = 18       -- Shake frequency
+    }
+}
+
+-- Add shadow constants at the top with other constants
+local SHADOW = {
+    OFFSET_X = 4,
+    OFFSET_Y = 4,
+    ALPHA = 0.3,    -- Shadow opacity
+    BLUR = 2        -- Number of blur passes
+}
+
+function Card:drawShadow(x, y, width, height)
+    -- Save current color
+    local r, g, b, a = love.graphics.getColor()
+    
+    -- Draw shadow with multiple passes for soft edge
+    love.graphics.setColor(0, 0, 0, SHADOW.ALPHA / SHADOW.BLUR)
+    for i = 1, SHADOW.BLUR do
+        love.graphics.rectangle(
+            'fill', 
+            x + SHADOW.OFFSET_X - i, 
+            y + SHADOW.OFFSET_Y - i, 
+            width + i * 2, 
+            height + i * 2
+        )
+    end
+    
+    -- Restore color
+    love.graphics.setColor(r, g, b, a)
+end
+
 function Card.new(id, name, description)
     local self = setmetatable({}, Card)
     self.id = id                -- Unique identifier
@@ -46,6 +85,11 @@ function Card.new(id, name, description)
     self.isSelected = false     -- Currently highlighted/selected
     self.isLocked = false       -- Locked in for use
     self.hoverOffset = 0        -- New property for hover animation
+    
+    -- Animation properties
+    self.isScoring = false
+    self.scoreTimer = 0
+    self.scoreValue = nil  -- Value to display during scoring
     
     return self
 end
@@ -123,6 +167,16 @@ function Card:update(dt)
         self.hoverOffset = 0
     end
 
+    -- Update score animation
+    if self.isScoring then
+        self.scoreTimer = self.scoreTimer + dt
+        if self.scoreTimer >= Card.ANIMATION.SCORE_DURATION then
+            self.isScoring = false
+            self.scoreTimer = 0
+            self.scoreValue = nil
+        end
+    end
+
     -- Update lift animation
     if self.currentOffset < self.targetOffset then
         self.currentOffset = math.min(self.currentOffset + ANIMATION_SPEED, self.targetOffset)
@@ -151,10 +205,83 @@ function Card:updateTargetOffset()
     end
 end
 
+function Card:showScoreAnimation(value)
+    self.isScoring = true
+    self.scoreTimer = 0
+    self.scoreValue = value
+end
+
 function Card:draw(x, y)
-    -- Apply both the hover animation and the regular offset
     local actualY = y - self.currentOffset - self.hoverOffset
     
+    -- Apply scoring animation if active
+    if self.isScoring then
+        local progress = self.scoreTimer / Card.ANIMATION.SCORE_DURATION
+        
+        -- Smooth easing function (cubic)
+        local easeProgress = progress < 0.5 
+            and 4 * progress * progress * progress
+            or 1 - math.pow(-2 * progress + 2, 3) / 2
+        
+        -- Calculate scale with smoother falloff
+        local scaleProgress = math.sin(progress * math.pi)
+        local scale = 1 + (Card.ANIMATION.SCORE_SCALE - 1) * scaleProgress
+        
+        -- Calculate float with smooth easing
+        local floatProgress = 1 - (progress * progress) -- Quadratic falloff
+        local scoreFloat = Card.ANIMATION.SCORE_FLOAT * floatProgress
+        
+        -- Calculate shake rotation
+        local shakeAmount = Card.ANIMATION.SHAKE.AMOUNT * (1 - progress) -- Fade out shake
+        local shakeRotation = math.sin(progress * Card.ANIMATION.SHAKE.FREQUENCY) * shakeAmount
+        
+        -- Adjust position for scaling from center
+        local scaleOffsetX = (CARD_WIDTH * scale - CARD_WIDTH) / 2
+        local scaleOffsetY = (CARD_HEIGHT * scale - CARD_HEIGHT) / 2
+        actualY = actualY - scoreFloat
+        x = x - scaleOffsetX
+        actualY = actualY - scaleOffsetY
+        
+        -- Draw with transformations
+        love.graphics.push()
+        love.graphics.translate(x + CARD_WIDTH/2, actualY + CARD_HEIGHT/2)
+        love.graphics.rotate(shakeRotation)
+        love.graphics.scale(scale, scale)
+        love.graphics.translate(-CARD_WIDTH/2, -CARD_HEIGHT/2)
+        
+        -- Draw shadow first
+        self:drawShadow(0, 0, CARD_WIDTH, CARD_HEIGHT)
+        -- Draw card content
+        self:drawCardContent(0, 0)
+        
+        -- Draw score value if present
+        if self.scoreValue then
+            -- Fade in quickly, hold, then fade out
+            local alpha = progress < 0.2 and progress * 5 or
+                         progress > 0.8 and (1 - progress) * 5 or
+                         1
+            
+            love.graphics.setColor(1, 1, 0, alpha)
+            love.graphics.setFont(love.graphics.newFont(24))
+            love.graphics.printf(
+                self.scoreValue,
+                -20,  -- Extend left for better centering
+                -35,  -- Float above card
+                CARD_WIDTH + 40,  -- Extra width for larger numbers
+                'center'
+            )
+        end
+        
+        love.graphics.pop()
+    else
+        -- Normal card drawing with shadow
+        self:drawShadow(x, actualY, CARD_WIDTH, CARD_HEIGHT)
+        self:drawCardContent(x, actualY)
+    end
+end
+
+-- New helper method to avoid code duplication
+function Card:drawCardContent(x, y)
     -- Draw card background
     if self.isLocked then
         love.graphics.setColor(0.3, 0.8, 0.3, 1)
@@ -163,7 +290,7 @@ function Card:draw(x, y)
     else
         love.graphics.setColor(0.2, 0.2, 0.2, 1)
     end
-    love.graphics.rectangle('fill', x, actualY, CARD_WIDTH, CARD_HEIGHT)
+    love.graphics.rectangle('fill', x, y, CARD_WIDTH, CARD_HEIGHT)
     
     -- Draw card border
     if self.isLocked then
@@ -176,20 +303,20 @@ function Card:draw(x, y)
         love.graphics.setColor(0.8, 0.8, 0.8, 1)
         love.graphics.setLineWidth(1)
     end
-    love.graphics.rectangle('line', x, actualY, CARD_WIDTH, CARD_HEIGHT)
+    love.graphics.rectangle('line', x, y, CARD_WIDTH, CARD_HEIGHT)
     
     -- Draw card name
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf(
         self.name,
         x + 5,
-        actualY + 10,
+        y + 10,
         CARD_WIDTH - 10,
         'center'
     )
     
     -- Draw score based on card type
-    local scoreY = actualY + CARD_HEIGHT - 90
+    local scoreY = y + CARD_HEIGHT - 90
     local fontSize = love.graphics.getFont():getHeight()
     
     if self.cardType == "ingredient" then
@@ -226,7 +353,7 @@ function Card:draw(x, y)
     love.graphics.printf(
         self.description,
         x + 5,
-        actualY + CARD_HEIGHT - 60,
+        y + CARD_HEIGHT - 60,
         CARD_WIDTH - 10,
         'center'
     )
@@ -239,6 +366,9 @@ end
 
 -- Add this function to draw card backs
 function Card:drawBack(x, y)
+    -- Draw shadow first
+    self:drawShadow(x, y, CARD_WIDTH, CARD_HEIGHT)
+    
     -- Draw card background
     love.graphics.setColor(0.3, 0.3, 0.3, 1)
     love.graphics.rectangle('fill', x, y, CARD_WIDTH, CARD_HEIGHT)

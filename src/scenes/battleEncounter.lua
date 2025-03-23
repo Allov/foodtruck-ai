@@ -30,8 +30,9 @@ BattleEncounter.PHASES = {
 }
 
 BattleEncounter.PHASE_TIMINGS = {
-    JUDGING = 2.0,  -- 2 seconds to show scoring
-    RESULTS = 3.0   -- 3 seconds to show results
+    JUDGING = 2.0,  -- Total judging phase duration
+    CARD_SCORE_ANIMATION = 0.7,  -- Time per card animation (slightly longer than Card.ANIMATION.SCORE_DURATION)
+    RESULTS = 3.0   -- Results phase duration
 }
 
 -- Remove ACTIONS as they're no longer needed
@@ -360,12 +361,34 @@ end
 -- end
 
 function BattleEncounter:updateJudgingPhase(dt)
+    local scoringState = self.state.scoringState
+    
+    -- Update main phase timer
     if self.state.phaseTimer then
         self.state.phaseTimer = self.state.phaseTimer - dt
-        if self.state.phaseTimer <= 0 then
-            self.state.phaseTimer = nil
-            self:transitionToPhase(self.PHASES.RESULTS)
+    end
+
+    -- Handle card scoring animations
+    if scoringState.currentCardIndex < #self.state.selectedCards then
+        scoringState.animationTimer = scoringState.animationTimer - dt
+        
+        -- Start next card animation when timer expires
+        if scoringState.animationTimer <= 0 then
+            scoringState.currentCardIndex = scoringState.currentCardIndex + 1
+            
+            -- Trigger animation for current card
+            if scoringState.currentCardIndex <= #self.state.selectedCards then
+                local card = self.state.selectedCards[scoringState.currentCardIndex]
+                local scoreValue = scoringState.cardScores[scoringState.currentCardIndex]
+                card:showScoreAnimation(scoreValue)
+                scoringState.animationTimer = self.PHASE_TIMINGS.CARD_SCORE_ANIMATION
+            end
         end
+    end
+    
+    -- Transition to results when all animations complete
+    if self.state.phaseTimer <= 0 then
+        self:transitionToPhase(self.PHASES.RESULTS)
     end
 end
 
@@ -891,61 +914,51 @@ function BattleEncounter:selectPreviousCard()
 end
 
 function BattleEncounter:transitionToPhase(newPhase)
-    -- Validate phase
-    if not self.PHASES[newPhase] then
-        return
-    end
+    if not self.PHASES[newPhase] then return end
 
-    -- Set up new phase
     if newPhase == self.PHASES.JUDGING then
+        -- Initialize scoring state
+        self.state.scoringState = {
+            currentCardIndex = 0,  -- Index of card being scored (0 means not started)
+            cardScores = {},       -- Will hold individual card contributions
+            animationTimer = 0,    -- Timer for current card animation
+            totalScore = 0         -- Running total as cards are scored
+        }
+        
+        -- Calculate all card scores upfront
+        self:calculateCardScores()
+        
         -- Start phase timer
-        self.state.phaseTimer = self.PHASE_TIMINGS.JUDGING
-        -- Calculate score
-        self:calculateRoundScore()
+        self.state.phaseTimer = #self.state.selectedCards * self.PHASE_TIMINGS.CARD_SCORE_ANIMATION
+        
         -- Remove selected cards from hand but keep them in selectedCards
         self:removeCardsFromHand()
     elseif newPhase == self.PHASES.RESULTS then
-        -- Now we can fully discard the cards
         self:discardPlayedCards()
         self.state.phaseTimer = self.PHASE_TIMINGS.RESULTS
     end
 
-    -- Update the phase
     self.state.currentPhase = newPhase
 end
 
-function BattleEncounter:calculateRoundScore()
-    -- Initialize score components
-    local baseScore = 0      -- White score (ingredients)
-    local techMultiplier = 1 -- Red score (techniques)
-    local recipeMultiplier = 1 -- Pink score (recipes)
+function BattleEncounter:calculateCardScores()
+    local scoringState = self.state.scoringState
+    scoringState.cardScores = {}
     
-    -- Calculate scores by card type
-    for _, card in ipairs(self.state.selectedCards) do
-        local scoreType = card:getScoreType()
-        local value = card:getScoreValue()
-        
-        if scoreType == Card.SCORE_TYPES.WHITE then
-            baseScore = baseScore + value
-        elseif scoreType == Card.SCORE_TYPES.RED then
-            techMultiplier = techMultiplier + (value - 1)
-        elseif scoreType == Card.SCORE_TYPES.PINK then
-            recipeMultiplier = recipeMultiplier + (value - 1)
+    -- Calculate individual card contributions
+    for i, card in ipairs(self.state.selectedCards) do
+        local score
+        if card.cardType == "ingredient" then
+            score = card.whiteScore
+            scoringState.cardScores[i] = string.format("+%d", score)
+        elseif card.cardType == "technique" then
+            score = card.redScore
+            scoringState.cardScores[i] = string.format("×%.1f", score)
+        elseif card.cardType == "recipe" then
+            score = card.pinkScore
+            scoringState.cardScores[i] = string.format("×%.1f", score)
         end
     end
-    
-    -- Store the components for display
-    self.state.lastHandScore = baseScore
-    self.state.lastTechBonus = techMultiplier
-    self.state.lastRecipeBonus = recipeMultiplier
-    
-    -- Calculate final score
-    local finalScore = math.floor(baseScore * techMultiplier * recipeMultiplier)
-    
-    -- Update total score
-    self.state.currentScore = self.state.currentScore + finalScore
-    
-    return finalScore
 end
 
 -- New function to remove cards from hand only
