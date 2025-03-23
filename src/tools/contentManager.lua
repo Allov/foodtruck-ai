@@ -100,4 +100,64 @@ function ContentManager:exportContent(path)
     return false
 end
 
+function ContentManager:getProjectStats()
+    local stats = {
+        files = 0,
+        lines = 0,
+        assetSize = 0,
+        luaFiles = 0,
+        imageFiles = 0,
+        audioFiles = 0
+    }
+    
+    local function isHidden(name)
+        return name:sub(1, 1) == "." or name:match("/%.") -- Checks if name starts with . or contains /.
+    end
+    
+    local function scanDirectory(dir)
+        -- Skip hidden directories
+        if isHidden(dir) then
+            return
+        end
+        
+        local items = love.filesystem.getDirectoryItems(dir)
+        for _, item in ipairs(items) do
+            -- Skip hidden files and folders
+            if not isHidden(item) then
+                local path = dir .. (dir ~= "" and "/" or "") .. item
+                local info = love.filesystem.getInfo(path)
+                
+                if info.type == "file" then
+                    stats.files = stats.files + 1
+                    stats.assetSize = stats.assetSize + info.size
+                    
+                    -- Count lines in Lua files
+                    if item:match("%.lua$") then
+                        stats.luaFiles = stats.luaFiles + 1
+                        local content = love.filesystem.read(path)
+                        if content then
+                            stats.lines = stats.lines + select(2, content:gsub("\n", "\n"))
+                        end
+                    elseif item:match("%.png$") or item:match("%.jpg$") then
+                        stats.imageFiles = stats.imageFiles + 1
+                    elseif item:match("%.wav$") or item:match("%.ogg$") or item:match("%.mp3$") then
+                        stats.audioFiles = stats.audioFiles + 1
+                    end
+                elseif info.type == "directory" then
+                    scanDirectory(path)
+                end
+            end
+        end
+    end
+    
+    scanDirectory("")
+    
+    -- Convert assetSize to MB
+    stats.assetSizeMB = string.format("%.2f", stats.assetSize / (1024 * 1024))
+    
+    return stats
+end
+
 return ContentManager
+
+

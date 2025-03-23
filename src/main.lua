@@ -242,6 +242,9 @@ function Main:initializeTools()
         self.contentManager = require('src.tools.contentManager')
         self.contentManager:init()
         
+        -- Get project stats
+        local stats = self.contentManager:getProjectStats()
+        
         -- Add startup logs
         self.debugConsole:info("===============================")
         self.debugConsole:info("=== Food Truck Journey ===")
@@ -250,6 +253,14 @@ function Main:initializeTools()
         self.debugConsole:info("OS: " .. love.system.getOS())
         self.debugConsole:info("GPU: " .. love.graphics.getRendererInfo())
         self.debugConsole:info("Memory: " .. string.format("%.2f MB", collectgarbage("count") / 1024))
+        self.debugConsole:info("===============================")
+        self.debugConsole:info("Project Statistics:")
+        self.debugConsole:info("Total Files: " .. stats.files)
+        self.debugConsole:info("Lua Files: " .. stats.luaFiles)
+        self.debugConsole:info("Lines of Code: " .. stats.lines)
+        self.debugConsole:info("Asset Size: " .. stats.assetSizeMB .. " MB")
+        self.debugConsole:info("Image Files: " .. stats.imageFiles)
+        self.debugConsole:info("Audio Files: " .. stats.audioFiles)
         self.debugConsole:info("===============================")
         self.debugConsole:info("Debug tools initialized")
     end
