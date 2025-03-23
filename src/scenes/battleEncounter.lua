@@ -782,57 +782,28 @@ end
 -- end
 
 function BattleEncounter:drawJudgingPhase()
-    -- Draw hand score results
-    love.graphics.setFont(FONTS.LARGE)
-    love.graphics.setColor(COLORS.TEXT)
+    -- Get screen dimensions for centering
+    local screenWidth = love.graphics.getWidth()
+    local screenHeight = love.graphics.getHeight()
     
-    -- Show current hand score calculation
-    local baseScore = self.state.lastHandScore or 0
-    local techBonus = self.state.lastTechBonus or 1
-    local recipeBonus = self.state.lastRecipeBonus or 1
+    -- Get card dimensions and spacing
+    local cardWidth, cardHeight = Card.getDimensions()
+    local cardSpacing = 20  -- Space between cards
     
-    local centerY = love.graphics.getHeight() / 2 - 100
-    local lineHeight = 40
+    -- Calculate total width of all cards plus spacing
+    local totalWidth = (#self.state.selectedCards * cardWidth) + ((#self.state.selectedCards - 1) * cardSpacing)
     
-    -- Base score
-    love.graphics.setColor(Card.SCORE_COLORS.WHITE)
-    love.graphics.printf(
-        string.format("Base Score: %d", baseScore),
-        0, centerY,
-        love.graphics.getWidth(),
-        'center'
-    )
+    -- Calculate starting X position to center the row
+    local startX = (screenWidth - totalWidth) / 2
+    -- Position cards higher up (at 1/3 of screen height instead of 1/2)
+    local centerY = (screenHeight / 3) - (cardHeight / 2)
     
-    -- Tech multiplier
-    if techBonus > 1 then
-        love.graphics.setColor(Card.SCORE_COLORS.RED)
-        love.graphics.printf(
-            string.format("Technique Bonus: ×%.1f", techBonus),
-            0, centerY + lineHeight,
-            love.graphics.getWidth(),
-            'center'
-        )
+    -- Draw each selected card
+    for i, card in ipairs(self.state.selectedCards) do
+        local x = startX + ((i-1) * (cardWidth + cardSpacing))
+        love.graphics.setColor(1, 1, 1, 1)
+        card:draw(x, centerY)
     end
-    
-    -- Recipe multiplier
-    if recipeBonus > 1 then
-        love.graphics.setColor(Card.SCORE_COLORS.PINK)
-        love.graphics.printf(
-            string.format("Recipe Bonus: ×%.1f", recipeBonus),
-            0, centerY + lineHeight * 2,
-            love.graphics.getWidth(),
-            'center'
-        )
-    end
-    
-    -- Final hand score
-    love.graphics.setColor(COLORS.HIGHLIGHT)
-    love.graphics.printf(
-        string.format("Hand Score: %d", math.floor(baseScore * techBonus * recipeBonus)),
-        0, centerY + lineHeight * 3,
-        love.graphics.getWidth(),
-        'center'
-    )
 end
 
 function BattleEncounter:drawResultsPhase()
@@ -925,19 +896,17 @@ function BattleEncounter:transitionToPhase(newPhase)
         return
     end
 
-    -- Handle cleanup of current phase
-    if self.state.currentPhase == self.PHASES.PREPARATION then
-        -- Reset any preparation phase specific states
-        self.state.selectedForDiscard = {}
-    end
-
     -- Set up new phase
     if newPhase == self.PHASES.JUDGING then
-        -- Calculate final score for the round
-        self:calculateRoundScore()
         -- Start phase timer
         self.state.phaseTimer = self.PHASE_TIMINGS.JUDGING
+        -- Calculate score
+        self:calculateRoundScore()
+        -- Remove selected cards from hand but keep them in selectedCards
+        self:removeCardsFromHand()
     elseif newPhase == self.PHASES.RESULTS then
+        -- Now we can fully discard the cards
+        self:discardPlayedCards()
         self.state.phaseTimer = self.PHASE_TIMINGS.RESULTS
     end
 
@@ -976,7 +945,11 @@ function BattleEncounter:calculateRoundScore()
     -- Update total score
     self.state.currentScore = self.state.currentScore + finalScore
     
-    -- Discard played cards
+    return finalScore
+end
+
+-- New function to remove cards from hand only
+function BattleEncounter:removeCardsFromHand()
     for _, card in ipairs(self.state.selectedCards) do
         for i = #self.state.handCards, 1, -1 do
             if self.state.handCards[i] == card then
@@ -984,13 +957,18 @@ function BattleEncounter:calculateRoundScore()
                 break
             end
         end
+    end
+end
+
+-- Modified to only handle actual discarding
+function BattleEncounter:discardPlayedCards()
+    -- Add selected cards to discard pile
+    for _, card in ipairs(self.state.selectedCards) do
         self.state.deck:discard(card)
     end
     
     -- Clear selected cards
     self.state.selectedCards = {}
-    
-    return finalScore
 end
 
 function BattleEncounter:identifyCombinations(cards)
