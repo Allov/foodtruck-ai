@@ -9,8 +9,8 @@ function ProvinceMap.new()
     local self = Scene.new()  -- Create a new Scene instance as base
     setmetatable(self, ProvinceMap)
     
-    -- Create a random generator with current time as seed
-    self.randomGenerator = love.math.newRandomGenerator(os.time())
+    -- Create a random generator but DON'T generate map yet
+    self.randomGenerator = love.math.newRandomGenerator()
     
     -- Load encounter icons with error handling
     self.encounterIcons = {}
@@ -89,6 +89,20 @@ function ProvinceMap.new()
     -- Store the original random state
     self.originalRandomState = love.math.getRandomState()
     
+    -- Map configuration
+    self.NUM_LEVELS = 8  -- Increased from 4
+    self.LEVEL_HEIGHT = 120  -- Increased for better spacing
+    self.HORIZONTAL_PADDING = 100
+    
+    -- Camera/scroll properties
+    self.camera = {
+        x = 0,
+        y = 0,
+        targetY = 0,
+        speed = 800,  -- Pixels per second
+        padding = 100  -- Padding from top/bottom of screen
+    }
+    
     self:init()  -- Call init right after creation
     return self
 end
@@ -105,7 +119,10 @@ function ProvinceMap:init()
 end
 
 function ProvinceMap:setSeed(seed)
-    seed = seed or os.time()
+    if not seed then
+        print("Warning: Attempting to set nil seed")
+        seed = os.time()
+    end
     self.randomGenerator:setSeed(seed)
     self:generateMap()
 end
@@ -117,44 +134,43 @@ function ProvinceMap:generateMap()
     
     self.nodes = {}
     local screenW, screenH = love.graphics.getWidth(), love.graphics.getHeight()
-    local LEVEL_HEIGHT = 100  -- Vertical spacing between levels
-    local HORIZONTAL_PADDING = 100  -- Minimum distance from screen edges
-
-    -- Constants
-    local NUM_LEVELS = 4
-    local START_Y = screenH - LEVEL_HEIGHT
-
+    local START_Y = screenH - self.LEVEL_HEIGHT
+    
+    -- Calculate total map height
+    self.mapHeight = self.LEVEL_HEIGHT * self.NUM_LEVELS
+    
     -- 1. Generate node positions level by level
-    for level = 1, NUM_LEVELS do
+    for level = 1, self.NUM_LEVELS do
         self.nodes[level] = {}
-        local currentY = START_Y - (level - 1) * LEVEL_HEIGHT
+        -- Calculate Y position from top to bottom
+        local currentY = self.LEVEL_HEIGHT * (self.NUM_LEVELS - level)
         
         -- Determine number of nodes for this level
         local nodeCount
-        if level == 1 or level == NUM_LEVELS then
+        if level == 1 or level == self.NUM_LEVELS then
             nodeCount = 2  -- First and last levels always have 2 nodes
         else
             nodeCount = love.math.random(3, 4)  -- Middle levels have 3-4 nodes
         end
         
         -- Calculate horizontal spacing
-        local usableWidth = screenW - (2 * HORIZONTAL_PADDING)
+        local usableWidth = screenW - (2 * self.HORIZONTAL_PADDING)
         local spacing = usableWidth / (nodeCount + 1)
         
         -- Generate nodes for this level
         for i = 1, nodeCount do
             -- Calculate base position
-            local baseX = HORIZONTAL_PADDING + (i * spacing)
+            local baseX = self.HORIZONTAL_PADDING + (i * spacing)
             -- Add small random offset but ensure it stays within bounds
             local offsetX = love.math.random(-20, 20)
-            local finalX = math.max(HORIZONTAL_PADDING, 
-                                  math.min(baseX + offsetX, screenW - HORIZONTAL_PADDING))
+            local finalX = math.max(self.HORIZONTAL_PADDING, 
+                                  math.min(baseX + offsetX, screenW - self.HORIZONTAL_PADDING))
             
             -- Determine node type
             local nodeType
             if level == 1 then
                 nodeType = "market"  -- Starting nodes are markets
-            elseif level == NUM_LEVELS then
+            elseif level == self.NUM_LEVELS then
                 nodeType = "card_battle"  -- Final nodes are battles
             else
                 nodeType = self:randomEncounterType()
@@ -171,9 +187,13 @@ function ProvinceMap:generateMap()
     end
     
     -- 2. Create connections between levels
-    for level = 1, NUM_LEVELS - 1 do
+    for level = 1, self.NUM_LEVELS - 1 do
         self:connectLevels(level)
     end
+    
+    -- Initialize camera position
+    self.camera.y = 0
+    self.camera.targetY = 0
     
     -- Restore the original random state
     love.math.setRandomState(oldState)
@@ -357,10 +377,23 @@ function ProvinceMap:handleNodeSelection(selectedNode)
 end
 
 function ProvinceMap:update(dt)
-    -- Animate road dashes
-    self.roadOffset = (self.roadOffset + dt * 0.2) % 1
+    -- Update camera position
+    local screenH = love.graphics.getHeight()
     
-    -- Handle node selection
+    -- Calculate target camera Y based on current level
+    -- The higher the level, the lower the Y position should be
+    local targetY = (self.NUM_LEVELS - self.currentLevel) * self.LEVEL_HEIGHT
+    targetY = math.max(0, targetY - screenH/2)  -- Center current level
+    targetY = math.min(targetY, self.mapHeight - screenH)  -- Clamp to map bounds
+    self.camera.targetY = targetY
+    
+    -- Smooth camera movement
+    local dy = self.camera.targetY - self.camera.y
+    if math.abs(dy) > 1 then
+        self.camera.y = self.camera.y + dy * math.min(dt * 5, 1)
+    end
+    
+    -- Handle node selection - only left/right movement
     if love.keyboard.wasPressed('left') then
         local newSelected = self.selected - 1
         if newSelected < 1 then 
@@ -413,17 +446,26 @@ function ProvinceMap:update(dt)
 end
 
 function ProvinceMap:draw()
-    -- Draw animated road connections first
+    love.graphics.push()
+    -- Invert the translation direction
+    love.graphics.translate(0, -self.camera.y)
+    
+    -- Draw connections
     self:drawConnections()
     
     -- Draw nodes
     for level, nodes in ipairs(self.nodes) do
         for i, node in ipairs(nodes) do
-            self:drawNode(level, i, node)
+            -- Only draw nodes if they're within the visible area
+            if self:isNodeVisible(node) then
+                self:drawNode(level, i, node)
+            end
         end
     end
     
-    -- Draw status message
+    love.graphics.pop()
+    
+    -- Draw UI elements that shouldn't scroll
     if self.statusMessage then
         love.graphics.setColor(1, 1, 1, math.min(self.statusTimer, 1))
         love.graphics.printf(
@@ -553,6 +595,9 @@ function ProvinceMap:drawConnections()
 end
 
 function ProvinceMap:drawNode(level, i, node)
+    -- Convert node position to screen space for visibility checks
+    local _, screenY = self:worldToScreen(node.x, node.y)
+    
     local nodeKey = level .. "," .. i
     local scale = self.nodeScale[nodeKey] or 1
     local size = self.BASE_NODE_SIZE * scale
@@ -657,6 +702,23 @@ function table.contains(table, element)
         end
     end
     return false
+end
+
+function ProvinceMap:isNodeVisible(node)
+    local screenH = love.graphics.getHeight()
+    local nodeY = node.y
+    -- Adjust visibility check to match new scroll direction
+    return nodeY >= self.camera.y - 50 and nodeY <= self.camera.y + screenH + 50
+end
+
+function ProvinceMap:worldToScreen(x, y)
+    -- Invert Y transformation
+    return x, y - self.camera.y
+end
+
+function ProvinceMap:screenToWorld(x, y)
+    -- Invert Y transformation
+    return x, y + self.camera.y
 end
 
 return ProvinceMap
