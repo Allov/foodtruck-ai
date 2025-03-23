@@ -31,11 +31,11 @@ local HOVER_AMOUNT = 3
 -- Add to Card class constants at the top
 Card.ANIMATION = {
     SCORE_DURATION = 0.5,    -- Duration of score animation in seconds
-    SCORE_SCALE = 1.15,      -- Reduced from 1.2 for subtler scaling
-    SCORE_FLOAT = 20,        -- Reduced from 30 for subtler float
+    SCORE_SCALE = 1.25,      -- Increased from 1.15 for more visible scaling
+    SCORE_FLOAT = 30,        -- Increased from 20 for more visible float
     SHAKE = {
-        AMOUNT = 0.02,       -- Maximum rotation in radians (about 1.15 degrees)
-        FREQUENCY = 18       -- Shake frequency
+        AMOUNT = 0.05,       -- Increased from 0.02 (about 2.86 degrees)
+        FREQUENCY = 15       -- Slightly reduced from 18 for more visible shakes
     }
 }
 
@@ -45,6 +45,14 @@ local SHADOW = {
     OFFSET_Y = 4,
     ALPHA = 0.3,    -- Shadow opacity
     BLUR = 2        -- Number of blur passes
+}
+
+-- Add at the top with other constants
+local FONTS = {
+    CARD_NAME = love.graphics.newFont(16),
+    CARD_SCORE = love.graphics.newFont(20),
+    CARD_DESCRIPTION = love.graphics.newFont(14),
+    SCORE_ANIMATION = love.graphics.newFont(24)
 }
 
 function Card:drawShadow(x, y, width, height)
@@ -214,26 +222,18 @@ end
 function Card:draw(x, y)
     local actualY = y - self.currentOffset - self.hoverOffset
     
-    -- Apply scoring animation if active
     if self.isScoring then
         local progress = self.scoreTimer / Card.ANIMATION.SCORE_DURATION
         
-        -- Smooth easing function (cubic)
-        local easeProgress = progress < 0.5 
-            and 4 * progress * progress * progress
-            or 1 - math.pow(-2 * progress + 2, 3) / 2
-        
-        -- Calculate scale with smoother falloff
+        -- Calculate animation values
         local scaleProgress = math.sin(progress * math.pi)
         local scale = 1 + (Card.ANIMATION.SCORE_SCALE - 1) * scaleProgress
         
-        -- Calculate float with smooth easing
-        local floatProgress = 1 - (progress * progress) -- Quadratic falloff
+        local floatProgress = 1 - (progress * progress)
         local scoreFloat = Card.ANIMATION.SCORE_FLOAT * floatProgress
         
-        -- Calculate shake rotation
-        local shakeAmount = Card.ANIMATION.SHAKE.AMOUNT * (1 - progress) -- Fade out shake
-        local shakeRotation = math.sin(progress * Card.ANIMATION.SHAKE.FREQUENCY) * shakeAmount
+        local shakeAmount = Card.ANIMATION.SHAKE.AMOUNT * (1 - progress * progress)
+        local shakeRotation = math.sin(progress * Card.ANIMATION.SHAKE.FREQUENCY * math.pi * 2) * shakeAmount
         
         -- Adjust position for scaling from center
         local scaleOffsetX = (CARD_WIDTH * scale - CARD_WIDTH) / 2
@@ -256,13 +256,12 @@ function Card:draw(x, y)
         
         -- Draw score value if present
         if self.scoreValue then
-            -- Fade in quickly, hold, then fade out
             local alpha = progress < 0.2 and progress * 5 or
                          progress > 0.8 and (1 - progress) * 5 or
                          1
             
             love.graphics.setColor(1, 1, 0, alpha)
-            love.graphics.setFont(love.graphics.newFont(24))
+            love.graphics.setFont(FONTS.SCORE_ANIMATION)
             love.graphics.printf(
                 self.scoreValue,
                 -20,  -- Extend left for better centering
@@ -280,7 +279,7 @@ function Card:draw(x, y)
     end
 end
 
--- New helper method to avoid code duplication
+-- Helper method to avoid code duplication
 function Card:drawCardContent(x, y)
     -- Draw card background
     if self.isLocked then
@@ -306,6 +305,7 @@ function Card:drawCardContent(x, y)
     love.graphics.rectangle('line', x, y, CARD_WIDTH, CARD_HEIGHT)
     
     -- Draw card name
+    love.graphics.setFont(FONTS.CARD_NAME)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf(
         self.name,
@@ -316,8 +316,8 @@ function Card:drawCardContent(x, y)
     )
     
     -- Draw score based on card type
+    love.graphics.setFont(FONTS.CARD_SCORE)
     local scoreY = y + CARD_HEIGHT - 90
-    local fontSize = love.graphics.getFont():getHeight()
     
     if self.cardType == "ingredient" then
         love.graphics.setColor(unpack(Card.SCORE_COLORS.WHITE))
@@ -349,6 +349,7 @@ function Card:drawCardContent(x, y)
     end
     
     -- Draw card description
+    love.graphics.setFont(FONTS.CARD_DESCRIPTION)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf(
         self.description,
