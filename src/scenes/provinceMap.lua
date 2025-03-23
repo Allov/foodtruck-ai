@@ -12,35 +12,75 @@ function ProvinceMap.new()
     -- Create a random generator with current time as seed
     self.randomGenerator = love.math.newRandomGenerator(os.time())
     
-    -- Initialize all required properties
-    self.encounterSymbols = {
-        card_battle = "!",    -- Combat/Challenge
-        beneficial = "+",     -- Beneficial event
-        negative = "-",      -- Negative event
-        market = "$",        -- Shop/Market
-        lore = "?"          -- Story/Lore
+    -- Load encounter icons with error handling
+    self.encounterIcons = {}
+    local iconPaths = {
+        card_battle = "assets/icons/competition.png",
+        beneficial = "assets/icons/festival.png",
+        negative = "assets/icons/warning.png",
+        market = "assets/icons/market.png",
+        lore = "assets/icons/story.png"
+    }
+
+    -- Try to load each icon, use fallback if file doesn't exist
+    for type, path in pairs(iconPaths) do
+        local success, result = pcall(function()
+            return love.graphics.newImage(path)
+        end)
+        if not success then
+            print("Warning: Could not load icon: " .. path)
+            -- Create a fallback colored rectangle
+            local canvas = love.graphics.newCanvas(32, 32)
+            love.graphics.setCanvas(canvas)
+            love.graphics.clear()
+            -- Draw a simple shape as fallback
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.rectangle('fill', 8, 8, 16, 16)
+            love.graphics.setCanvas()
+            self.encounterIcons[type] = canvas
+        else
+            self.encounterIcons[type] = result
+        end
+    end
+    
+    -- Store icon dimensions for centering
+    self.ICON_SIZE = 32  -- Assuming icons are 32x32 pixels
+    
+    self.encounterNames = {
+        card_battle = "Food Competition",
+        beneficial = "Food Festival",
+        negative = "Road Trouble",
+        market = "Local Market",
+        lore = "Local Story"
     }
     
     self.encounterColors = {
-        card_battle = {1, 0, 0, 1},      -- Red for battles
-        beneficial = {0, 1, 0, 1},        -- Green for beneficial
-        negative = {1, 0.5, 0, 1},        -- Orange for negative
-        market = {0, 0.7, 1, 1},          -- Blue for market
-        lore = {0.8, 0.3, 1, 1}          -- Purple for lore
+        card_battle = {1, 0.4, 0, 1},      -- Orange for food competitions
+        beneficial = {0.3, 0.8, 0.3, 1},    -- Green for festivals
+        negative = {0.8, 0.2, 0.2, 1},      -- Red for troubles
+        market = {0.2, 0.6, 1, 1},          -- Blue for markets
+        lore = {0.8, 0.6, 1, 1}            -- Purple for stories
     }
+    
+    -- Road style - more subtle
+    self.ROAD_WIDTH = 3  -- Reduced from 6
+    self.ROAD_COLOR = {0.85, 0.85, 0.85, 0.5}  -- Added transparency
+    self.ROAD_DASH = 8  -- Reduced from 10
+    self.roadOffset = 0
+    
+    -- Node styling - smaller and sharper
+    self.BASE_NODE_SIZE = 16  -- Reduced from 25
+    self.NODE_PADDING = 6  -- Reduced from 10
+    self.PULSE_SPEED = 2
     
     -- Track completed nodes
     self.completedNodes = {}
+    self.nodeScale = {}
     
     -- Add status message system
     self.statusMessage = nil
     self.statusTimer = 0
-    self.STATUS_DURATION = 2 -- seconds
-    
-    -- Add animation properties
-    self.nodeScale = {}
-    self.PULSE_SPEED = 2
-    self.BASE_NODE_SIZE = 20
+    self.STATUS_DURATION = 2
     
     -- Initialize current level and selection
     self.currentLevel = 1
@@ -279,67 +319,55 @@ function ProvinceMap:handleNodeSelection(selectedNode)
 end
 
 function ProvinceMap:update(dt)
-    -- Handle confirmation dialog first
-    if self.showingConfirmDialog then
-        self:updateConfirmDialog()
-        return
-    end
-
-    -- Check for escape key
-    if love.keyboard.wasPressed('escape') then
-        self.showingConfirmDialog = true
-        return
-    end
-
-    -- Check if keyboard input exists
-    if not love.keyboard.wasPressed then
-        love.keyboard.wasPressed = function(key)
-            return love.keyboard.isDown(key)
-        end
-    end
-
+    -- Animate road dashes
+    self.roadOffset = (self.roadOffset + dt * 0.2) % 1
+    
+    -- Handle node selection
     if love.keyboard.wasPressed('left') then
-        repeat
-            self.selected = self.selected - 1
-            if self.selected < 1 then 
-                self.selected = #self.nodes[self.currentLevel] 
-            end
-        until self:canSelectNode(self.currentLevel, self.selected)
+        local newSelected = self.selected - 1
+        if newSelected < 1 then 
+            newSelected = #self.nodes[self.currentLevel]
+        end
+        -- Only select if node is valid
+        if self:canSelectNode(self.currentLevel, newSelected) then
+            self.selected = newSelected
+        end
     end
     
     if love.keyboard.wasPressed('right') then
-        repeat
-            self.selected = self.selected + 1
-            if self.selected > #self.nodes[self.currentLevel] then 
-                self.selected = 1 
-            end
-        until self:canSelectNode(self.currentLevel, self.selected)
+        local newSelected = self.selected + 1
+        if newSelected > #self.nodes[self.currentLevel] then
+            newSelected = 1
+        end
+        -- Only select if node is valid
+        if self:canSelectNode(self.currentLevel, newSelected) then
+            self.selected = newSelected
+        end
     end
     
-    if love.keyboard.wasPressed('return') then
+    -- Handle node confirmation
+    if love.keyboard.wasPressed('return') or love.keyboard.wasPressed('space') then
         local selectedNode = self.nodes[self.currentLevel][self.selected]
-        self:handleNodeSelection(selectedNode)
+        if selectedNode and self:canSelectNode(self.currentLevel, self.selected) then
+            self:handleNodeSelection(selectedNode)
+        end
     end
     
     -- Update node animations
     for level, nodes in ipairs(self.nodes) do
         for i, _ in ipairs(nodes) do
             local nodeKey = level .. "," .. i
-            self.nodeScale[nodeKey] = self.nodeScale[nodeKey] or 1
-            
             if level == self.currentLevel and i == self.selected then
-                -- Pulse selected node
-                self.nodeScale[nodeKey] = 1 + math.sin(love.timer.getTime() * self.PULSE_SPEED) * 0.2
+                self.nodeScale[nodeKey] = 1 + math.sin(love.timer.getTime() * self.PULSE_SPEED) * 0.1
             else
-                -- Reset scale of unselected nodes
                 self.nodeScale[nodeKey] = 1
             end
         end
     end
     
     -- Update status message
-    if self.statusTimer > 0 then
-        self.statusTimer = self.statusTimer - dt
+    if self.statusMessage then
+        self.statusTimer = math.max(0, self.statusTimer - dt)
         if self.statusTimer <= 0 then
             self.statusMessage = nil
         end
@@ -347,67 +375,13 @@ function ProvinceMap:update(dt)
 end
 
 function ProvinceMap:draw()
-    -- Draw connections first
-    for level, nodes in ipairs(self.nodes) do
-        for i, node in ipairs(nodes) do
-            for _, conn in ipairs(node.connections) do
-                if self.nodes[level + 1] and self.nodes[level + 1][conn] then
-                    local nextNode = self.nodes[level + 1][conn]
-                    love.graphics.setColor(self.encounterColors[node.type])
-                    love.graphics.setLineWidth(2)
-                    love.graphics.line(node.x, node.y, nextNode.x, nextNode.y)
-                end
-            end
-        end
-    end
+    -- Draw animated road connections first
+    self:drawRoads()
     
     -- Draw nodes
     for level, nodes in ipairs(self.nodes) do
         for i, node in ipairs(nodes) do
-            local nodeKey = level .. "," .. i
-            local scale = self.nodeScale[nodeKey] or 1
-            
-            -- Draw node background
-            love.graphics.setColor(self.encounterColors[node.type])
-            
-            -- Draw completed nodes differently
-            if self.completedNodes[nodeKey] then
-                love.graphics.setColor(0.5, 0.5, 0.5, 1)  -- Gray out completed nodes
-            end
-            
-            -- Fill all nodes except the selected one
-            if not (level == self.currentLevel and i == self.selected) then
-                love.graphics.circle('fill', node.x, node.y, self.BASE_NODE_SIZE * scale)
-            end
-            
-            -- Draw node border
-            if level == self.currentLevel and i == self.selected then
-                love.graphics.setColor(1, 1, 1, 1)  -- White for selected node
-                love.graphics.setLineWidth(4)  -- Thicker line for selected node
-            else
-                love.graphics.setLineWidth(1)  -- Normal line for other nodes
-            end
-            love.graphics.circle('line', node.x, node.y, self.BASE_NODE_SIZE * scale)
-            
-            -- Draw encounter symbol
-            love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.printf(
-                self.encounterSymbols[node.type] or "?",
-                node.x - 20,
-                node.y - 10,
-                40,
-                'center'
-            )
-            
-            -- Draw event name under the node
-            local eventName = self:getEventTypeName(node.type)
-            love.graphics.printf(
-                eventName,
-                node.x - 50,  -- wider area for text
-                node.y + self.BASE_NODE_SIZE + 5,  -- position below node
-                100,  -- width of text area
-                'center'
-            )
+            self:drawNode(level, i, node)
         end
     end
     
@@ -427,6 +401,110 @@ function ProvinceMap:draw()
     if self.showingConfirmDialog then
         self:drawConfirmDialog()
     end
+end
+
+function ProvinceMap:drawRoads()
+    for level, nodes in ipairs(self.nodes) do
+        for i, node in ipairs(nodes) do
+            for _, conn in ipairs(node.connections) do
+                if self.nodes[level + 1] and self.nodes[level + 1][conn] then
+                    local nextNode = self.nodes[level + 1][conn]
+                    self:drawRoadConnection(node, nextNode)
+                end
+            end
+        end
+    end
+end
+
+function ProvinceMap:drawRoadConnection(startNode, endNode)
+    -- Draw main road - more subtle
+    love.graphics.setColor(self.ROAD_COLOR)
+    love.graphics.setLineWidth(self.ROAD_WIDTH)
+    love.graphics.line(startNode.x, startNode.y, endNode.x, endNode.y)
+    
+    -- Draw animated dashed line - more subtle
+    love.graphics.setColor(1, 1, 1, 0.3)  -- Reduced opacity
+    love.graphics.setLineWidth(1)  -- Thinner line
+    
+    local dx = endNode.x - startNode.x
+    local dy = endNode.y - startNode.y
+    local dist = math.sqrt(dx * dx + dy * dy)
+    local numDashes = math.floor(dist / (self.ROAD_DASH * 2))
+    
+    for i = 0, numDashes do
+        local t = (i / numDashes + self.roadOffset) % 1
+        local x1 = startNode.x + dx * t
+        local y1 = startNode.y + dy * t
+        local x2 = startNode.x + dx * math.min(t + 0.05, 1)  -- Shorter dashes
+        local y2 = startNode.y + dy * math.min(t + 0.05, 1)
+        love.graphics.line(x1, y1, x2, y2)
+    end
+end
+
+function ProvinceMap:drawNode(level, i, node)
+    local nodeKey = level .. "," .. i
+    local scale = self.nodeScale[nodeKey] or 1
+    local size = self.BASE_NODE_SIZE * scale
+    
+    -- Draw node background
+    if self.completedNodes[nodeKey] then
+        love.graphics.setColor(0.5, 0.5, 0.5, 0.8)
+    else
+        local color = self.encounterColors[node.type]
+        love.graphics.setColor(color[1], color[2], color[3], 0.9)
+    end
+    
+    -- Draw node circle
+    if level == self.currentLevel and i == self.selected then
+        love.graphics.setLineWidth(2)
+        love.graphics.circle('line', node.x, node.y, size + 3)
+        love.graphics.setColor(1, 1, 1, 0.1)
+        love.graphics.circle('fill', node.x, node.y, size)
+    else
+        love.graphics.circle('fill', node.x, node.y, size)
+        love.graphics.setColor(1, 1, 1, 0.3)
+        love.graphics.setLineWidth(1)
+        love.graphics.circle('line', node.x, node.y, size)
+    end
+    
+    -- Draw encounter icon
+    love.graphics.setColor(1, 1, 1, 1)
+    local icon = self.encounterIcons[node.type]
+    if icon then
+        local iconScale = scale * 0.75
+        local iconX = node.x - (self.ICON_SIZE * iconScale) / 2
+        local iconY = node.y - (self.ICON_SIZE * iconScale) / 2
+        love.graphics.draw(icon, iconX, iconY, 0, iconScale, iconScale)
+    end
+    
+    -- Draw event name with better visibility
+    local eventName = self.encounterNames[node.type] or "Unknown"
+    
+    -- Draw text shadow/outline for better contrast
+    love.graphics.setFont(love.graphics.newFont(12))  -- Slightly larger font
+    love.graphics.setColor(0, 0, 0, 0.8)  -- Shadow color
+    
+    -- Draw text multiple times offset slightly for outline effect
+    local offsets = {{-1,-1}, {-1,1}, {1,-1}, {1,1}}
+    for _, offset in ipairs(offsets) do
+        love.graphics.printf(
+            eventName,
+            node.x - 50 + offset[1],
+            node.y + size + 5 + offset[2],
+            100,
+            'center'
+        )
+    end
+    
+    -- Draw main text
+    love.graphics.setColor(1, 1, 1, 1)  -- Full opacity white
+    love.graphics.printf(
+        eventName,
+        node.x - 50,
+        node.y + size + 5,
+        100,
+        'center'
+    )
 end
 
 function ProvinceMap:markNodeCompleted(level, index)
