@@ -286,7 +286,7 @@ function MarketEncounter:draw()
         
         -- Update card selection state
         card:setSelected(i == self.state.selectedIndex)
-        card:update(dt)
+        -- Remove the update call from here - it shouldn't be in draw
         
         -- Draw card
         card:draw(x, y)
@@ -300,6 +300,14 @@ function MarketEncounter:draw()
             cardWidth,
             'center'
         )
+    end
+end
+
+-- Add update method
+function MarketEncounter:update(dt)
+    -- Update all cards
+    for _, card in ipairs(self.state.availableCards) do
+        card:update(dt)
     end
 end
 
