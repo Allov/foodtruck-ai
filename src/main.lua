@@ -192,12 +192,20 @@ end
 
 function Main:initializeTools()
     if _DEBUG then
+        -- Initialize debug console first
         self.debugConsole = require('src.tools.debugConsole')
         self.debugConsole:init()
+        
+        -- Initialize print override
+        local initializePrintOverride = require('src.tools.printOverride')
+        initializePrintOverride(self.debugConsole)
         
         -- Initialize content manager
         self.contentManager = require('src.tools.contentManager')
         self.contentManager:init()
+        
+        -- Log initialization
+        self.debugConsole:info("Debug tools initialized")
     end
 end
 

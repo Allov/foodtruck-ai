@@ -3,7 +3,14 @@ local DebugConsole = {
     history = {},
     input = "",
     maxHistory = 50,
-    cursorBlink = 0
+    cursorBlink = 0,
+    LOG_LEVELS = {
+        DEBUG = {name = "DEBUG", color = {0.5, 0.5, 0.5, 1}},
+        INFO = {name = "INFO", color = {1, 1, 1, 1}},
+        WARN = {name = "WARN", color = {1, 0.7, 0, 1}},
+        ERROR = {name = "ERROR", color = {1, 0, 0, 1}},
+        SUCCESS = {name = "SUCCESS", color = {0, 1, 0, 1}}
+    }
 }
 
 function DebugConsole:init()
@@ -41,11 +48,43 @@ function DebugConsole:executeCommand(cmd)
     end
 end
 
-function DebugConsole:log(message)
-    table.insert(self.history, tostring(message))
+function DebugConsole:formatTimestamp()
+    return os.date("%H:%M:%S")
+end
+
+function DebugConsole:log(message, level)
+    level = level or self.LOG_LEVELS.INFO
+    local entry = {
+        timestamp = self:formatTimestamp(),
+        message = tostring(message),
+        level = level
+    }
+    
+    table.insert(self.history, entry)
     if #self.history > self.maxHistory then
         table.remove(self.history, 1)
     end
+end
+
+-- Convenience methods for different log levels
+function DebugConsole:debug(message)
+    self:log(message, self.LOG_LEVELS.DEBUG)
+end
+
+function DebugConsole:info(message)
+    self:log(message, self.LOG_LEVELS.INFO)
+end
+
+function DebugConsole:warn(message)
+    self:log(message, self.LOG_LEVELS.WARN)
+end
+
+function DebugConsole:error(message)
+    self:log(message, self.LOG_LEVELS.ERROR)
+end
+
+function DebugConsole:success(message)
+    self:log(message, self.LOG_LEVELS.SUCCESS)
 end
 
 function DebugConsole:handleInput(key)
@@ -87,10 +126,18 @@ function DebugConsole:draw()
     )
     
     -- Draw command history
-    love.graphics.setColor(1, 1, 1, 1)
     local y = love.graphics.getHeight() * 0.3 - 40
     for i = #self.history, math.max(1, #self.history - 10), -1 do
-        love.graphics.print(self.history[i], 10, y - 20)
+        local entry = self.history[i]
+        love.graphics.setColor(entry.level.color)
+        love.graphics.print(
+            string.format("[%s][%s] %s", 
+                entry.timestamp, 
+                entry.level.name, 
+                entry.message
+            ),
+            10, y - 20
+        )
         y = y - 20
     end
     
@@ -128,6 +175,3 @@ function DebugConsole:showGameState()
 end
 
 return DebugConsole
-
-
-
