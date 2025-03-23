@@ -1,10 +1,10 @@
 # Battle System TODOs
 
 ## Core Mechanics
-1. [ ] Implement proper card combination system
-   - Track ingredient combinations
-   - Calculate synergy bonuses
-   - Handle technique cards affecting ingredients
+1. [x] Implement proper card combination system
+   - [x] Track ingredient combinations
+   - [x] Calculate synergy bonuses
+   - [x] Handle technique cards affecting ingredients
 
 2. [ ] Create distinct battle type mechanics
    - [ ] Food Critic: ingredient combination scoring
