@@ -1,33 +1,15 @@
 local Scene = require('src.scenes.scene')
 local DeckFactory = require('src.cards.deckFactory')
+local MenuStyle = require('src.ui.menuStyle')
 
 local ChefSelect = {}
 ChefSelect.__index = ChefSelect
 setmetatable(ChefSelect, Scene)
 
--- Consistent styling across menus
-local COLORS = {
-    TITLE = {1, 0.8, 0, 1},      -- Gold for title
-    TEXT = {1, 1, 1, 1},         -- White for regular text
-    SELECTED = {1, 0.8, 0, 1},   -- Gold for selected item
-    UNSELECTED = {0.7, 0.7, 0.7, 1}, -- Slightly dimmed for unselected
-    BACKGROUND = {0.1, 0.1, 0.2, 1} -- Dark blue background
-}
-
-local FONTS = {
-    TITLE = love.graphics.newFont(48),
-    MENU = love.graphics.newFont(24),
-    INSTRUCTIONS = love.graphics.newFont(16)
-}
-
 -- Animation constants
 local FLOAT_SPEED = 1.5
 local FLOAT_AMOUNT = 8
 local SHIMMER_SPEED = 2
-
--- Constants for styling
-local MENU_INDENT = 40
-local DOT_OFFSET = -20
 
 function ChefSelect.new()
     local self = Scene.new()  -- Create a new Scene instance as base
@@ -77,10 +59,7 @@ function ChefSelect:init()
     
     -- Initialize animation variables
     self.titleOffset = 0
-    self.chefOffsets = {}
-    for i = 1, #self.chefs do
-        self.chefOffsets[i] = 0
-    end
+    self.titleAlpha = 1
 end
 
 function ChefSelect:update(dt)
@@ -88,22 +67,8 @@ function ChefSelect:update(dt)
     self.titleOffset = math.sin(love.timer.getTime() * FLOAT_SPEED) * FLOAT_AMOUNT
     self.titleAlpha = 1 - math.abs(math.sin(love.timer.getTime() * SHIMMER_SPEED) * 0.2)
 
-    -- Animate selected option
-    for i = 1, #self.chefs do
-        if i == self.selected then
-            self.chefOffsets[i] = math.sin(love.timer.getTime() * 2) * 3
-        else
-            self.chefOffsets[i] = 0
-        end
-    end
-
-    if self.showingConfirmDialog then
-        self:updateConfirmDialog()
-        return
-    end
-
     if love.keyboard.wasPressed('escape') then
-        self.showingConfirmDialog = true
+        sceneManager:switch('mainMenu')
         return
     end
 
@@ -118,7 +83,6 @@ function ChefSelect:update(dt)
     if love.keyboard.wasPressed('return') then
         local selectedChef = self.chefs[self.selected]
         gameState.selectedChef = selectedChef
-        -- Generate and assign starter deck
         gameState.currentDeck = self:generateStarterDeck(selectedChef)
         local provinceMap = sceneManager.scenes['provinceMap']
         provinceMap:setSeed(gameState.mapSeed)
@@ -127,53 +91,31 @@ function ChefSelect:update(dt)
 end
 
 function ChefSelect:draw()
-    -- Draw background
-    love.graphics.setColor(COLORS.BACKGROUND)
-    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    MenuStyle.drawBackground()
     
-    -- Draw title with floating animation and shimmer
-    love.graphics.setFont(FONTS.TITLE)
-    love.graphics.setColor(COLORS.TITLE[1], COLORS.TITLE[2], COLORS.TITLE[3], self.titleAlpha)
-    love.graphics.printf("Select Your Chef", 0, 100 + self.titleOffset, love.graphics.getWidth(), 'center')
-
-    -- Draw chef options
-    love.graphics.setFont(FONTS.MENU)
+    -- Draw animated title
+    love.graphics.setFont(MenuStyle.FONTS.TITLE)
+    love.graphics.setColor(MenuStyle.COLORS.TITLE[1], MenuStyle.COLORS.TITLE[2], 
+        MenuStyle.COLORS.TITLE[3], self.titleAlpha)
+    love.graphics.printf("Select Your Chef", 0, MenuStyle.LAYOUT.TITLE_Y + self.titleOffset, 
+        love.graphics.getWidth(), 'center')
+    
+    -- Draw chef options with increased spacing for two lines
     for i, chef in ipairs(self.chefs) do
-        local y = 200 + i * 60 + self.chefOffsets[i]
+        -- Calculate base Y position for this chef entry
+        local baseY = MenuStyle.LAYOUT.MENU_START_Y + (i - 1) * (MenuStyle.LAYOUT.MENU_ITEM_HEIGHT * 2)
         
-        -- Draw selection indicator to the left
-        if i == self.selected then
-            love.graphics.setColor(COLORS.SELECTED)
-            love.graphics.printf("•", DOT_OFFSET, y, love.graphics.getWidth(), 'center')
-        end
+        -- Draw chef name
+        MenuStyle.drawMenuItem(chef.name, i * 2 - 1, i == self.selected, false)
         
-        love.graphics.setColor(i == self.selected and COLORS.SELECTED or COLORS.UNSELECTED)
-        love.graphics.printf(
-            chef.name .. "\n" .. chef.specialty,
-            0, y,
-            love.graphics.getWidth(),
-            'center'
-        )
+        -- Draw specialty closer to the name
+        love.graphics.setFont(MenuStyle.FONTS.INSTRUCTIONS)
+        love.graphics.setColor(MenuStyle.COLORS.UNSELECTED)
+        love.graphics.printf(chef.specialty, 0, baseY + 35, love.graphics.getWidth(), 'center')
     end
 
     -- Draw instructions
-    love.graphics.setFont(FONTS.INSTRUCTIONS)
-    love.graphics.setColor(COLORS.TEXT[1], COLORS.TEXT[2], COLORS.TEXT[3], 0.7)
-    love.graphics.printf(
-        "Use Up/Down to select, Enter to confirm, Escape to return",
-        0,
-        love.graphics.getHeight() - 50,
-        love.graphics.getWidth(),
-        'center'
-    )
+    MenuStyle.drawInstructions("Use ↑↓ to select, Enter to confirm, Esc to return")
 end
 
 return ChefSelect
-
-
-
-
-
-
-
-
