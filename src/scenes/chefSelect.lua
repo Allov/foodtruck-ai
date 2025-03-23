@@ -1,6 +1,7 @@
 local Scene = require('src.scenes.scene')
 local DeckFactory = require('src.cards.deckFactory')
 local MenuStyle = require('src.ui.menuStyle')
+local Chef = require('src.entities.chef')
 
 local ChefSelect = {}
 ChefSelect.__index = ChefSelect
@@ -19,13 +20,13 @@ function ChefSelect.new()
 end
 
 function ChefSelect:loadChefs()
-    -- Return a list of predefined chefs with their specialties
-    return {
+    -- Return a list of predefined chefs
+    local chefData = {
         {
             name = "Chef Antonio",
             specialty = "Italian Cuisine",
             description = "Master of pasta and traditional Italian dishes",
-            rating = "C"  -- Add default rating
+            rating = "C"
         },
         {
             name = "Chef Mei",
@@ -46,6 +47,14 @@ function ChefSelect:loadChefs()
             rating = "C"
         }
     }
+    
+    -- Convert raw data to Chef objects
+    local chefs = {}
+    for _, data in ipairs(chefData) do
+        table.insert(chefs, Chef.new(data))
+    end
+    
+    return chefs
 end
 
 function ChefSelect:generateStarterDeck(chef)

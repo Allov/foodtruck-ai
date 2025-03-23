@@ -135,19 +135,28 @@ function BattleEncounter:updateRating(finalScore)
     local previousRating = chef.rating
     local targetScore = self.state.targetScore
     
+    -- Check for perfect dish
+    local isPerfect = chef:isPerfectDish(finalScore, targetScore)
+    
     if finalScore < targetScore then
         -- Decrease rating
-        local currentIndex = self:getRatingIndex(chef.rating)
-        if currentIndex < #self.RATINGS then
-            chef.rating = self.RATINGS[currentIndex + 1]
+        local currentIndex = chef:getRatingIndex(chef.rating)
+        if currentIndex < #Chef.RATINGS then
+            chef:updateRating(Chef.RATINGS[currentIndex + 1])
         end
-    elseif finalScore >= (targetScore * 2) then
-        -- Increase rating for doubling the target score
-        local currentIndex = self:getRatingIndex(chef.rating)
+    elseif isPerfect then
+        -- Increase rating for perfect dish
+        local currentIndex = chef:getRatingIndex(chef.rating)
         if currentIndex > 1 then
-            chef.rating = self.RATINGS[currentIndex - 1]
+            chef:updateRating(Chef.RATINGS[currentIndex - 1])
         end
     end
+    
+    -- Record battle results
+    chef:recordBattleResult(
+        finalScore >= targetScore,
+        finalScore
+    )
     
     -- Store the rating change for UI feedback
     self.state.previousRating = previousRating
