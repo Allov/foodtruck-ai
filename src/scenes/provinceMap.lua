@@ -4,6 +4,7 @@ ProvinceMap.__index = ProvinceMap
 setmetatable(ProvinceMap, Scene)
 
 local EncounterRegistry = require('src.encounters.encounterRegistry')
+local Chef = require('src.entities.chef')  -- Add Chef requirement
 
 function ProvinceMap.new()
     local self = Scene.new()  -- Create a new Scene instance as base
@@ -895,6 +896,49 @@ function ProvinceMap:distributeNodesInRow(nodes)
     for _, node in ipairs(nodes) do
         node.x = node.x + offset
     end
+end
+
+function ProvinceMap:drawChefInfo(textX, textY, lineHeight)
+    local chef = gameState.selectedChef
+    if not chef then return textY end
+    
+    -- Chef name with title styling
+    love.graphics.setColor(1, 0.8, 0.2, 1)  -- Gold color for name
+    love.graphics.print("Chef " .. chef.name, textX, textY)
+    textY = textY + lineHeight
+    
+    -- Specialty
+    love.graphics.setColor(0.8, 0.8, 1, 1)  -- Light blue for specialty
+    love.graphics.print("Specialty: " .. chef.specialty, textX, textY)
+    textY = textY + lineHeight
+    
+    -- Rating with color coding
+    local ratingColor = {1, 1, 1, 1}  -- Default white
+    if chef.rating == 'S' then
+        ratingColor = {1, 0.8, 0, 1}  -- Gold
+    elseif chef.rating == 'A' then
+        ratingColor = {0.8, 0.8, 1, 1}  -- Light blue
+    elseif chef.rating == 'F' then
+        ratingColor = {1, 0.2, 0.2, 1}  -- Red
+    end
+    love.graphics.setColor(ratingColor)
+    love.graphics.print("Rating: " .. chef.rating, textX, textY)
+    textY = textY + lineHeight
+    
+    -- Add stats display
+    love.graphics.setColor(0.9, 0.9, 0.9, 1)
+    love.graphics.print(string.format("Battles: %d Won / %d Lost", 
+        chef.stats.battlesWon, 
+        chef.stats.battlesLost), 
+        textX, textY)
+    textY = textY + lineHeight
+    
+    love.graphics.print(string.format("Perfect Dishes: %d", 
+        chef.stats.perfectDishes), 
+        textX, textY)
+    textY = textY + lineHeight
+    
+    return textY
 end
 
 return ProvinceMap
