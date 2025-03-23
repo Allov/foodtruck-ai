@@ -1,6 +1,7 @@
 -- Global managers
 sceneManager = require('src.sceneManager')
 gameManager = require('src.gameManager')
+Settings = require('src.settings')  -- Add Settings to global scope
 
 -- Global game state
 gameState = {
@@ -61,6 +62,9 @@ function Main:registerEncounters()
 end
 
 function Main.load()
+    -- Initialize Settings first, before any other systems that might need it
+    Settings:init()
+
     -- Initialize debug tools first, before any other operations
     if _DEBUG then
         -- Initialize debug console first
@@ -305,6 +309,7 @@ function Main.wheelmoved(x, y)
 end
 
 return Main
+
 
 
 

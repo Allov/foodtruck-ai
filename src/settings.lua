@@ -1,11 +1,42 @@
 local Settings = {
+    initialized = false,  -- Add initialization flag
     crtEnabled = true,
     filepath = "settings.dat",
     baseResolution = {
         width = 1280,
         height = 720
+    },
+    debug = {
+        logSaveLoad = true
     }
 }
+
+function Settings:init()
+    if self.initialized then
+        return self
+    end
+
+    if self.debug.logSaveLoad then
+        print("[Settings] Initializing settings...")
+    end
+
+    -- Create save directory if it doesn't exist
+    love.filesystem.createDirectory(love.filesystem.getSaveDirectory())
+
+    -- Try to load existing settings
+    local loaded = self:load()
+
+    -- If load failed, save default settings
+    if not loaded then
+        if self.debug.logSaveLoad then
+            print("[Settings] No settings found, saving defaults...")
+        end
+        self:save()
+    end
+
+    self.initialized = true
+    return self
+end
 
 -- Add methods to the Settings table
 function Settings.getScale()
@@ -64,8 +95,6 @@ function Settings:serialize(tbl)
     return result .. "}"
 end
 
+-- Return the module without initializing
 return Settings
-
-
-
 
