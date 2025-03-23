@@ -38,11 +38,16 @@ function Deck:draw()
 end
 
 function Deck:discard(card)
-    print("[Deck:discard] Discarding card", card and card.name, "Current discard pile:", #self.discardPile)
+    if not card then
+        print("[Deck:discard] Warning: Attempting to discard nil card")
+        return
+    end
+    print("[Deck:discard] Discarding card", card.name, "Current discard pile:", #self.discardPile)
     table.insert(self.discardPile, card)
 end
 
 return Deck
+
 
 
 

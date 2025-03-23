@@ -1,5 +1,6 @@
 local Encounter = require('src.scenes.encounter')
 local Card = require('src.cards.card')
+local encounterConfigs = require('src.encounters.encounterConfigs')
 
 local BattleEncounter = {}
 BattleEncounter.__index = BattleEncounter
@@ -411,192 +412,165 @@ function BattleEncounter:drawCommonElements()
     love.graphics.setColor(COLORS.PRIMARY[1], COLORS.PRIMARY[2], COLORS.PRIMARY[3], 0.1)
     love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
 
-    -- Draw enemy stats at the top
+    -- Constants for UI layout
+    local TOP_MARGIN = 20
+    local GAUGE_HEIGHT = 15
+    local GAUGE_WIDTH = 200
+    local STATS_HEIGHT = 120
+
+    -- Draw enemy stats in top-left corner
     if self.state.enemy then
-        local enemyStatsY = 10
-        local enemyNameY = enemyStatsY
-        local enemyDetailsY = enemyNameY + 35
-        local enemySatisfactionY = enemyDetailsY + 35
+        local statsX = 20
+        local statsY = TOP_MARGIN
         
-        -- Enemy name with larger font
-        love.graphics.setFont(FONTS.LARGE)
+        -- Enemy name
+        love.graphics.setFont(FONTS.MEDIUM)
+        love.graphics.setColor(COLORS.TEXT)
+        love.graphics.print(self.state.enemy.name, statsX, statsY)
+        
+        -- Specialty and preferences in smaller font
+        love.graphics.setFont(FONTS.SMALL)
+        love.graphics.setColor(COLORS.ACCENT)
+        love.graphics.print(
+            string.format("Specialty: %s\nPrefers: %s, %s",
+                self.state.enemy.specialty,
+                self.state.enemy.preferences.primary,
+                self.state.enemy.preferences.bonus
+            ),
+            statsX, statsY + 25
+        )
+
+        -- Satisfaction gauge
+        local gaugeY = statsY + 65
+        local satisfaction = self.state.enemy.satisfaction
+        
+        -- Gauge background
+        love.graphics.setColor(0.2, 0.2, 0.2, 0.8)
+        love.graphics.rectangle('fill', statsX, gaugeY, GAUGE_WIDTH, GAUGE_HEIGHT)
+        
+        -- Gauge fill
+        local fillWidth = (satisfaction / 100) * GAUGE_WIDTH
+        local r, g, b = 1, 0, 0
+        if satisfaction >= 50 then
+            r = 2 * (1 - satisfaction/100)
+            g = 1
+        else
+            r = 1
+            g = 2 * (satisfaction/100)
+        end
+        love.graphics.setColor(r, g, b, 1)
+        love.graphics.rectangle('fill', statsX, gaugeY, fillWidth, GAUGE_HEIGHT)
+        
+        -- Gauge text
         love.graphics.setColor(COLORS.TEXT)
         love.graphics.printf(
-            self.state.enemy.name,
-            0,
-            enemyNameY,
-            love.graphics.getWidth(),
-            'center'
-        )
-        
-        -- Enemy details with medium font
-        love.graphics.setFont(FONTS.MEDIUM)
-        love.graphics.printf(
-            string.format("Specialty: %s", self.state.enemy.specialty),
-            0,
-            enemyDetailsY,
-            love.graphics.getWidth(),
-            'center'
-        )
-        
-        -- Preferences with accent color
-        love.graphics.setColor(COLORS.ACCENT)
-        love.graphics.printf(
-            string.format("Prefers: %s, %s", 
-                self.state.enemy.preferences.primary,
-                self.state.enemy.preferences.bonus),
-            0,
-            enemyDetailsY + 25,
-            love.graphics.getWidth(),
-            'center'
-        )
-        
-        -- Satisfaction level with color based on value
-        local satisfaction = self.state.enemy.satisfaction
-        if satisfaction >= 80 then
-            love.graphics.setColor(COLORS.SUCCESS)
-        elseif satisfaction >= 50 then
-            love.graphics.setColor(COLORS.HIGHLIGHT)
-        else
-            love.graphics.setColor(COLORS.FAILURE)
-        end
-        
-        love.graphics.printf(
             string.format("Satisfaction: %d%%", satisfaction),
-            0,
-            enemySatisfactionY,
-            love.graphics.getWidth(),
-            'center'
+            statsX, gaugeY - 20,
+            GAUGE_WIDTH, 'left'
         )
     end
 
-    -- Battle progress info
-    local topY = self.state.enemy and 160 or 10
+    -- Draw battle stats in top-right corner
+    local statsX = love.graphics.getWidth() - 220
+    local statsY = TOP_MARGIN
+    local statSpacing = 25
+
     love.graphics.setFont(FONTS.MEDIUM)
     
-    -- Round number
+    -- Round counter
     love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(
-        "Round",
-        0,
-        topY,
-        love.graphics.getWidth(),
-        'center'
-    )
-    love.graphics.setColor(COLORS.HIGHLIGHT)
-    love.graphics.printf(
-        string.format("%d/%d", self.state.roundNumber, self.state.maxRounds),
-        0,
-        topY + 25,
-        love.graphics.getWidth(),
-        'center'
+        string.format("Round %d/%d",
+            self.state.roundNumber,
+            self.state.maxRounds
+        ),
+        statsX, statsY,
+        200, 'right'
     )
     
-    -- Score with dynamic color based on target
-    love.graphics.setColor(COLORS.TEXT)
-    love.graphics.printf(
-        "Score",
-        0,
-        topY + 60,
-        love.graphics.getWidth(),
-        'center'
-    )
-    
+    -- Score with dynamic color
     local scoreColor = self.state.currentScore >= self.state.targetScore and COLORS.SUCCESS or COLORS.HIGHLIGHT
     love.graphics.setColor(scoreColor)
     love.graphics.printf(
-        string.format("%d / %d", self.state.currentScore, self.state.targetScore),
-        0,
-        topY + 85,
-        love.graphics.getWidth(),
-        'center'
+        string.format("Score: %d/%d",
+            self.state.currentScore,
+            self.state.targetScore
+        ),
+        statsX, statsY + statSpacing,
+        200, 'right'
     )
     
     -- Phase indicator
+    love.graphics.setFont(FONTS.SMALL)
     love.graphics.setColor(COLORS.ACCENT)
     love.graphics.printf(
         self.state.currentPhase,
-        0,
-        topY + 120,
-        love.graphics.getWidth(),
-        'center'
+        statsX, statsY + statSpacing * 2,
+        200, 'right'
     )
     
-    -- Timer with warning color when low
+    -- Timer when in cooking phase
     if self.state.currentPhase == BattleEncounter.PHASES.COOKING then
         local timeColor = self.state.timeRemaining <= 10 and COLORS.FAILURE or COLORS.TEXT
         love.graphics.setColor(timeColor)
         love.graphics.printf(
-            string.format("Time: %.1f", self.state.timeRemaining),
-            0,
-            topY + 150,
-            love.graphics.getWidth(),
-            'center'
+            string.format("%.1fs", self.state.timeRemaining),
+            statsX, statsY + statSpacing * 3,
+            200, 'right'
         )
     end
 
-    -- Card dimensions and layout constants
+    -- Draw deck/discard info at bottom right (rest of the function remains unchanged)
+    self:drawDeckInfo()
+end
+
+-- Helper function to separate deck drawing logic
+function BattleEncounter:drawDeckInfo()
     local cardWidth, cardHeight = Card.getDimensions()
     local padding = 20
-    local stackOffset = 2  -- How much each card in the stack is offset
-    local pileSpacing = 20 -- Space between draw and discard piles
+    local stackOffset = 2
+    local pileSpacing = 20
     
-    -- Position both piles at the bottom right
     local pilesY = love.graphics.getHeight() - cardHeight - padding
     local drawPileX = love.graphics.getWidth() - (cardWidth * 2 + pileSpacing + padding)
     local discardPileX = love.graphics.getWidth() - (cardWidth + padding)
     
-    -- Draw pile
+    -- Draw pile visualization and count
     if #self.state.deck.drawPile > 0 then
-        -- Draw stack of cards from bottom to top
         local numCardsToShow = math.min(5, #self.state.deck.drawPile)
         for i = numCardsToShow, 1, -1 do
-            local cardX = drawPileX - (i * stackOffset)
-            local cardY = pilesY - (i * stackOffset)
-            
             love.graphics.setColor(1, 1, 1, 1)
-            Card.new(0, "", ""):drawBack(cardX, cardY)
+            Card.new(0, "", ""):drawBack(
+                drawPileX - (i * stackOffset),
+                pilesY - (i * stackOffset)
+            )
         end
-    else
-        -- Draw empty pile outline
-        love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
-        love.graphics.rectangle('line', drawPileX, pilesY, cardWidth, cardHeight)
     end
-
-    -- Draw pile count
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf(
-        "Draw: " .. #self.state.deck.drawPile,
-        drawPileX,
-        pilesY - 25,
-        cardWidth,
-        'center'
-    )
-
-    -- Discard pile
+    
+    -- Discard pile visualization and count
     if #self.state.deck.discardPile > 0 then
         local numCardsToShow = math.min(5, #self.state.deck.discardPile)
         for i = numCardsToShow, 1, -1 do
-            local cardX = discardPileX - (i * stackOffset)
-            local cardY = pilesY - (i * stackOffset)
-            
-            love.graphics.setColor(1, 1, 1, 1)
-            Card.new(0, "", ""):drawBack(cardX, cardY)
+            love.graphics.setColor(1, 1, 1, 0.8)
+            Card.new(0, "", ""):drawBack(
+                discardPileX - (i * stackOffset),
+                pilesY - (i * stackOffset)
+            )
         end
-    else
-        -- Draw empty pile outline
-        love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
-        love.graphics.rectangle('line', discardPileX, pilesY, cardWidth, cardHeight)
     end
-
-    -- Discard pile count
-    love.graphics.setColor(1, 1, 1, 1)
+    
+    -- Draw counts
+    love.graphics.setFont(FONTS.SMALL)
+    love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(
-        "Discard: " .. #self.state.deck.discardPile,
-        discardPileX,
-        pilesY - 25,
-        cardWidth,
-        'center'
+        #self.state.deck.drawPile,
+        drawPileX, pilesY - 25,
+        cardWidth, 'center'
+    )
+    love.graphics.printf(
+        #self.state.deck.discardPile,
+        discardPileX, pilesY - 25,
+        cardWidth, 'center'
     )
 end
 
@@ -895,6 +869,22 @@ function BattleEncounter:calculateRoundScore()
     -- Update total score
     self.state.currentScore = self.state.currentScore + finalScore
     
+    -- Discard all played cards
+    for _, card in ipairs(self.state.selectedCards) do
+        -- Remove from hand if it exists there
+        for i = #self.state.handCards, 1, -1 do
+            if self.state.handCards[i] == card then
+                table.remove(self.state.handCards, i)
+                break
+            end
+        end
+        -- Add to discard pile
+        self.state.deck:discard(card)
+    end
+    
+    -- Clear selected cards
+    self.state.selectedCards = {}
+    
     -- Reset combo multiplier for next round
     self.state.comboMultiplier = 1
     
@@ -906,6 +896,66 @@ function BattleEncounter:identifyCombinations(cards)
     -- Add combination detection logic here
     -- Example: matching ingredients, complementary flavors, etc.
     return combinations
+end
+
+function BattleEncounter:startNextRound()
+    -- Increment round number
+    self.state.roundNumber = self.state.roundNumber + 1
+    
+    -- Reset round-specific state
+    self.state.selectedCards = {}
+    self.state.comboMultiplier = 1
+    self.state.actionFeedback = nil
+    
+    -- Get max hand size from battle parameters
+    local config = encounterConfigs[self.state.battleType] or encounterConfigs.food_critic
+    local maxHandSize = 8  -- Default hand size
+    
+    -- Draw cards until hand is full
+    while #self.state.handCards < maxHandSize do
+        local card = self.state.deck:draw()
+        if card then
+            table.insert(self.state.handCards, card)
+        else
+            -- If deck is empty, shuffle discard pile back in
+            self.state.deck:shuffleDiscardIntoDeck()
+            card = self.state.deck:draw()
+            if card then
+                table.insert(self.state.handCards, card)
+            else
+                -- If still no cards, break to prevent infinite loop
+                break
+            end
+        end
+    end
+    
+    -- Reset selection
+    self.state.selectedCardIndex = 1
+    for i, card in ipairs(self.state.handCards) do
+        card:setSelected(i == 1)
+    end
+    
+    -- Reset phase and time
+    self.state.timeRemaining = config.timePerRound
+    self:transitionToPhase(self.PHASES.PREPARATION)
+end
+
+-- Helper function to shuffle discard pile back into deck
+function BattleEncounter:shuffleDiscardIntoDeck()
+    -- Move all cards from discard pile to draw pile
+    for _, card in ipairs(self.state.deck.discardPile) do
+        table.insert(self.state.deck.drawPile, card)
+    end
+    
+    -- Clear discard pile
+    self.state.deck.discardPile = {}
+    
+    -- Shuffle draw pile
+    for i = #self.state.deck.drawPile, 2, -1 do
+        local j = math.random(i)
+        self.state.deck.drawPile[i], self.state.deck.drawPile[j] = 
+        self.state.deck.drawPile[j], self.state.deck.drawPile[i]
+    end
 end
 
 return BattleEncounter  -- NOT return true/false
