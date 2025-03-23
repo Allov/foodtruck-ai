@@ -1,3 +1,5 @@
+local Settings = require('src.settings')
+
 local DebugConsole = {
     visible = false,
     history = {},
@@ -19,8 +21,14 @@ local DebugConsole = {
     messageCount = 1,
     debounceTime = 0.1,
     LAYOUT = {
-        PADDING = 15,           -- General padding
-        MESSAGE_HEIGHT = 24,    -- Increased from 20
+        PADDING = function()
+            local scale = Settings.getScale()
+            return 15 * scale.x
+        end,
+        MESSAGE_HEIGHT = function()
+            local scale = Settings.getScale()
+            return 24 * scale.y
+        end,
         INPUT_HEIGHT = 30,      -- Input box height
         TIMESTAMP_WIDTH = 90,   -- Width for timestamp column
         LEVEL_WIDTH = 80,       -- Width for log level column
@@ -222,6 +230,7 @@ end
 
 function DebugConsole:drawKeybindHelp()
     local width = love.graphics.getWidth()
+    local padding = self.LAYOUT.PADDING()  -- Call the function to get the value
     local helpText = {
         "F11: Toggle fullscreen",
         "PgUp/PgDn: Scroll",
@@ -234,8 +243,8 @@ function DebugConsole:drawKeybindHelp()
         love.graphics.printf(
             text,
             0,
-            self.LAYOUT.PADDING + (i-1) * 20,
-            width - self.LAYOUT.PADDING,
+            padding + (i-1) * 20,
+            width - padding,
             'right'
         )
     end
@@ -246,6 +255,12 @@ function DebugConsole:draw()
     
     local width = love.graphics.getWidth()
     local height = love.graphics.getHeight()
+    local scale = Settings.getScale()
+    
+    -- Get actual values from layout functions
+    local padding = self.LAYOUT.PADDING()
+    local messageHeight = self.LAYOUT.MESSAGE_HEIGHT()
+    
     local consoleHeight = self.isFullscreen and height or (height * 0.3)
     
     -- Draw main background
@@ -256,9 +271,9 @@ function DebugConsole:draw()
     love.graphics.setColor(self.STYLES.SEPARATOR)
     love.graphics.rectangle(
         "fill", 
-        self.LAYOUT.PADDING, 
+        padding, 
         consoleHeight - self.LAYOUT.BOTTOM_MARGIN,
-        width - (self.LAYOUT.PADDING * 2),
+        width - (padding * 2),
         1
     )
     
@@ -269,15 +284,15 @@ function DebugConsole:draw()
     love.graphics.setColor(self.STYLES.INPUT_BG)
     love.graphics.rectangle(
         "fill", 
-        self.LAYOUT.PADDING, 
+        padding, 
         consoleHeight - self.LAYOUT.BOTTOM_MARGIN + 5,
-        width - (self.LAYOUT.PADDING * 2),
+        width - (padding * 2),
         self.LAYOUT.INPUT_HEIGHT,
         self.LAYOUT.ROUNDED_CORNERS
     )
     
     -- Draw command history with scrolling
-    local y = consoleHeight - self.LAYOUT.BOTTOM_MARGIN - self.LAYOUT.MESSAGE_HEIGHT
+    local y = consoleHeight - self.LAYOUT.BOTTOM_MARGIN - messageHeight
     local startIndex = #self.history - self.scrollOffset
     local endIndex = math.max(1, startIndex - self.maxVisibleLines + 1)
     
@@ -293,7 +308,7 @@ function DebugConsole:draw()
                              self.STYLES.SCROLLBAR[3], self.STYLES.SCROLLBAR[4] * 0.5)
         love.graphics.rectangle(
             "fill", 
-            width - self.LAYOUT.PADDING - self.LAYOUT.SCROLLBAR_WIDTH,
+            width - padding - self.LAYOUT.SCROLLBAR_WIDTH,
             self.LAYOUT.TOP_MARGIN,
             self.LAYOUT.SCROLLBAR_WIDTH,
             scrollbarHeight
@@ -303,7 +318,7 @@ function DebugConsole:draw()
         love.graphics.setColor(self.STYLES.SCROLLBAR)
         love.graphics.rectangle(
             "fill",
-            width - self.LAYOUT.PADDING - self.LAYOUT.SCROLLBAR_WIDTH,
+            width - padding - self.LAYOUT.SCROLLBAR_WIDTH,
             self.LAYOUT.TOP_MARGIN + thumbPosition,
             self.LAYOUT.SCROLLBAR_WIDTH,
             thumbHeight
@@ -314,7 +329,7 @@ function DebugConsole:draw()
     for i = startIndex, endIndex, -1 do
         local entry = self.history[i]
         if entry then
-            local x = self.LAYOUT.PADDING
+            local x = padding
             
             -- Draw timestamp
             love.graphics.setColor(self.STYLES.TIMESTAMP)
@@ -331,7 +346,7 @@ function DebugConsole:draw()
                                  entry.level.color[3], 1)
             love.graphics.print(entry.message, x, y)
             
-            y = y - self.LAYOUT.MESSAGE_HEIGHT
+            y = y - messageHeight
         end
     end
     
@@ -339,7 +354,7 @@ function DebugConsole:draw()
     love.graphics.setColor(self.STYLES.PROMPT)
     love.graphics.print(
         ">",
-        self.LAYOUT.PADDING + 5,
+        padding + 5,
         consoleHeight - self.LAYOUT.BOTTOM_MARGIN + 12
     )
     
@@ -347,7 +362,7 @@ function DebugConsole:draw()
     local cursor = self.cursorBlink < 0.5 and "│" or ""
     love.graphics.print(
         self.input .. cursor,
-        self.LAYOUT.PADDING + 25,
+        padding + 25,
         consoleHeight - self.LAYOUT.BOTTOM_MARGIN + 12
     )
 end
@@ -379,7 +394,8 @@ function DebugConsole:updateMaxVisibleLines()
     local height = love.graphics.getHeight()
     local consoleHeight = self.isFullscreen and height or (height * 0.3)
     local availableHeight = consoleHeight - self.LAYOUT.TOP_MARGIN - self.LAYOUT.BOTTOM_MARGIN
-    self.maxVisibleLines = math.floor(availableHeight / self.LAYOUT.MESSAGE_HEIGHT)
+    -- Call the MESSAGE_HEIGHT function to get the actual value
+    self.maxVisibleLines = math.floor(availableHeight / self.LAYOUT.MESSAGE_HEIGHT())
 end
 
 -- Add mouse wheel support
@@ -394,6 +410,10 @@ function DebugConsole:wheelmoved(x, y)
 end
 
 return DebugConsole
+
+
+
+
 
 
 

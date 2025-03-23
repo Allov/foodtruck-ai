@@ -11,6 +11,8 @@ local COLORS = {
     ACCENT = {1, 0.6, 0.2, 1}
 }
 
+local Settings = require('src.settings')
+
 function NegativeEncounter.new()
     local self = Scene.new()
     setmetatable(self, NegativeEncounter)
@@ -59,6 +61,9 @@ function NegativeEncounter:update(dt)
 end
 
 function NegativeEncounter:draw()
+    local scale = Settings.getScale()
+    local width = love.graphics.getWidth()
+    
     -- Draw background overlay
     love.graphics.setColor(COLORS.PRIMARY[1], COLORS.PRIMARY[2], COLORS.PRIMARY[3], 0.1)
     love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
@@ -70,10 +75,16 @@ function NegativeEncounter:draw()
 
     if not self.state.resolved then
         -- Draw resolution options
-        local startY = 200
+        local startY = 200 * scale.y
         for i, option in ipairs(self.state.config.resolutionOptions) do
             local text = i == self.state.selectedOption and "> " .. option or option
-            love.graphics.printf(text, 100, startY + (i * 30), love.graphics.getWidth() - 200, 'center')
+            love.graphics.printf(
+                text, 
+                100 * scale.x, 
+                startY + (i * 30 * scale.y), 
+                (width - 200 * scale.x), 
+                'center'
+            )
         end
     else
         -- Draw resolution message

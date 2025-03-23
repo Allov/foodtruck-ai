@@ -1,7 +1,31 @@
 local Settings = {
     crtEnabled = true,
-    filepath = "settings.dat"
+    filepath = "settings.dat",
+    baseResolution = {
+        width = 1280,
+        height = 720
+    }
 }
+
+-- Add methods to the Settings table
+function Settings.getScale()
+    local currentWidth = love.graphics.getWidth()
+    local currentHeight = love.graphics.getHeight()
+    return {
+        x = currentWidth / Settings.baseResolution.width,
+        y = currentHeight / Settings.baseResolution.height
+    }
+end
+
+function Settings.scalePosition(x, y)
+    local scale = Settings.getScale()
+    return x * scale.x, y * scale.y
+end
+
+function Settings.scaleDimensions(width, height)
+    local scale = Settings.getScale()
+    return width * scale.x, height * scale.y
+end
 
 function Settings:save()
     local data = "return " .. self:serialize(self)
@@ -41,4 +65,7 @@ function Settings:serialize(tbl)
 end
 
 return Settings
+
+
+
 

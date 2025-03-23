@@ -1,9 +1,9 @@
 uniform float time;
 uniform vec2 screen_size;
-#define SCAN_LINE_HEIGHT 4.0  // Reduced from default (likely was 8.0 or higher)
-#define SCAN_LINE_ALPHA 0.1   // Reduced from default (likely was 0.2 or higher)
-#define SCAN_LINE_SPEED 10.0  // You might want to adjust this too
-#define NOISE_STRENGTH 0.02   // Reduced noise effect (likely was 0.05 or higher)
+#define SCAN_LINE_HEIGHT (4.0 * (screen_size.y / 600.0))  // Scale with resolution
+#define SCAN_LINE_ALPHA 0.1
+#define SCAN_LINE_SPEED 10.0
+#define NOISE_STRENGTH (0.02 * (screen_size.y / 600.0))   // Scale with resolution
 
 vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
 {
@@ -30,4 +30,5 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
     
     return pixel;
 }
+
 
