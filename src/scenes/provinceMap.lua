@@ -114,6 +114,10 @@ function ProvinceMap:init()
     -- Initialize confirmation dialog
     self:initConfirmDialog()
     
+    -- Initialize camera peek offset
+    self.peekOffset = 0
+    self.PEEK_SPEED = 800 -- Pixels per second
+    
     -- Generate the initial map
     self:generateMap()
 end
@@ -380,11 +384,18 @@ function ProvinceMap:update(dt)
     -- Update camera position
     local screenH = love.graphics.getHeight()
     
-    -- Calculate target camera Y based on current level
-    -- The higher the level, the lower the Y position should be
+    -- Handle page up/down for peeking
+    if love.keyboard.isDown('pageup') then
+        self.peekOffset = math.min(self.peekOffset + self.PEEK_SPEED * dt, self.mapHeight)
+    elseif love.keyboard.isDown('pagedown') then
+        self.peekOffset = math.max(self.peekOffset - self.PEEK_SPEED * dt, -self.mapHeight)
+    end
+    
+    -- Calculate target camera Y based on current level plus peek offset
     local targetY = (self.NUM_LEVELS - self.currentLevel) * self.LEVEL_HEIGHT
     targetY = math.max(0, targetY - screenH/2)  -- Center current level
     targetY = math.min(targetY, self.mapHeight - screenH)  -- Clamp to map bounds
+    targetY = targetY - self.peekOffset  -- Apply peek offset
     self.camera.targetY = targetY
     
     -- Smooth camera movement
@@ -445,18 +456,65 @@ function ProvinceMap:update(dt)
     end
 end
 
+function ProvinceMap:drawMapInfo()
+    -- Set up constants for info panel
+    local padding = 10
+    local lineHeight = 20
+    local panelWidth = 200
+    local panelHeight = 100
+    local x = padding
+    local y = padding
+    
+    -- Semi-transparent background
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle('fill', x, y, panelWidth, panelHeight)
+    love.graphics.setColor(1, 1, 1, 0.8)
+    love.graphics.rectangle('line', x, y, panelWidth, panelHeight)
+    
+    -- Set font for info text
+    love.graphics.setFont(love.graphics.newFont(12))
+    love.graphics.setColor(1, 1, 1, 1)
+    
+    -- Draw info text
+    local textX = x + padding
+    local textY = y + padding
+    
+    -- Display map seed
+    love.graphics.print(string.format("Seed: %d", self:getSeed()), textX, textY)
+    textY = textY + lineHeight
+    
+    -- Display chef name
+    local chefName = gameState.selectedChef and gameState.selectedChef.name or "Unknown Chef"
+    love.graphics.print(string.format("Chef: %s", chefName), textX, textY)
+    textY = textY + lineHeight
+    
+    -- Display progress
+    love.graphics.print(string.format("Level: %d/%d", self.currentLevel, self.NUM_LEVELS), textX, textY)
+    textY = textY + lineHeight
+    
+    -- Count total nodes and completed nodes
+    local totalNodes = 0
+    local completedNodes = 0
+    for level, nodes in ipairs(self.nodes) do
+        totalNodes = totalNodes + #nodes
+        for i, _ in ipairs(nodes) do
+            if self.completedNodes[level .. "," .. i] then
+                completedNodes = completedNodes + 1
+            end
+        end
+    end
+    love.graphics.print(string.format("Nodes: %d/%d", completedNodes, totalNodes), textX, textY)
+end
+
 function ProvinceMap:draw()
     love.graphics.push()
-    -- Invert the translation direction
     love.graphics.translate(0, -self.camera.y)
     
-    -- Draw connections
+    -- Draw connections and nodes
     self:drawConnections()
     
-    -- Draw nodes
     for level, nodes in ipairs(self.nodes) do
         for i, node in ipairs(nodes) do
-            -- Only draw nodes if they're within the visible area
             if self:isNodeVisible(node) then
                 self:drawNode(level, i, node)
             end
@@ -466,6 +524,9 @@ function ProvinceMap:draw()
     love.graphics.pop()
     
     -- Draw UI elements that shouldn't scroll
+    -- Add map info display
+    self:drawMapInfo()
+    
     if self.statusMessage then
         love.graphics.setColor(1, 1, 1, math.min(self.statusTimer, 1))
         love.graphics.printf(
@@ -475,11 +536,6 @@ function ProvinceMap:draw()
             love.graphics.getWidth(),
             'center'
         )
-    end
-
-    -- Draw confirmation dialog if active
-    if self.showingConfirmDialog then
-        self:drawConfirmDialog()
     end
 end
 
@@ -515,75 +571,48 @@ function ProvinceMap:drawConnections()
                               2 * (1-t) * t * controlY + 
                               math.pow(t, 2) * endY
                     
-                    table.insert(points, px)
-                    table.insert(points, py)
+                    table.insert(points, {x = px, y = py})
                 end
                 
                 -- Draw path shadow
                 love.graphics.setColor(0, 0, 0, 0.3)
-                love.graphics.line(points)
-                
-                -- Draw dashed line with animation
-                love.graphics.setColor(self.ROAD_COLOR)
-                local dashLength = self.ROAD_DASH
-                local totalLength = 0
-                
-                -- Calculate total path length
-                for j = 1, #points - 2, 2 do
-                    local dx = points[j+2] - points[j]
-                    local dy = points[j+3] - points[j+1]
-                    totalLength = totalLength + math.sqrt(dx * dx + dy * dy)
+                local linePoints = {}
+                for _, point in ipairs(points) do
+                    table.insert(linePoints, point.x)
+                    table.insert(linePoints, point.y)
                 end
+                love.graphics.line(linePoints)
                 
-                -- Draw dashed line segments
-                local currentLength = 0
-                local isDash = true
-                local lastX, lastY = points[1], points[2]
+                -- Draw base road
+                love.graphics.setColor(self.ROAD_COLOR)
+                love.graphics.line(linePoints)
                 
-                -- Offset based on time (slowed down)
-                local timeOffset = (love.timer.getTime() * 30) % (dashLength * 2)
+                -- Only animate if this connection leads to the selected node
+                local isConnectedToSelected = (level == self.currentLevel - 1 and 
+                                             connIdx == self.selected and
+                                             self.completedNodes[level .. "," .. i])
                 
-                for j = 1, #points - 2, 2 do
-                    local dx = points[j+2] - points[j]
-                    local dy = points[j+3] - points[j+1]
-                    local segLength = math.sqrt(dx * dx + dy * dy)
+                if isConnectedToSelected then
+                    -- Draw animated dots
+                    love.graphics.setColor(1, 1, 1, 0.8)
+                    local dotSize = 2
+                    local speed = 0.15
+                    local numDots = 3  -- Number of dots per path
                     
-                    -- Draw moving indicators (slowed down)
-                    local numIndicators = math.floor(totalLength / 80) -- Increased spacing
-                    for k = 1, numIndicators do
-                        local offset = (love.timer.getTime() * 40 + (k * totalLength / numIndicators)) % totalLength
-                        if offset >= currentLength and offset < currentLength + segLength then
-                            local t = (offset - currentLength) / segLength
-                            local ix = points[j] + dx * t
-                            local iy = points[j+1] + dy * t
-                            love.graphics.setColor(1, 1, 1, 0.9)
-                            love.graphics.circle('fill', ix, iy, 3)
+                    -- Draw smoothly moving dots
+                    for dot = 0, numDots - 1 do
+                        local time = (love.timer.getTime() * speed + dot / numDots) % 1
+                        -- Get exact position along curve using interpolation
+                        local idx = 1 + time * (#points - 1)
+                        local i1, i2 = math.floor(idx), math.ceil(idx)
+                        local t = idx - i1
+                        
+                        if points[i1] and points[i2] then
+                            local x = points[i1].x * (1 - t) + points[i2].x * t
+                            local y = points[i1].y * (1 - t) + points[i2].y * t
+                            love.graphics.circle('fill', x, y, dotSize)
                         end
                     end
-                    
-                    -- Draw dashed segments with fixed length
-                    local segmentStart = currentLength
-                    while segmentStart < currentLength + segLength do
-                        local dashStart = segmentStart + timeOffset
-                        local dashEnd = math.min(dashStart + dashLength, currentLength + segLength)
-                        
-                        if isDash then
-                            local t1 = (dashStart - currentLength) / segLength
-                            local t2 = (dashEnd - currentLength) / segLength
-                            
-                            local x1 = points[j] + dx * t1
-                            local y1 = points[j+1] + dy * t1
-                            local x2 = points[j] + dx * t2
-                            local y2 = points[j+1] + dy * t2
-                            
-                            love.graphics.line(x1, y1, x2, y2)
-                        end
-                        
-                        segmentStart = segmentStart + dashLength
-                        isDash = not isDash
-                    end
-                    
-                    currentLength = currentLength + segLength
                 end
             end
         end
