@@ -16,12 +16,12 @@
    - Store round history
 
 ## Polish & Balance
-4. [ ] Enhance cooking action feedback
-   - Visual feedback for success/failure
-   - Show combination effects
-   - Display score calculations
+4. [x] Enhance cooking action feedback
+   - [x] Visual feedback for success/failure
+   - [ ] Show combination effects
+   - [x] Display score calculations
 
 5. [ ] Balance timing system
-   - Adjust time per action
-   - Add time bonuses/penalties
-   - Scale difficulty properly
+   - [x] Adjust time per action
+   - [ ] Add time bonuses/penalties
+   - [ ] Scale difficulty properly

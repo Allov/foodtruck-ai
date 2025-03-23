@@ -15,31 +15,30 @@
 - Multiple battle types (Food Critic, Rush Hour)
 - Map navigation and node connections
 - Node selection and progression system
+- Score animation and feedback system
 
 ## In Progress
 - Battle encounter system
   - Core phases working
   - Basic scoring system implemented
+  - Score feedback implemented
   - Need to complete card combination system
-  - Need to implement proper feedback
   - Need to implement synergy system
 - Card effect implementation
   - Basic structure in place
   - Need full effect system
 - Basic UI systems
   - Common elements working
-  - Need phase-specific UI polish
+  - Phase-specific UI improvements in progress
   - Need better phase transitions
 
 ## Next Steps
 1. Complete battle encounter core mechanics
    - Implement card combinations
    - Add synergy calculations
-   - Polish round scoring
    - Add battle-type specific mechanics
 2. Implement proper feedback systems
-   - Visual feedback for actions
-   - Score calculations display
+   - ✓ Score calculations display
    - Timer and phase transitions
    - Battle results presentation
 3. Add negative encounter effects
@@ -54,6 +53,5 @@
 3. Save system missing
 4. Sound feedback missing
 5. Game state persistence between encounters
-6. Battle feedback needs improvement
-7. Phase transitions need polish
-8. Rating system needs balancing
+6. Phase transitions need polish
+7. Rating system needs balancing
