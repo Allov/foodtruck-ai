@@ -63,24 +63,8 @@ function MarketEncounter:generateMarketStock()
     -- Convert card data to Card objects with proper state management
     self.state.availableCards = {}
     for _, cardData in ipairs(cards) do
-        -- Create new card with all components properly initialized
-        local card = Card.new(
-            cardData.id,
-            cardData.name,
-            cardData.description
-        )
-        card.cardType = cardData.cardType
-        card.cost = cardData.cost
-        card.value = cardData.value
-        
-        -- Initialize scoring based on card type
-        if card.cardType == "ingredient" then
-            card.scoring.whiteScore = cardData.value
-        elseif card.cardType == "technique" then
-            card.scoring.redScore = cardData.value
-        end
-        
-        table.insert(self.state.availableCards, card)
+        -- Cards are already properly initialized by PackFactory
+        table.insert(self.state.availableCards, cardData)
     end
     
     -- Add the Skip card

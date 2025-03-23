@@ -363,6 +363,8 @@ function BattleEncounter:scoreNextCard()
     if scoringState.currentCardIndex <= #self.state.selectedCards then
         local card = self.state.selectedCards[scoringState.currentCardIndex]
         local scoreValue = scoringState.cardScores[scoringState.currentCardIndex]
+
+        print("[BattleEncounter:scoreNextCard] Scoring card", card.name, "with scoring value", card.scoring)
         
         self:applyCardScore(card)
         card:showScoreAnimation(scoreValue)
@@ -371,16 +373,15 @@ function BattleEncounter:scoreNextCard()
 end
 
 function BattleEncounter:applyCardScore(card)
+    local scoreValue = card.scoring:getValue()
+    
     if card.cardType == "ingredient" then
-        self.state.currentScore = self.state.currentScore + card.whiteScore
-        self.state.scoringState.displayTotal = self.state.currentScore  -- Track for display
-    elseif card.cardType == "technique" then
-        self.state.currentScore = self.state.currentScore * card.redScore
-        self.state.scoringState.displayTotal = self.state.currentScore  -- Track for display
-    elseif card.cardType == "recipe" then
-        self.state.currentScore = self.state.currentScore * card.pinkScore
-        self.state.scoringState.displayTotal = self.state.currentScore  -- Track for display
+        self.state.currentScore = self.state.currentScore + scoreValue
+    elseif card.cardType == "technique" or card.cardType == "recipe" then
+        self.state.currentScore = self.state.currentScore * scoreValue
     end
+    
+    self.state.scoringState.displayTotal = self.state.currentScore  -- Track for display
 end
 
 function BattleEncounter:updateResultsPhase(dt)
@@ -902,14 +903,14 @@ function BattleEncounter:prepareScoreDisplayStrings()
     local scoringState = self.state.scoringState
     scoringState.cardScores = {}
     
-    -- Prepare the score display strings for animations
+    -- Just prepare the display strings for each card
     for i, card in ipairs(self.state.selectedCards) do
         if card.cardType == "ingredient" then
-            scoringState.cardScores[i] = string.format("+%d", card.whiteScore)
+            scoringState.cardScores[i] = string.format("+%d", card.scoring.whiteScore)
         elseif card.cardType == "technique" then
-            scoringState.cardScores[i] = string.format("×%.1f", card.redScore)
+            scoringState.cardScores[i] = string.format("×%.1f", card.scoring.redScore)
         elseif card.cardType == "recipe" then
-            scoringState.cardScores[i] = string.format("×%.1f", card.pinkScore)
+            scoringState.cardScores[i] = string.format("×%.1f", card.scoring.pinkScore)
         end
     end
 end

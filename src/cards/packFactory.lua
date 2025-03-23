@@ -42,11 +42,19 @@ function PackFactory.generatePack(marketType, size)
     -- Add some common items (25% chance for each)
     for _, itemData in ipairs(commonStock) do
         if love.math.random() < 0.25 and #pack < size then
-            local card = Card.new(itemData.id, itemData.name, itemData.description)
-            card.cardType = itemData.cardType
-            card.cost = itemData.cost
-            card.value = itemData.value
-            table.insert(pack, card)
+            local card
+            if itemData.cardType == "ingredient" then
+                card = Card.createIngredient(itemData.id, itemData.name, itemData.description, itemData.value)
+            elseif itemData.cardType == "technique" then
+                card = Card.createTechnique(itemData.id, itemData.name, itemData.description, itemData.value)
+            elseif itemData.cardType == "recipe" then
+                card = Card.createRecipe(itemData.id, itemData.name, itemData.description, itemData.value)
+            end
+            
+            if card then
+                card.cost = itemData.cost
+                table.insert(pack, card)
+            end
         end
     end
     
@@ -56,11 +64,19 @@ function PackFactory.generatePack(marketType, size)
         local index = love.math.random(#marketItems)
         local itemData = marketItems[index]
         
-        local card = Card.new(itemData.id, itemData.name, itemData.description)
-        card.cardType = itemData.cardType
-        card.cost = itemData.cost
-        card.value = itemData.value
-        table.insert(pack, card)
+        local card
+        if itemData.cardType == "ingredient" then
+            card = Card.createIngredient(itemData.id, itemData.name, itemData.description, itemData.value)
+        elseif itemData.cardType == "technique" then
+            card = Card.createTechnique(itemData.id, itemData.name, itemData.description, itemData.value)
+        elseif itemData.cardType == "recipe" then
+            card = Card.createRecipe(itemData.id, itemData.name, itemData.description, itemData.value)
+        end
+        
+        if card then
+            card.cost = itemData.cost
+            table.insert(pack, card)
+        end
         
         -- Remove used item to avoid duplicates
         table.remove(marketItems, index)

@@ -85,6 +85,17 @@ local chefCards = {
     }
 }
 
+local function createCardFromData(cardData)
+    if cardData.cardType == "ingredient" then
+        return Card.createIngredient(cardData.id, cardData.name, cardData.description, cardData.value)
+    elseif cardData.cardType == "technique" then
+        return Card.createTechnique(cardData.id, cardData.name, cardData.description, cardData.value)
+    elseif cardData.cardType == "recipe" then
+        return Card.createRecipe(cardData.id, cardData.name, cardData.description, cardData.value)
+    end
+    return nil
+end
+
 function DeckFactory.createStarterDeck(chef)
     if not chef or not chef.name then
         return Deck.new()  -- Return empty deck if no chef provided
@@ -94,36 +105,20 @@ function DeckFactory.createStarterDeck(chef)
     
     -- Add common cards
     for _, cardData in ipairs(commonCards) do
-        local card = Card.new(cardData.id, cardData.name, cardData.description)
-        card.cardType = cardData.cardType
-        card.value = cardData.value  -- Add the value property
-        
-        -- Set the appropriate score based on card type
-        if card.cardType == "ingredient" then
-            card.whiteScore = cardData.value
-        elseif card.cardType == "technique" then
-            card.redScore = cardData.value
+        local card = createCardFromData(cardData)
+        if card then
+            deck:addCard(card)
         end
-        
-        deck:addCard(card)
     end
     
     -- Add chef-specific cards
     local specialCards = chefCards[chef.name]
     if specialCards then
         for _, cardData in ipairs(specialCards) do
-            local card = Card.new(cardData.id, cardData.name, cardData.description)
-            card.cardType = cardData.cardType
-            card.value = cardData.value  -- Add the value property
-            
-            -- Set the appropriate score based on card type
-            if card.cardType == "ingredient" then
-                card.whiteScore = cardData.value
-            elseif card.cardType == "technique" then
-                card.redScore = cardData.value
+            local card = createCardFromData(cardData)
+            if card then
+                deck:addCard(card)
             end
-            
-            deck:addCard(card)
         end
     end
     

@@ -453,22 +453,25 @@ end
 -- Factory methods
 function Card.createIngredient(id, name, description, baseScore)
     local card = Card.new(id, name, description)
-    card.cardType = Card.CARD_TYPES.INGREDIENT
+    card.cardType = "ingredient"
+    card.scoring.scoreType = CardScoring.SCORE_TYPES.WHITE
     card.scoring.whiteScore = baseScore
     return card
 end
 
 function Card.createTechnique(id, name, description, multiplier)
     local card = Card.new(id, name, description)
-    card.cardType = Card.CARD_TYPES.TECHNIQUE
+    card.cardType = "technique"
+    card.scoring.scoreType = CardScoring.SCORE_TYPES.RED
     card.scoring.redScore = multiplier
     return card
 end
 
-function Card.createRecipe(id, name, description, recipeMultiplier)
+function Card.createRecipe(id, name, description, multiplier)
     local card = Card.new(id, name, description)
-    card.cardType = Card.CARD_TYPES.RECIPE
-    card.scoring.pinkScore = recipeMultiplier
+    card.cardType = "recipe"
+    card.scoring.scoreType = CardScoring.SCORE_TYPES.PINK
+    card.scoring.pinkScore = multiplier
     return card
 end
 
