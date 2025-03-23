@@ -6,9 +6,9 @@ local CardEffects = require('src.cards.cardEffects')
 local Card = setmetatable({}, BaseCard)
 Card.__index = Card
 
--- Static card dimensions
-Card.WIDTH = 120
-Card.HEIGHT = 160
+-- Static card dimensions - increased size
+Card.WIDTH = 160  -- Increased from 120
+Card.HEIGHT = 220 -- Increased from 160
 
 function Card.getDimensions()
     return Card.WIDTH, Card.HEIGHT
@@ -43,12 +43,25 @@ function Card:draw(x, y)
     local hoverOffset = math.sin(visualState.hover) * self.visuals.ANIMATION.HOVER.AMOUNT
     y = y - visualState.lift - hoverOffset
     
-    -- Get current color based on state
-    local bgColor = style.COLORS[visualState.state:upper()] or style.COLORS.DEFAULT
-
-
+    -- Draw base card elements
+    self:drawCardBase(x, y, style, visualState)
     
-    -- Draw shadow (reduce shadow opacity for disabled state)
+    -- Draw card sections in order (from top to bottom)
+    self:drawTitleSection(x, y, style, visualState)
+    self:drawTypeSection(x, y, style, visualState)
+    self:drawImageSection(x, y, style, visualState)
+    self:drawDescriptionSection(x, y, style, visualState)
+    self:drawStatsSection(x, y, style, visualState)
+    self:drawFooterSection(x, y, style, visualState)
+    
+    -- Draw overlay effects (locked, scoring animation, etc.)
+    self:drawOverlayEffects(x, y, style, visualState)
+end
+
+function Card:drawCardBase(x, y, style, visualState)
+    local typeColors = self.visuals.TYPE_COLORS[self.cardType]
+    
+    -- Draw shadow
     local shadowOpacity = visualState.state == "disabled" and 0.05 or 0.1
     love.graphics.setColor(0, 0, 0, shadowOpacity)
     love.graphics.rectangle(
@@ -60,7 +73,11 @@ function Card:draw(x, y)
         style.DIMENSIONS.CORNER_RADIUS
     )
     
-    -- Draw card background with state-specific color
+    -- Draw card background
+    local bgColor = typeColors.PRIMARY
+    if visualState.state ~= "default" then
+        bgColor = style.COLORS[visualState.state:upper()]
+    end
     love.graphics.setColor(bgColor)
     love.graphics.rectangle(
         "fill",
@@ -71,12 +88,12 @@ function Card:draw(x, y)
         style.DIMENSIONS.CORNER_RADIUS
     )
     
-    -- Draw border (highlight for selected/highlighted states)
-    local borderColor = style.COLORS.BORDER
+    -- Draw border
+    local borderColor = typeColors.BORDER
     if visualState.state == "selected" then
-        borderColor = style.COLORS.HIGHLIGHT or {1, 1, 0, 1}
+        borderColor = style.COLORS.HIGHLIGHT
     elseif visualState.state == "highlighted" then
-        borderColor = style.COLORS.ACCENT or {0.4, 0.5, 0.9, 1}
+        borderColor = typeColors.ACCENT
     end
     love.graphics.setColor(borderColor)
     love.graphics.rectangle(
@@ -87,11 +104,13 @@ function Card:draw(x, y)
         style.DIMENSIONS.HEIGHT,
         style.DIMENSIONS.CORNER_RADIUS
     )
+end
+
+function Card:drawTitleSection(x, y, style, visualState)
+    local typeColors = self.visuals.TYPE_COLORS[self.cardType]
     
     -- Draw title background
-    local accentColor = style.COLORS.ACCENT or {0.4, 0.5, 0.9}
-    local accentAlpha = visualState.state == "disabled" and 0.05 or 0.1
-    love.graphics.setColor(accentColor[1], accentColor[2], accentColor[3], accentAlpha)
+    love.graphics.setColor(typeColors.TITLE_BG)
     love.graphics.rectangle(
         "fill",
         x + style.DIMENSIONS.BORDER_WIDTH,
@@ -101,10 +120,10 @@ function Card:draw(x, y)
         style.DIMENSIONS.CORNER_RADIUS
     )
     
-    -- Draw title with state-specific opacity
+    -- Draw title text
     local textAlpha = visualState.state == "disabled" and 0.5 or 1
     love.graphics.setFont(style.FONTS.TITLE)
-    love.graphics.setColor(style.COLORS.TITLE[1], style.COLORS.TITLE[2], style.COLORS.TITLE[3], textAlpha)
+    love.graphics.setColor(typeColors.TEXT[1], typeColors.TEXT[2], typeColors.TEXT[3], textAlpha)
     love.graphics.printf(
         self.name,
         x + style.DIMENSIONS.INNER_MARGIN,
@@ -112,27 +131,97 @@ function Card:draw(x, y)
         style.DIMENSIONS.WIDTH - style.DIMENSIONS.INNER_MARGIN * 2,
         "center"
     )
+end
+
+function Card:drawTypeSection(x, y, style, visualState)
+    local typeColors = self.visuals.TYPE_COLORS[self.cardType]
     
-    -- Draw description with state-specific opacity
-    love.graphics.setFont(style.FONTS.DESCRIPTION)
-    love.graphics.setColor(style.COLORS.DESCRIPTION[1], style.COLORS.DESCRIPTION[2], style.COLORS.DESCRIPTION[3], textAlpha)
-    love.graphics.printf(
-        self.description,
-        x + style.DIMENSIONS.INNER_MARGIN,
-        y + style.DIMENSIONS.DESC_MARGIN_TOP,
-        style.DIMENSIONS.WIDTH - style.DIMENSIONS.INNER_MARGIN * 2,
-        "left"
-    )
-    
-    -- Draw card type and stats with state-specific opacity
+    -- Adjusted position after title
+    local typeY = y + style.DIMENSIONS.TITLE_HEIGHT + style.SECTIONS.TYPE_MARGIN
     love.graphics.setFont(style.FONTS.STATS)
+    love.graphics.setColor(typeColors.SECONDARY)
     love.graphics.printf(
         self.cardType:upper(),
         x + style.DIMENSIONS.INNER_MARGIN,
-        y + style.DIMENSIONS.HEIGHT - 30,
+        typeY,
         style.DIMENSIONS.WIDTH - style.DIMENSIONS.INNER_MARGIN * 2,
         "left"
     )
+end
+
+function Card:drawImageSection(x, y, style, visualState)
+    -- Adjusted position after type section
+    local imageY = y + style.DIMENSIONS.TITLE_HEIGHT + 
+                  style.SECTIONS.TYPE_MARGIN + style.FONTS.STATS:getHeight() + 5
+    
+    love.graphics.setColor(0.9, 0.9, 0.9, 0.1)
+    love.graphics.rectangle(
+        "fill",
+        x + style.DIMENSIONS.INNER_MARGIN,
+        imageY,
+        style.DIMENSIONS.WIDTH - style.DIMENSIONS.INNER_MARGIN * 2,
+        style.SECTIONS.IMAGE_HEIGHT
+    )
+end
+
+function Card:drawDescriptionSection(x, y, style, visualState)
+    local typeColors = self.visuals.TYPE_COLORS[self.cardType]
+    local textAlpha = visualState.state == "disabled" and 0.5 or 1
+    
+    -- Calculate description position after image section
+    local descY = y + style.DIMENSIONS.DESC_MARGIN_TOP + style.SECTIONS.IMAGE_HEIGHT
+    
+    love.graphics.setFont(style.FONTS.DESCRIPTION)
+    love.graphics.setColor(typeColors.TEXT[1], typeColors.TEXT[2], typeColors.TEXT[3], textAlpha)
+    
+    -- Add padding and word wrap
+    love.graphics.printf(
+        self.description,
+        x + style.DIMENSIONS.INNER_MARGIN,
+        descY,
+        style.DIMENSIONS.WIDTH - style.DIMENSIONS.INNER_MARGIN * 2,
+        "left"
+    )
+end
+
+function Card:drawStatsSection(x, y, style, visualState)
+    -- Draw card stats (if any)
+    -- This section can be expanded based on card type
+end
+
+function Card:drawFooterSection(x, y, style, visualState)
+    -- Draw scoring information at the bottom
+    local scoreText = ""
+    if self.cardType == "ingredient" then
+        scoreText = string.format(" (+%d)", self.scoring.whiteScore)
+    elseif self.cardType == "technique" then
+        scoreText = string.format(" (×%.1f)", self.scoring.redScore)
+    elseif self.cardType == "recipe" then
+        scoreText = string.format(" (×%.1f)", self.scoring.pinkScore)
+    end
+    
+    love.graphics.setFont(style.FONTS.STATS)
+    love.graphics.printf(
+        scoreText,
+        x + style.DIMENSIONS.INNER_MARGIN,
+        y + style.DIMENSIONS.HEIGHT - style.SECTIONS.FOOTER_HEIGHT,
+        style.DIMENSIONS.WIDTH - style.DIMENSIONS.INNER_MARGIN * 2,
+        "right"
+    )
+end
+
+function Card:drawOverlayEffects(x, y, style, visualState)
+    -- Draw locked state indicator
+    if visualState.state == "locked" then
+        love.graphics.setColor(1, 1, 1, 0.3)
+        love.graphics.rectangle(
+            "fill",
+            x + style.DIMENSIONS.WIDTH - 24,
+            y + 4,
+            20,
+            20
+        )
+    end
     
     -- Draw score animation if active
     if visualState.scoring then
@@ -144,19 +233,6 @@ function Card:draw(x, y)
             y - 20,
             style.DIMENSIONS.WIDTH,
             "center"
-        )
-    end
-
-    -- Draw locked state indicator if needed
-    if visualState.state == "locked" then
-        love.graphics.setColor(1, 1, 1, 0.3)
-        -- Temporary visual indicator for locked state
-        love.graphics.rectangle(
-            "fill",
-            x + style.DIMENSIONS.WIDTH - 24,
-            y + 4,
-            20,
-            20
         )
     end
 end

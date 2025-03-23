@@ -8,6 +8,45 @@ local CardVisuals = {
         HIGHLIGHTED = "highlighted"  -- New state for temporary highlights
     },
 
+    -- Color schemes for different card types
+    TYPE_COLORS = {
+        ingredient = {
+            PRIMARY = {0.95, 0.95, 0.95, 1},    -- Off-white
+            SECONDARY = {0.4, 0.8, 0.4, 1},     -- Green
+            ACCENT = {0.2, 0.6, 0.2, 1},        -- Dark green
+            TITLE_BG = {0.3, 0.7, 0.3, 0.2},    -- Light green
+            TEXT = {0.2, 0.3, 0.2, 1},          -- Dark green-grey
+            BORDER = {0.3, 0.7, 0.3, 1}         -- Medium green
+        },
+        technique = {
+            PRIMARY = {0.95, 0.95, 1, 1},       -- Light blue-white
+            SECONDARY = {0.3, 0.5, 0.9, 1},     -- Blue
+            ACCENT = {0.2, 0.3, 0.8, 1},        -- Dark blue
+            TITLE_BG = {0.3, 0.5, 0.9, 0.2},    -- Light blue
+            TEXT = {0.2, 0.2, 0.3, 1},          -- Dark blue-grey
+            BORDER = {0.3, 0.5, 0.9, 1}         -- Medium blue
+        },
+        recipe = {
+            PRIMARY = {1, 0.95, 0.95, 1},       -- Light pink-white
+            SECONDARY = {0.9, 0.3, 0.5, 1},     -- Pink
+            ACCENT = {0.8, 0.2, 0.3, 1},        -- Dark pink
+            TITLE_BG = {0.9, 0.3, 0.5, 0.2},    -- Light pink
+            TEXT = {0.3, 0.2, 0.2, 1},          -- Dark pink-grey
+            BORDER = {0.9, 0.3, 0.5, 1}         -- Medium pink
+        }
+    },
+
+    -- Common colors for states
+    COLORS = {
+        DEFAULT = {1, 1, 1, 1},
+        SELECTED = {1, 0.9, 0.4, 1},
+        LOCKED = {0.6, 0.6, 0.7, 1},
+        DISABLED = {0.5, 0.5, 0.5, 0.7},
+        HIGHLIGHTED = {0.4, 0.8, 1, 1},
+        BORDER = {0.2, 0.2, 0.25, 1},
+        HIGHLIGHT = {1, 0.6, 0, 1}
+    },
+
     -- Animation Constants
     ANIMATION = {
         LIFT = {
@@ -27,13 +66,13 @@ local CardVisuals = {
     -- Style Constants (these will be used by Card's draw methods)
     STYLE = {
         DIMENSIONS = {
-            WIDTH = 120,
-            HEIGHT = 160,
-            CORNER_RADIUS = 8,
-            BORDER_WIDTH = 1,
-            INNER_MARGIN = 10,
-            TITLE_HEIGHT = 30,
-            DESC_MARGIN_TOP = 45
+            WIDTH = 160,          -- Match new card width
+            HEIGHT = 220,         -- Match new card height
+            CORNER_RADIUS = 10,   -- Slightly increased for larger card
+            BORDER_WIDTH = 2,     -- Slightly thicker border
+            INNER_MARGIN = 12,    -- Increased margin
+            TITLE_HEIGHT = 35,    -- Taller title section
+            DESC_MARGIN_TOP = 90  -- Adjusted to accommodate image section
         },
         COLORS = {
             -- Main card colors
@@ -49,9 +88,15 @@ local CardVisuals = {
             DESCRIPTION = {0.2, 0.2, 0.25, 1}
         },
         FONTS = {
-            TITLE = love.graphics.newFont(14),
-            DESCRIPTION = love.graphics.newFont(12),
-            STATS = love.graphics.newFont(11)
+            TITLE = love.graphics.newFont(16),       -- Slightly larger
+            DESCRIPTION = love.graphics.newFont(13),  -- Slightly larger
+            STATS = love.graphics.newFont(12)        -- Slightly larger
+        },
+        SECTIONS = {
+            IMAGE_HEIGHT = 60,    -- Define image section height
+            TYPE_MARGIN = 8,      -- Margin after type section
+            DESC_PADDING = 8,     -- Padding around description
+            FOOTER_HEIGHT = 30    -- Height for footer section
         },
         ICONS = {
             -- For now, we'll use a simple text character as a lock icon
