@@ -79,7 +79,7 @@ local CardVisuals = {
             CORNER_RADIUS = 10,   -- Slightly increased for larger card
             BORDER_WIDTH = 2,     -- Slightly thicker border
             INNER_MARGIN = 12,    -- Increased margin
-            TITLE_HEIGHT = 35,    -- Taller title section
+            TITLE_HEIGHT = 32,    -- Slightly reduced from 35 to tighten up
             DESC_MARGIN_TOP = 90  -- Adjusted to accommodate image section
         },
         COLORS = {
@@ -96,10 +96,10 @@ local CardVisuals = {
             DESCRIPTION = {0.2, 0.2, 0.25, 1}
         },
         FONTS = {
-            TITLE = love.graphics.newFont(16),       -- Slightly larger
-            DESCRIPTION = love.graphics.newFont(13),  -- Slightly larger
-            STATS = love.graphics.newFont(12),        -- Regular stats
-            SCORE = love.graphics.newFont(20)         -- Bigger score font
+            TITLE = love.graphics.newFont(14),      -- Reduced from 16 to prevent clipping
+            DESCRIPTION = love.graphics.newFont(13), 
+            STATS = love.graphics.newFont(12),      
+            SCORE = love.graphics.newFont(20)       
         },
         SECTIONS = {
             IMAGE_HEIGHT = 60,    -- Define image section height

@@ -120,15 +120,28 @@ function Card:drawTitleSection(x, y, style, visualState)
         style.DIMENSIONS.CORNER_RADIUS
     )
     
-    -- Draw title text
+    -- Draw title text with better vertical centering
     local textAlpha = visualState.state == "disabled" and 0.5 or 1
     love.graphics.setFont(style.FONTS.TITLE)
+    
+    -- Calculate vertical centering
+    local fontHeight = style.FONTS.TITLE:getHeight()
+    local titleY = y + style.DIMENSIONS.BORDER_WIDTH + 
+                  (style.DIMENSIONS.TITLE_HEIGHT - fontHeight) / 2
+    
+    -- Add text trimming if needed
+    local titleWidth = style.DIMENSIONS.WIDTH - (style.DIMENSIONS.INNER_MARGIN * 2)
+    local text = self.name
+    while style.FONTS.TITLE:getWidth(text) > titleWidth and #text > 3 do
+        text = text:sub(1, -2)
+    end
+    
     love.graphics.setColor(typeColors.TEXT[1], typeColors.TEXT[2], typeColors.TEXT[3], textAlpha)
     love.graphics.printf(
-        self.name,
+        text,
         x + style.DIMENSIONS.INNER_MARGIN,
-        y + (style.DIMENSIONS.TITLE_HEIGHT - style.FONTS.TITLE:getHeight()) / 2,
-        style.DIMENSIONS.WIDTH - style.DIMENSIONS.INNER_MARGIN * 2,
+        titleY,
+        titleWidth,
         "center"
     )
 end
