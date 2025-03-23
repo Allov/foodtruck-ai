@@ -15,12 +15,13 @@ return {
             MASTER = 25       -- Master techniques (signature methods)
         },
         RECIPE = {
-            BASIC = 1.2,      -- Simple recipes (salad, soup)
-            STANDARD = 1.4,   -- Standard recipes (pasta dishes)
-            COMPLEX = 1.6,    -- Complex recipes (risotto, soufflé)
-            SIGNATURE = 1.8,  -- Signature dishes
-            LEGENDARY = 2.0   -- Legendary recipes
+            BASIC = 1.5,      -- Basic recipes
+            STANDARD = 2.0,   -- Standard recipes
+            ADVANCED = 3.0,   -- Advanced recipes
+            EXPERT = 4.0,     -- Expert recipes
+            MASTER = 5.0      -- Master recipes
         }
     }
 }
+
 

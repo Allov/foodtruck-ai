@@ -98,7 +98,8 @@ local CardVisuals = {
         FONTS = {
             TITLE = love.graphics.newFont(16),       -- Slightly larger
             DESCRIPTION = love.graphics.newFont(13),  -- Slightly larger
-            STATS = love.graphics.newFont(12)        -- Slightly larger
+            STATS = love.graphics.newFont(12),        -- Regular stats
+            SCORE = love.graphics.newFont(20)         -- Bigger score font
         },
         SECTIONS = {
             IMAGE_HEIGHT = 60,    -- Define image section height

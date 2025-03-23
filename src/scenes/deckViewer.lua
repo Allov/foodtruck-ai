@@ -4,9 +4,10 @@ local Card = require('src.cards.card')
 local DeckViewer = setmetatable({}, Scene)
 DeckViewer.__index = DeckViewer
 
--- Get card dimensions from BaseCard class
+-- Constants at the top of the file
 local CARD_WIDTH, CARD_HEIGHT = BaseCard.CARD_WIDTH, BaseCard.CARD_HEIGHT
-local CARD_SPACING = 10
+local CARD_SPACING = 10  -- Horizontal spacing between cards
+local ROW_SPACING = 30   -- Vertical spacing between rows (new constant)
 local CARDS_PER_ROW = 6
 local SECTION_SPACING = 40
 local SECTION_TITLE_HEIGHT = 30
@@ -81,7 +82,7 @@ function DeckViewer:enter()
 end
 
 function DeckViewer:calculateSectionPositions()
-    local currentY = 20
+    local currentY = 40  -- Initial spacing from top
     self.sectionPositions = {}
     
     for i, cardType in ipairs(self.cardTypes) do
@@ -91,8 +92,9 @@ function DeckViewer:calculateSectionPositions()
             
             -- Update currentY for next section
             local rows = math.ceil(#cards / CARDS_PER_ROW)
-            currentY = currentY + SECTION_TITLE_HEIGHT
-            currentY = currentY + (rows * (CARD_HEIGHT + CARD_SPACING))
+            currentY = currentY + SECTION_TITLE_HEIGHT + 20  -- Padding after title
+            -- Add ROW_SPACING to the calculation
+            currentY = currentY + (rows * CARD_HEIGHT) + ((rows - 1) * ROW_SPACING)
             currentY = currentY + SECTION_SPACING
         end
     end
@@ -163,35 +165,54 @@ function DeckViewer:draw()
     
     -- Draw categories
     for i, cardType in ipairs(self.cardTypes) do
-        local cards = self:getCardsByType(cardType)
-        local startY = (100 + (i-1) * (cardHeight + spacing * 2)) + self.state.scroll
-        
-        -- Draw category title
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.printf(
-            string.upper(cardType),
-            50,
-            startY - 30,
-            love.graphics.getWidth() - 100,
-            'left'
-        )
-        
-        -- Draw cards
-        local startX = 50
-        for j, card in ipairs(cards) do
-            local x = startX + (j-1) * (cardWidth + spacing)
-            local y = startY
+        local cards = self.organizedCards[cardType]
+        if #cards > 0 then  -- Only draw sections that have cards
+            local startY = self.sectionPositions[i] + self.state.scroll
             
-            if y + cardHeight > 0 and y < love.graphics.getHeight() then
-                card:update(dt)  -- Pass dt to update
-                card:draw(x, y)
+            -- Draw section title with better styling
+            love.graphics.setColor(0.2, 0.2, 0.2, 1)  -- Dark background for title
+            love.graphics.rectangle(
+                "fill",
+                30,
+                startY,
+                love.graphics.getWidth() - 60,
+                SECTION_TITLE_HEIGHT,
+                5  -- Rounded corners
+            )
+            
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.setFont(love.graphics.newFont(18))  -- Larger font for section title
+            love.graphics.printf(
+                string.upper(cardType),
+                50,
+                startY + (SECTION_TITLE_HEIGHT - love.graphics.getFont():getHeight()) / 2,  -- Vertically centered
+                love.graphics.getWidth() - 100,
+                'left'
+            )
+            
+            -- Draw cards starting below the title
+            local cardsStartY = startY + SECTION_TITLE_HEIGHT + 20  -- Added padding after title
+            local startX = 50
+            
+            -- Draw cards in reverse order for correct overlapping
+            for j = #cards, 1, -1 do
+                local card = cards[j]
+                local x = startX + ((j-1) % CARDS_PER_ROW) * (CARD_WIDTH + CARD_SPACING)
+                local row = math.floor((j-1) / CARDS_PER_ROW)
+                -- Add ROW_SPACING to the y-position calculation
+                local y = cardsStartY + (row * (CARD_HEIGHT + ROW_SPACING))
+                
+                if y + CARD_HEIGHT > 0 and y < love.graphics.getHeight() then
+                    card:update(dt)
+                    card:draw(x, y)
+                end
             end
         end
     end
     
     -- Draw scroll indicators if needed
     if self.state.maxScroll > 0 then
-        if self.state.scroll > -self.state.maxScroll then  -- Changed condition
+        if self.state.scroll > -self.state.maxScroll then
             love.graphics.setColor(1, 1, 1, 0.5)
             love.graphics.printf("▼", 0, love.graphics.getHeight() - 30, love.graphics.getWidth(), 'center')
         end
@@ -214,6 +235,10 @@ function DeckViewer:getCardsByType(cardType)
 end
 
 return DeckViewer
+
+
+
+
 
 
 

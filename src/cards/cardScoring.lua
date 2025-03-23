@@ -1,3 +1,5 @@
+local Constants = require('src.cards.cardConstants')
+
 local CardScoring = {
     SCORE_TYPES = {
         WHITE = "white",
@@ -8,9 +10,9 @@ local CardScoring = {
 
 function CardScoring.new()
     local self = {}
-    self.whiteScore = 0
-    self.redScore = 1
-    self.pinkScore = 1
+    self.whiteScore = Constants.DEFAULT_VALUES.INGREDIENT.BASIC
+    self.redScore = Constants.DEFAULT_VALUES.TECHNIQUE.BASIC
+    self.pinkScore = 1.5  -- Add RECIPE defaults to constants
     return self
 end
 

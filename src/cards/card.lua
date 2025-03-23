@@ -190,21 +190,32 @@ function Card:drawStatsSection(x, y, style, visualState)
 end
 
 function Card:drawFooterSection(x, y, style, visualState)
+    local typeColors = self.visuals.TYPE_COLORS[self.cardType]
+    local textAlpha = visualState.state == "disabled" and 0.5 or 1
+    
     -- Draw scoring information at the bottom
     local scoreText = ""
     if self.cardType == "ingredient" then
-        scoreText = string.format(" (+%d)", self.scoring.whiteScore)
+        scoreText = string.format("+%d", self.scoring.whiteScore)
     elseif self.cardType == "technique" then
-        scoreText = string.format(" (×%.1f)", self.scoring.redScore)
+        scoreText = string.format("×%.1f", self.scoring.redScore)
     elseif self.cardType == "recipe" then
-        scoreText = string.format(" (×%.1f)", self.scoring.pinkScore)
+        scoreText = string.format("×%.1f", self.scoring.pinkScore)
     end
     
-    love.graphics.setFont(style.FONTS.STATS)
+    -- Use the secondary color from the card type's color scheme
+    love.graphics.setColor(typeColors.SECONDARY[1], 
+                         typeColors.SECONDARY[2], 
+                         typeColors.SECONDARY[3], 
+                         textAlpha)
+    
+    -- Use larger score font
+    love.graphics.setFont(style.FONTS.SCORE)
     love.graphics.printf(
         scoreText,
         x + style.DIMENSIONS.INNER_MARGIN,
-        y + style.DIMENSIONS.HEIGHT - style.SECTIONS.FOOTER_HEIGHT,
+        y + style.DIMENSIONS.HEIGHT - style.SECTIONS.FOOTER_HEIGHT + 
+            (style.SECTIONS.FOOTER_HEIGHT - style.FONTS.SCORE:getHeight()) / 2,  -- Center vertically
         style.DIMENSIONS.WIDTH - style.DIMENSIONS.INNER_MARGIN * 2,
         "right"
     )
