@@ -103,4 +103,40 @@ function Card.getDimensions()
     return CARD_WIDTH, CARD_HEIGHT
 end
 
+-- Add this function to draw card backs
+function Card:drawBack(x, y)
+    -- Draw card background
+    love.graphics.setColor(0.3, 0.3, 0.3, 1)
+    love.graphics.rectangle('fill', x, y, CARD_WIDTH, CARD_HEIGHT)
+    
+    -- Draw card border
+    love.graphics.setColor(0.8, 0.8, 0.8, 1)
+    love.graphics.rectangle('line', x, y, CARD_WIDTH, CARD_HEIGHT)
+    
+    -- Draw card back pattern
+    love.graphics.setColor(0.4, 0.4, 0.4, 1)
+    -- Diamond pattern
+    local centerX = x + CARD_WIDTH / 2
+    local centerY = y + CARD_HEIGHT / 2
+    local diamondWidth = CARD_WIDTH * 0.6
+    local diamondHeight = CARD_HEIGHT * 0.6
+    
+    -- Draw outer diamond
+    love.graphics.polygon('line', 
+        centerX, centerY - diamondHeight/2,
+        centerX + diamondWidth/2, centerY,
+        centerX, centerY + diamondHeight/2,
+        centerX - diamondWidth/2, centerY
+    )
+    
+    -- Draw inner diamond
+    local innerScale = 0.6
+    love.graphics.polygon('line', 
+        centerX, centerY - (diamondHeight/2 * innerScale),
+        centerX + (diamondWidth/2 * innerScale), centerY,
+        centerX, centerY + (diamondHeight/2 * innerScale),
+        centerX - (diamondWidth/2 * innerScale), centerY
+    )
+end
+
 return Card

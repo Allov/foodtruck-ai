@@ -8,7 +8,16 @@ local commonCards = {
     {id = 1, name = "Basic Knife", description = "Simple cutting technique", cardType = "technique"},
     {id = 2, name = "Salt", description = "Essential seasoning", cardType = "ingredient"},
     {id = 3, name = "Oil", description = "Basic cooking oil", cardType = "ingredient"},
-    {id = 4, name = "Pan Fry", description = "Basic pan frying technique", cardType = "technique"}
+    {id = 4, name = "Pan Fry", description = "Basic pan frying technique", cardType = "technique"},
+    -- Adding more common cards
+    {id = 5, name = "Onion", description = "Basic aromatic vegetable", cardType = "ingredient"},
+    {id = 6, name = "Garlic", description = "Essential flavor base", cardType = "ingredient"},
+    {id = 7, name = "Black Pepper", description = "Basic spice", cardType = "ingredient"},
+    {id = 8, name = "Boil", description = "Basic boiling technique", cardType = "technique"},
+    {id = 9, name = "Chop", description = "Basic chopping technique", cardType = "technique"},
+    {id = 10, name = "Steam", description = "Basic steaming technique", cardType = "technique"},
+    {id = 11, name = "Water", description = "Basic cooking liquid", cardType = "ingredient"},
+    {id = 12, name = "Mix", description = "Basic mixing technique", cardType = "technique"}
 }
 
 -- Specialized cards for each chef
@@ -59,7 +68,10 @@ function DeckFactory.createStarterDeck(chef)
         end
     end
     
+    print("[DeckFactory] Created starter deck with " .. #deck.cards .. " cards")
     return deck
 end
 
 return DeckFactory
+
+

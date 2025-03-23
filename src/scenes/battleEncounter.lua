@@ -166,59 +166,93 @@ function BattleEncounter:handleCardSelection()
         self:toggleCardSelection()
     elseif love.keyboard.wasPressed('return') and #self.state.selectedCards > 0 then
         self:transitionToPhase(self.PHASES.COOKING)
-    elseif love.keyboard.wasPressed('d') then
-        if #self.state.handCards > 0 then
-            self.state.currentAction = self.ACTIONS.DISCARD
-        end
+    end
+    -- Discard action disabled
+    --[[ elseif love.keyboard.wasPressed('d') then
+        self:discardCurrentCard()
+    ]]
+end
+
+function BattleEncounter:discardCurrentCard()
+    if #self.state.handCards == 0 then return end
+    
+    local card = self.state.handCards[self.state.selectedCardIndex]
+    if not card then return end
+    
+    print("[BattleEncounter] Before discard - Hand size:", #self.state.handCards)
+    
+    -- Remove current card and add to discard pile
+    self:removeCardFromHand(self.state.selectedCardIndex)
+    self.state.deck:discard(card)
+    
+    -- Draw and add new card
+    self:drawAndAddNewCard(self.state.selectedCardIndex)
+    
+    -- Update selection
+    self:adjustSelectionAfterDiscard()
+    
+    print("[BattleEncounter] After operations - Hand size:", #self.state.handCards)
+end
+
+function BattleEncounter:removeCardFromHand(index)
+    table.remove(self.state.handCards, index)
+end
+
+function BattleEncounter:drawAndAddNewCard(index)
+    local newCard = self.state.deck:draw()
+    if newCard then
+        table.insert(self.state.handCards, index, newCard)
+    end
+end
+
+function BattleEncounter:adjustSelectionAfterDiscard()
+    -- Ensure selected index is within bounds
+    if self.state.selectedCardIndex > #self.state.handCards then
+        self.state.selectedCardIndex = #self.state.handCards
+    end
+    
+    -- Update visual selection state of cards
+    for i, handCard in ipairs(self.state.handCards) do
+        handCard:setSelected(i == self.state.selectedCardIndex)
     end
 end
 
 function BattleEncounter:handleCardDiscard()
     if love.keyboard.wasPressed('escape') then
         self.state.currentAction = self.ACTIONS.SELECT
-        self.state.selectedForDiscard = {}
     elseif love.keyboard.wasPressed('space') then
-        self:toggleCardDiscard()
-    elseif love.keyboard.wasPressed('return') then
-        self:confirmDiscard()
+        self:discardAndDrawNew()
     end
 end
 
-function BattleEncounter:toggleCardDiscard()
+function BattleEncounter:discardAndDrawNew()
     local card = self.state.handCards[self.state.selectedCardIndex]
     if not card then return end
-    
-    local index = table.indexOf(self.state.selectedForDiscard, card)
-    if index then
-        table.remove(self.state.selectedForDiscard, index)
-    else
-        table.insert(self.state.selectedForDiscard, card)
-    end
-end
 
-function BattleEncounter:confirmDiscard()
-    for _, card in ipairs(self.state.selectedForDiscard) do
-        -- Remove from hand
-        local index = table.indexOf(self.state.handCards, card)
-        if index then
-            table.remove(self.state.handCards, index)
-            table.insert(self.state.discardPile, card)
-            
-            -- Trigger any "on discard" effects
-            if card.onDiscard then
-                card:onDiscard(self)
-            end
-        end
-    end
+    -- Remove from hand
+    table.remove(self.state.handCards, self.state.selectedCardIndex)
     
-    -- Clear discard selection and return to normal selection mode
-    self.state.selectedForDiscard = {}
-    self.state.currentAction = self.ACTIONS.SELECT
+    -- Add to deck's discard pile (not just the battle state discard pile)
+    self.state.deck:discard(card)
+    
+    -- Draw a new card from the deck
+    local newCard = self.state.deck:draw()
+    if newCard then
+        table.insert(self.state.handCards, self.state.selectedCardIndex, newCard)
+    end
     
     -- Adjust selected card index if needed
     if self.state.selectedCardIndex > #self.state.handCards then
         self.state.selectedCardIndex = #self.state.handCards
     end
+    
+    -- Update card selection
+    for i, handCard in ipairs(self.state.handCards) do
+        handCard:setSelected(i == self.state.selectedCardIndex)
+    end
+    
+    -- Return to selection mode
+    self.state.currentAction = self.ACTIONS.SELECT
 end
 
 function BattleEncounter:updateCookingPhase(dt)
@@ -346,7 +380,7 @@ function BattleEncounter:drawCommonElements()
         'center'
     )
     
-    -- Draw current score
+    -- Draw current score and phase (keep existing code)
     love.graphics.printf(
         "Score: " .. self.state.currentScore,
         0,
@@ -355,7 +389,6 @@ function BattleEncounter:drawCommonElements()
         'center'
     )
     
-    -- Draw current phase
     love.graphics.printf(
         "Phase: " .. self.state.currentPhase,
         0,
@@ -364,7 +397,7 @@ function BattleEncounter:drawCommonElements()
         'center'
     )
     
-    -- If in cooking phase, draw timer
+    -- If in cooking phase, draw timer (keep existing code)
     if self.state.currentPhase == BattleEncounter.PHASES.COOKING then
         love.graphics.printf(
             string.format("Time: %.1f", self.state.timeRemaining),
@@ -375,30 +408,76 @@ function BattleEncounter:drawCommonElements()
         )
     end
 
-    -- Draw deck face down in top-right corner
-    local cardWidth = 100
-    local cardHeight = 150
-    local deckX = love.graphics.getWidth() - cardWidth - 20  -- 20px padding from right
-    local deckY = 20  -- 20px padding from top
+    -- Card dimensions
+    local cardWidth, cardHeight = Card.getDimensions()
+    local padding = 20
+    local stackOffset = 2  -- How much each card in the stack is offset from the one below
+
+    -- Draw pile (top-right corner)
+    local drawPileX = love.graphics.getWidth() - cardWidth - padding
+    local drawPileY = padding
     
-    -- Draw multiple layers to give thickness effect
-    for i = 1, 5 do
-        love.graphics.setColor(0.2, 0.2, 0.2, 1)
-        love.graphics.rectangle('fill', deckX - i, deckY - i, cardWidth, cardHeight)
+    -- Only draw the pile if there are cards in it
+    if #self.state.deck.drawPile > 0 then
+        -- Draw stack of cards from bottom to top
+        local numCardsToShow = math.min(5, #self.state.deck.drawPile)
+        for i = numCardsToShow, 1, -1 do
+            -- Calculate offset position for this card
+            local cardX = drawPileX - (i * stackOffset)
+            local cardY = drawPileY - (i * stackOffset)
+            
+            -- Draw card back
+            love.graphics.setColor(1, 1, 1, 1)
+            Card.new(0, "", ""):drawBack(cardX, cardY)
+        end
+    else
+        -- Draw empty pile outline
+        love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
+        love.graphics.rectangle('line', drawPileX, drawPileY, cardWidth, cardHeight)
     end
+
+    -- Draw pile count
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf(
+        "Draw: " .. #self.state.deck.drawPile,
+        drawPileX,
+        drawPileY + cardHeight + 5,
+        cardWidth,
+        'center'
+    )
+
+    -- Discard pile (top-left corner)
+    local discardPileX = padding
+    local discardPileY = padding
     
-    -- Draw top card
-    love.graphics.setColor(0.3, 0.3, 0.3, 1)
-    love.graphics.rectangle('fill', deckX, deckY, cardWidth, cardHeight)
-    
-    -- Draw card border
-    love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    love.graphics.rectangle('line', deckX, deckY, cardWidth, cardHeight)
-    
-    -- Draw card back pattern (simple cross pattern)
-    love.graphics.setColor(0.4, 0.4, 0.4, 1)
-    love.graphics.line(deckX, deckY, deckX + cardWidth, deckY + cardHeight)
-    love.graphics.line(deckX + cardWidth, deckY, deckX, deckY + cardHeight)
+    -- Only draw the pile if there are cards in it
+    if #self.state.deck.discardPile > 0 then
+        -- Draw stack of cards from bottom to top
+        local numCardsToShow = math.min(5, #self.state.deck.discardPile)
+        for i = numCardsToShow, 1, -1 do
+            -- Calculate offset position for this card
+            local cardX = discardPileX - (i * stackOffset)
+            local cardY = discardPileY - (i * stackOffset)
+            
+            -- Draw card back
+            love.graphics.setColor(1, 1, 1, 1)
+            Card.new(0, "", ""):drawBack(cardX, cardY)
+        end
+    else
+        -- Draw empty pile outline
+        love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
+        love.graphics.rectangle('line', discardPileX, discardPileY, cardWidth, cardHeight)
+    end
+
+    -- Discard pile count
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.printf(
+        "Discard: " .. #self.state.deck.discardPile,
+        discardPileX,
+        discardPileY + cardHeight + 5,
+        cardWidth,
+        'center'
+    )
 end
 
 function BattleEncounter:drawInitialHand()
