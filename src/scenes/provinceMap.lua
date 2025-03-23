@@ -157,6 +157,7 @@ end
 function ProvinceMap:generateMap()
     local nodesPerRow = self:generateNodesPerRow()
     self.nodes = {}
+    local hasNegative = false  -- Track if we've added a negative encounter
 
     for row = 1, self.NUM_LEVELS do
         local rowNodes = {}
@@ -179,6 +180,11 @@ function ProvinceMap:generateMap()
                 -- Random encounter type for other rows
                 node.type = self:getRandomEncounterType(row)
                 node.encounterType = self:getSpecificEncounter(node.type)
+
+                -- Track if we've added a negative encounter
+                if node.type == "negative" then
+                    hasNegative = true
+                end
             end
 
             table.insert(rowNodes, node)
@@ -191,7 +197,20 @@ function ProvinceMap:generateMap()
         self.nodes[row] = rowNodes
     end
 
-    self.currentRow = nil  -- Clear current row after generation
+    -- If we haven't added a negative encounter, force one in a random middle row
+    if not hasNegative then
+        -- Choose a random row between 3 and NUM_LEVELS-1
+        local randomRow = math.floor(self.randomGenerator:random(3, self.NUM_LEVELS-1))
+        local randomNode = math.floor(self.randomGenerator:random(1, #self.nodes[randomRow]))
+
+        -- Don't override the final showdown
+        if randomRow ~= self.NUM_LEVELS then
+            self.nodes[randomRow][randomNode].type = "negative"
+            self.nodes[randomRow][randomNode].encounterType = "equipment_malfunction"
+        end
+    end
+
+    -- Generate connections between nodes
     self:createConnections()  -- Changed from generateConnections to createConnections
 end
 
@@ -951,6 +970,8 @@ function ProvinceMap:drawChefInfo(textX, textY, lineHeight)
 end
 
 return ProvinceMap
+
+
 
 
 

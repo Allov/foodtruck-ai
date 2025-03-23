@@ -16,6 +16,15 @@
 - Map navigation and node connections
 - Node selection and progression system
 - Score animation and feedback system
+- Phase transitions and timers
+- Battle results presentation
+- Rating system implementation
+- Node completion tracking
+- Camera and map scrolling
+- Debug console with commands
+- Settings system with save/load
+- CRT shader effect
+- Basic status message system
 
 ## In Progress
 - Battle encounter system
@@ -27,31 +36,40 @@
 - Card effect implementation
   - Basic structure in place
   - Need full effect system
-- Basic UI systems
+- UI systems
   - Common elements working
   - Phase-specific UI improvements in progress
-  - Need better phase transitions
+  - Status messages implemented
+  - Need better feedback animations
 
 ## Next Steps
 1. Complete battle encounter core mechanics
    - Implement card combinations
    - Add synergy calculations
    - Add battle-type specific mechanics
-2. Implement proper feedback systems
-   - ✓ Score calculations display
-   - Timer and phase transitions
-   - Battle results presentation
-3. Add negative encounter effects
-4. Develop beneficial encounter rewards
-5. Create basic lore system
-6. Implement save/load system
-7. Add sound system
+2. Implement remaining encounter types
+   - Complete negative encounters
+   - Expand beneficial encounters
+   - Flesh out lore system
+3. Add progression systems
+   - Chef experience system
+   - Unlock mechanics
+   - Achievement tracking
+4. Polish and feedback
+   - Add sound system
+   - Improve visual feedback
+   - Add particle effects
+5. Content creation
+   - More card varieties
+   - Additional encounter types
+   - Extended story elements
 
 ## Known Issues
 1. Market balance needs tuning
 2. Card effects need implementation
-3. Save system missing
+3. Save system needs expansion
 4. Sound feedback missing
-5. Game state persistence between encounters
-6. Phase transitions need polish
-7. Rating system needs balancing
+5. Game state persistence between encounters needs improvement
+6. Chef progression system incomplete
+7. Content variety limited
+8. Performance optimization needed for larger maps

@@ -27,6 +27,7 @@ A roguelike deck-building game where you travel across provinces in your food tr
 - Use `st.bat` for development with debugging
 - Use `check.bat` to run code quality checks
 - Use `cm.bat` for quick commits
+- Use `stt.bat` to run tests before launch
 
 ### Running the Game
 - Development: Run `st.bat` or use VSCode debugger
@@ -119,7 +120,31 @@ A roguelike deck-building game where you travel across provinces in your food tr
 4. Document changes
 
 ## Debug Features
-- In-game console (toggle with backtick)
+
+### Debug Console Commands
+Toggle console with backtick (`) key. Available commands:
+- `help`: Show available commands
+- `clear`: Clear console history
+- `version`: Show game and LÖVE version
+- `stats`: Display project statistics
+- `debug`: Toggle debug information
+- `scene <name>`: Switch to specified scene
+- `scenes`: List all available scenes
+- `spawn <type> <x> <y>`: Spawn enemy at position
+- `win`: Win current battle
+- `lose`: Lose current battle
+- `mem`: Show memory usage
+- `gc`: Force garbage collection
+- `cash <amount>`: Add cash to player
+- `state`: Show current game state
+
+### Console Controls
+- F11: Toggle fullscreen
+- PgUp/PgDn: Scroll console history
+- Enter: Execute command
+- Mouse wheel: Scroll console
+
+### Additional Debug Tools
 - VSCode debugging support
 - Performance monitoring
 - State inspection tools
@@ -127,3 +152,4 @@ A roguelike deck-building game where you travel across provinces in your food tr
 
 ## License
 MIT
+
