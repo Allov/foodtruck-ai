@@ -1,6 +1,7 @@
 local Encounter = require('src.scenes.encounter')
 local Card = require('src.cards.card')
 local encounterConfigs = require('src.encounters.encounterConfigs')
+local CombinationSystem = require('src.cards.combinationSystem')
 
 local BattleEncounter = {}
 BattleEncounter.__index = BattleEncounter
@@ -41,7 +42,7 @@ BattleEncounter.PHASE_TIMINGS = {
 function BattleEncounter.new()
     local self = setmetatable(Encounter.new(), BattleEncounter)
     self.instanceId = tostring(self):match('table: (.+)')
-    
+
     self.state = {
         currentPhase = BattleEncounter.PHASES.PREPARATION,
         selectedCards = {},
@@ -56,13 +57,13 @@ function BattleEncounter.new()
         viewingPile = nil,  -- 'draw' or 'discard' when viewing piles
         pileCardIndex = 1   -- Selected card index when viewing piles
     }
-    
+
     self:setupBattleParameters()
-    
+
     if self.init then
         self:init()
     end
-    
+
     return self
 end
 
@@ -75,22 +76,22 @@ function BattleEncounter:enter()
     -- Get battle configuration from gameState
     self.state.battleType = gameState.currentBattleType or "food_critic"
     self.state.difficulty = gameState.battleDifficulty or "normal"
-    
+
     -- Initialize enemy based on battle type
     self.state.enemy = {
         name = self.state.battleType == "food_critic" and "Food Critic" or "Lunch Rush",
         specialty = self.state.battleType == "food_critic" and "Fine Dining" or "Speed Service"
     }
-    
+
     -- Use the current deck directly
     self.state.deck = gameState.currentDeck
-    
+
     -- Draw initial hand
     self:drawInitialHand()
-    
+
     -- Set battle parameters based on type
     self:setupBattleParameters()
-    
+
     -- Initialize first card as selected
     if #self.state.handCards > 0 then
         self.state.selectedCardIndex = 1
@@ -116,13 +117,13 @@ function BattleEncounter:setupBattleParameters()
             targetScore = 100
         }
     }
-    
+
     local config = battleConfigs[self.state.battleType] or battleConfigs.food_critic
     self.state.maxRounds = config.rounds
     self.state.timeRemaining = config.timePerRound
     self.state.maxSelectedCards = config.maxCards
     self.state.targetScore = config.targetScore
-    
+
     -- Initialize enemy based on battle type
     self.state.enemy = {
         name = self.state.battleType == "food_critic" and "Food Critic" or "Lunch Rush",
@@ -134,10 +135,10 @@ function BattleEncounter:updateRating(finalScore)
     local chef = gameState.selectedChef
     local previousRating = chef.rating
     local targetScore = self.state.targetScore
-    
+
     -- Check for perfect dish
     local isPerfect = chef:isPerfectDish(finalScore, targetScore)
-    
+
     if finalScore < targetScore then
         -- Decrease rating
         local currentIndex = chef:getRatingIndex(chef.rating)
@@ -151,17 +152,17 @@ function BattleEncounter:updateRating(finalScore)
             chef:updateRating(Chef.RATINGS[currentIndex - 1])
         end
     end
-    
+
     -- Record battle results
     chef:recordBattleResult(
         finalScore >= targetScore,
         finalScore
     )
-    
+
     -- Store the rating change for UI feedback
     self.state.previousRating = previousRating
     self.state.ratingChanged = chef.rating ~= previousRating
-    
+
     -- Check for game over condition
     if chef.rating == 'F' then
         self:gameOver()
@@ -171,7 +172,7 @@ end
 function BattleEncounter:endBattle(won)
     -- Update rating based on final total score
     self:updateRating(self.state.totalScore)
-    
+
     -- Store battle results
     gameState.battleResults = {
         won = won,
@@ -181,16 +182,16 @@ function BattleEncounter:endBattle(won)
         previousRating = self.state.previousRating,
         ratingChanged = self.state.ratingChanged
     }
-    
+
     -- Mark node as completed if from province map
     if gameState.currentNodeLevel and gameState.currentNodeIndex then
         local provinceMap = sceneManager.scenes['provinceMap']
         provinceMap:markNodeCompleted(gameState.currentNodeLevel, gameState.currentNodeIndex)
     end
-    
+
     -- Clear current encounter
     gameState.currentEncounter = nil
-    
+
     -- Return to previous scene
     sceneManager:switch(gameState.previousScene or 'provinceMap')
 end
@@ -202,12 +203,12 @@ end
 
 function BattleEncounter:update(dt)
     Encounter.update(self, dt)
-    
+
     -- Update all cards in hand
     for _, card in ipairs(self.state.handCards) do
         card:update(dt)
     end
-    
+
     if self.state.showingConfirmDialog then
         return
     end
@@ -276,14 +277,14 @@ end
 
 function BattleEncounter:discardCurrentCard()
     if #self.state.handCards == 0 then return end
-    
+
     local card = self.state.handCards[self.state.selectedCardIndex]
     if not card then return end
-    
+
     -- Reset card's internal states
     card:setSelected(false)
     card:setLocked(false)
-    
+
     -- Remove from selected cards if it exists there
     for i = #self.state.selectedCards, 1, -1 do
         if self.state.selectedCards[i] == card then
@@ -291,14 +292,14 @@ function BattleEncounter:discardCurrentCard()
             break
         end
     end
-    
+
     -- Remove current card and add to discard pile
     self:removeCardFromHand(self.state.selectedCardIndex)
     self.state.deck:discard(card)
-    
+
     -- Draw and add new card
     self:drawAndAddNewCard(self.state.selectedCardIndex)
-    
+
     -- Update selection
     self:adjustSelectionAfterDiscard()
 end
@@ -322,7 +323,7 @@ function BattleEncounter:adjustSelectionAfterDiscard()
     if self.state.selectedCardIndex > #self.state.handCards then
         self.state.selectedCardIndex = #self.state.handCards
     end
-    
+
     -- Update visual selection state of cards
     for i, handCard in ipairs(self.state.handCards) do
         handCard:setSelected(i == self.state.selectedCardIndex)
@@ -341,7 +342,7 @@ end
 function BattleEncounter:updatePhaseTimer(dt)
     if self.state.phaseTimer then
         self.state.phaseTimer = self.state.phaseTimer - dt
-        
+
         if self.state.phaseTimer <= 0 then
             self:transitionToPhase(self.PHASES.RESULTS)
         end
@@ -350,14 +351,14 @@ end
 
 function BattleEncounter:updateCardScoring(dt)
     local scoringState = self.state.scoringState
-    
+
     -- If we've scored all cards, nothing to do
     if scoringState.currentCardIndex >= #self.state.selectedCards then
         return
     end
 
     scoringState.animationTimer = scoringState.animationTimer - dt
-    
+
     -- Time to score next card
     if scoringState.animationTimer <= 0 then
         self:scoreNextCard()
@@ -367,14 +368,20 @@ end
 function BattleEncounter:scoreNextCard()
     local scoringState = self.state.scoringState
     scoringState.currentCardIndex = scoringState.currentCardIndex + 1
-    
+
     -- Check if we still have cards to score
     if scoringState.currentCardIndex <= #self.state.selectedCards then
         local card = self.state.selectedCards[scoringState.currentCardIndex]
         local scoreValue = scoringState.cardScores[scoringState.currentCardIndex]
 
+        -- Only check combinations when scoring the last card
+        if scoringState.currentCardIndex == #self.state.selectedCards then
+            -- Store combinations for display
+            scoringState.combinations = CombinationSystem:identifyCombinations(self.state.selectedCards)
+        end
+
         print("[BattleEncounter:scoreNextCard] Scoring card", card.name, "with scoring value", card.scoring)
-        
+
         self:applyCardScore(card)
         card:showScoreAnimation(scoreValue)
         scoringState.animationTimer = self.PHASE_TIMINGS.CARD_SCORE_ANIMATION
@@ -383,14 +390,24 @@ end
 
 function BattleEncounter:applyCardScore(card)
     local scoreValue = card.scoring:getValue()
-    
+
     if card.cardType == "ingredient" then
         self.state.roundScore = (self.state.roundScore or 0) + scoreValue
     elseif card.cardType == "technique" or card.cardType == "recipe" then
         self.state.roundScore = (self.state.roundScore or 0) * scoreValue
     end
-    
-    self.state.currentScore = self.state.roundScore  -- Update current score for display
+
+    -- Apply combination bonuses only after all cards are scored
+    local scoringState = self.state.scoringState
+    if scoringState and
+       scoringState.currentCardIndex == #self.state.selectedCards and
+       scoringState.combinations then
+        -- Simple 10% bonus per combination for now
+        local combinationBonus = 1 + (#scoringState.combinations * 0.1)
+        self.state.roundScore = self.state.roundScore * combinationBonus
+    end
+
+    self.state.currentScore = self.state.roundScore
     self.state.scoringState.displayTotal = self.state.currentScore
 end
 
@@ -411,7 +428,7 @@ end
 function BattleEncounter:toggleCardSelection()
     local card = self.state.handCards[self.state.selectedCardIndex]
     if not card then return end
-    
+
     -- Check if card is already selected
     local isSelected = false
     for i, selectedCard in ipairs(self.state.selectedCards) do
@@ -423,7 +440,7 @@ function BattleEncounter:toggleCardSelection()
             break
         end
     end
-    
+
     -- If not selected and we haven't reached max cards, add it
     if not isSelected and #self.state.selectedCards < self.state.maxSelectedCards then
         table.insert(self.state.selectedCards, card)
@@ -440,9 +457,9 @@ function BattleEncounter:draw()
         self:drawPileView()
         return
     end
-    
+
     love.graphics.setColor(1, 1, 1, 1)
-    
+
     -- Draw phase-specific elements
     if self.state.currentPhase == BattleEncounter.PHASES.PREPARATION then
         self:drawPreparationPhase()
@@ -451,7 +468,7 @@ function BattleEncounter:draw()
     elseif self.state.currentPhase == BattleEncounter.PHASES.RESULTS then
         self:drawResultsPhase()
     end
-    
+
     -- Always draw common elements
     self:drawCommonElements()
     -- Draw deck info (piles)
@@ -461,10 +478,10 @@ end
 function BattleEncounter:drawCommonElements()
     -- Draw base background
     self:drawBattleBackground()
-    
+
     -- Draw top HUD elements
     self:drawTopHUD()
-    
+
     -- Draw bottom HUD elements (hand and deck info)
     self:drawBottomHUD()
 end
@@ -478,10 +495,10 @@ end
 function BattleEncounter:drawTopHUD()
     local TOP_MARGIN = 20
     local LEFT_MARGIN = 20
-    
+
     -- Draw enemy info (left side)
     self:drawEnemyInfo(LEFT_MARGIN, TOP_MARGIN)
-    
+
     -- Draw battle stats (right side)
     self:drawBattleStats(TOP_MARGIN)
 end
@@ -489,14 +506,14 @@ end
 function BattleEncounter:drawEnemyInfo(x, y)
     love.graphics.setFont(FONTS.MEDIUM)
     love.graphics.setColor(COLORS.TEXT)
-    
+
     -- Enemy name
     love.graphics.print(
         self.state.enemy.name,
         x,
         y
     )
-    
+
     -- Enemy specialty
     love.graphics.setFont(FONTS.SMALL)
     love.graphics.print(
@@ -509,9 +526,9 @@ end
 function BattleEncounter:drawBattleStats(y)
     local statsX = love.graphics.getWidth() - 220
     local statSpacing = 25
-    
+
     love.graphics.setFont(FONTS.MEDIUM)
-    
+
     -- Round counter
     love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(
@@ -522,7 +539,7 @@ function BattleEncounter:drawBattleStats(y)
         statsX, y,
         200, 'right'
     )
-    
+
     -- Score - now showing total score instead of current round score
     local totalScore = self.state.totalScore or 0
     local scoreColor = totalScore >= self.state.targetScore and COLORS.SUCCESS or COLORS.HIGHLIGHT
@@ -540,7 +557,7 @@ end
 function BattleEncounter:drawBottomHUD()
     -- Draw the player's hand
     self:drawHand()
-    
+
     -- Draw deck information
     self:drawDeckInfo()
 end
@@ -551,11 +568,11 @@ function BattleEncounter:drawDeckInfo()
     local padding = 20
     local stackOffset = 2
     local pileSpacing = 20
-    
+
     local pilesY = love.graphics.getHeight() - cardHeight - padding
     local drawPileX = love.graphics.getWidth() - (cardWidth * 2 + pileSpacing + padding)
     local discardPileX = love.graphics.getWidth() - (cardWidth + padding)
-    
+
     -- Draw pile visualization and count
     if #self.state.deck.drawPile > 0 then
         local numCardsToShow = math.min(5, #self.state.deck.drawPile)
@@ -570,7 +587,7 @@ function BattleEncounter:drawDeckInfo()
             end
         end
     end
-    
+
     -- Draw pile count
     love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(
@@ -580,7 +597,7 @@ function BattleEncounter:drawDeckInfo()
         cardWidth,
         'center'
     )
-    
+
     -- Discard pile visualization and count
     if #self.state.deck.discardPile > 0 then
         local topCard = self.state.deck.discardPile[#self.state.deck.discardPile]
@@ -589,7 +606,7 @@ function BattleEncounter:drawDeckInfo()
             topCard:drawBack(discardPileX, pilesY)
         end
     end
-    
+
     -- Discard pile count
     love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(
@@ -605,7 +622,7 @@ function BattleEncounter:drawInitialHand()
     -- Clear current hand
     self.state.handCards = {}
     self.state.selectedCardIndex = 1  -- Reset selection index
-    
+
     -- Draw 8 cards from the current deck
     local cardsToDraw = 8
     for i = 1, cardsToDraw do
@@ -626,42 +643,42 @@ function BattleEncounter:drawHand()
     local cardWidth, cardHeight = Card.getDimensions()
     local padding = 20
     local baseY = love.graphics.getHeight() - cardHeight - padding
-    
+
     -- Calculate available width for hand cards (leaving space for piles)
     local pilesWidth = (cardWidth * 2 + 20 + padding * 2) -- Two piles plus spacing and padding
     local availableWidth = love.graphics.getWidth() - pilesWidth - padding
-    
+
     -- Calculate overlap amount based on number of cards
     local overlapAmount = math.min(
         cardWidth * 0.8,  -- Maximum overlap (80% of card width)
         (cardWidth * #self.state.handCards - availableWidth) / (#self.state.handCards - 1)
     )
-    
+
     -- Start X position from the left with padding
     local startX = padding
-    
+
     -- Calculate curve parameters
     local curveHeight = 30
     local middleIndex = math.ceil(#self.state.handCards / 2)
-    
+
     -- First draw non-selected cards
     for i = #self.state.handCards, 1, -1 do
         if i ~= self.state.selectedCardIndex then
             local card = self.state.handCards[i]
             local x = startX + ((i-1) * (cardWidth - overlapAmount))
-            
+
             -- Modified curve calculation
             local progress = (i - 1) / (#self.state.handCards - 1)
             local curveOffset = math.sin(progress * math.pi) * curveHeight
             local y = baseY - curveOffset
-            
+
             local rotation = math.rad((i - middleIndex) * 2)
-            
+
             if card.isLocked then
                 love.graphics.setColor(0.2, 0.8, 0.2, 0.3)
                 love.graphics.rectangle('fill', x, y, cardWidth, cardHeight)
             end
-            
+
             love.graphics.setColor(1, 1, 1, 1)
             love.graphics.push()
             love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
@@ -671,19 +688,19 @@ function BattleEncounter:drawHand()
             love.graphics.pop()
         end
     end
-    
+
     -- Then draw selected card
     if self.state.selectedCardIndex > 0 and self.state.selectedCardIndex <= #self.state.handCards then
         local card = self.state.handCards[self.state.selectedCardIndex]
         local i = self.state.selectedCardIndex
         local x = startX + ((i-1) * (cardWidth - overlapAmount))
-        
+
         local progress = (i - 1) / (#self.state.handCards - 1)
         local curveOffset = math.sin(progress * math.pi) * curveHeight
         local y = baseY - curveOffset - 20
-        
+
         local rotation = math.rad((i - middleIndex) * 2)
-        
+
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.push()
         love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
@@ -703,7 +720,7 @@ function BattleEncounter:drawDiscardUI()
     -- Draw semi-transparent overlay
     love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    
+
     -- Draw discard mode instructions
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf(
@@ -713,7 +730,7 @@ function BattleEncounter:drawDiscardUI()
         love.graphics.getWidth(),
         'center'
     )
-    
+
     -- Highlight cards selected for discard
     for _, card in ipairs(self.state.selectedForDiscard) do
         -- Draw red outline or overlay on selected cards
@@ -728,11 +745,11 @@ end
 --     local cardHeight = 150
 --     local spacing = 20
 --     local startX = (love.graphics.getWidth() - ((cardWidth + spacing) * #self.state.selectedCards)) / 2
---     
+--
 --     for i, card in ipairs(self.state.selectedCards) do
 --         local x = startX + ((i-1) * (cardWidth + spacing))
 --         local y = love.graphics.getHeight() - cardHeight - 50
---         
+--
 --         -- Highlight current cooking card
 --         if i == self.state.currentCookingIndex then
 --             love.graphics.setColor(0.3, 0.8, 0.3, 1)
@@ -740,12 +757,12 @@ end
 --             love.graphics.setColor(0.2, 0.2, 0.2, 1)
 --         end
 --         love.graphics.rectangle('fill', x, y, cardWidth, cardHeight)
---         
+--
 --         -- Draw card content
 --         love.graphics.setColor(1, 1, 1, 1)
 --         love.graphics.printf(card.name or "Card", x, y + 20, cardWidth, 'center')
 --     end
---     
+--
 --     -- Draw instructions
 --     love.graphics.setColor(1, 1, 1, 1)
 --     love.graphics.printf(
@@ -761,19 +778,19 @@ function BattleEncounter:drawJudgingPhase()
     -- Get screen dimensions for centering
     local screenWidth = love.graphics.getWidth()
     local screenHeight = love.graphics.getHeight()
-    
+
     -- Get card dimensions and spacing
     local cardWidth, cardHeight = Card.getDimensions()
     local cardSpacing = 20  -- Space between cards
-    
+
     -- Calculate total width of all cards plus spacing
     local totalWidth = (#self.state.selectedCards * cardWidth) + ((#self.state.selectedCards - 1) * cardSpacing)
-    
+
     -- Calculate starting X position to center the row
     local startX = (screenWidth - totalWidth) / 2
     -- Position cards higher up (at 1/3 of screen height instead of 1/2)
     local centerY = (screenHeight / 3) - (cardHeight / 2)
-    
+
     -- Draw each selected card
     for i, card in ipairs(self.state.selectedCards) do
         local x = startX + ((i-1) * (cardWidth + cardSpacing))
@@ -799,7 +816,7 @@ function BattleEncounter:drawResultsPhase()
     love.graphics.setFont(FONTS.LARGE)
     local centerY = love.graphics.getHeight() / 2 - 40
     local lineHeight = 40
-    
+
     if self:isBattleComplete() then
         -- Battle completion results
         local isVictory = self.state.currentScore >= self.state.targetScore
@@ -810,10 +827,10 @@ function BattleEncounter:drawResultsPhase()
             love.graphics.getWidth(),
             'center'
         )
-        
+
         -- Show rating change if any
         if self.state.ratingChanged then
-            local ratingColor = self:getRatingIndex(gameState.selectedChef.rating) < 
+            local ratingColor = self:getRatingIndex(gameState.selectedChef.rating) <
                               self:getRatingIndex(self.state.previousRating) and COLORS.SUCCESS or COLORS.FAILURE
             love.graphics.setColor(ratingColor)
             love.graphics.printf(
@@ -837,19 +854,19 @@ end
 
 function BattleEncounter:selectNextCard()
     if #self.state.handCards == 0 then return end
-    
+
     -- Deselect current card
     local currentCard = self.state.handCards[self.state.selectedCardIndex]
     if currentCard then
         currentCard:setSelected(false)
     end
-    
+
     -- Update index
     self.state.selectedCardIndex = self.state.selectedCardIndex + 1
     if self.state.selectedCardIndex > #self.state.handCards then
         self.state.selectedCardIndex = 1
     end
-    
+
     -- Select new card
     local newCard = self.state.handCards[self.state.selectedCardIndex]
     if newCard then
@@ -859,19 +876,19 @@ end
 
 function BattleEncounter:selectPreviousCard()
     if #self.state.handCards == 0 then return end
-    
+
     -- Deselect current card
     local currentCard = self.state.handCards[self.state.selectedCardIndex]
     if currentCard then
         currentCard:setSelected(false)
     end
-    
+
     -- Update index
     self.state.selectedCardIndex = self.state.selectedCardIndex - 1
     if self.state.selectedCardIndex < 1 then
         self.state.selectedCardIndex = #self.state.handCards
     end
-    
+
     -- Select new card
     local newCard = self.state.handCards[self.state.selectedCardIndex]
     if newCard then
@@ -893,14 +910,14 @@ function BattleEncounter:transitionToPhase(newPhase)
             totalScore = 0         -- Running total as cards are scored
         }
         self.state.roundScore = 0  -- Initialize round score
-        
+
         -- Prepare display strings for scoring animations
         self:prepareScoreDisplayStrings()
-        
+
         -- Start phase timer
         -- self.state.phaseTimer = #self.state.selectedCards * self.PHASE_TIMINGS.CARD_SCORE_ANIMATION
         self.state.phaseTimer = (#self.state.selectedCards * self.PHASE_TIMINGS.CARD_SCORE_ANIMATION) + self.PHASE_TIMINGS.JUDGING
-        
+
         -- Remove selected cards from hand but keep them in selectedCards
         self:removeCardsFromHand()
     elseif newPhase == self.PHASES.RESULTS then
@@ -917,7 +934,7 @@ end
 function BattleEncounter:prepareScoreDisplayStrings()
     local scoringState = self.state.scoringState
     scoringState.cardScores = {}
-    
+
     -- Just prepare the display strings for each card
     for i, card in ipairs(self.state.selectedCards) do
         if card.cardType == "ingredient" then
@@ -948,7 +965,7 @@ function BattleEncounter:discardPlayedCards()
     for _, card in ipairs(self.state.selectedCards) do
         self.state.deck:discard(card)
     end
-    
+
     -- Clear selected cards
     self.state.selectedCards = {}
 end
@@ -963,18 +980,18 @@ end
 function BattleEncounter:startNextRound()
     -- Increment round number
     self.state.roundNumber = self.state.roundNumber + 1
-    
+
     -- Reset round-specific state
     self.state.selectedCards = {}
     self.state.comboMultiplier = 1
     self.state.actionFeedback = nil
     self.state.currentScore = 0  -- Reset score at the start of each round
     self.state.roundScore = 0  -- Reset round score
-    
+
     -- Get max hand size from battle parameters
     local config = encounterConfigs[self.state.battleType] or encounterConfigs.food_critic
     local maxHandSize = 8  -- Default hand size
-    
+
     -- Draw cards until hand is full
     while #self.state.handCards < maxHandSize do
         local card = self.state.deck:draw()
@@ -992,13 +1009,13 @@ function BattleEncounter:startNextRound()
             end
         end
     end
-    
+
     -- Reset selection
     self.state.selectedCardIndex = 1
     for i, card in ipairs(self.state.handCards) do
         card:setSelected(i == 1)
     end
-    
+
     -- Reset phase and time
     self.state.timeRemaining = config.timePerRound
     self:transitionToPhase(self.PHASES.PREPARATION)
@@ -1010,14 +1027,14 @@ function BattleEncounter:shuffleDiscardIntoDeck()
     for _, card in ipairs(self.state.deck.discardPile) do
         table.insert(self.state.deck.drawPile, card)
     end
-    
+
     -- Clear discard pile
     self.state.deck.discardPile = {}
-    
+
     -- Shuffle draw pile
     for i = #self.state.deck.drawPile, 2, -1 do
         local j = math.random(i)
-        self.state.deck.drawPile[i], self.state.deck.drawPile[j] = 
+        self.state.deck.drawPile[i], self.state.deck.drawPile[j] =
         self.state.deck.drawPile[j], self.state.deck.drawPile[i]
     end
 end
@@ -1107,19 +1124,19 @@ function BattleEncounter:drawPileView()
         if card then
             local row = math.floor((displayIndex-1) / CARDS_PER_ROW)
             local col = (displayIndex-1) % CARDS_PER_ROW
-            
+
             local x = startX + col * (cardWidth + spacing)
             local y = startY + row * (cardHeight + spacing)
-            
+
             -- Highlight the currently selected card
             if displayIndex == self.state.pileCardIndex then
                 love.graphics.setColor(1, 1, 0, 0.3)
-                love.graphics.rectangle('fill', 
-                    x - 5, y - 5, 
+                love.graphics.rectangle('fill',
+                    x - 5, y - 5,
                     cardWidth + 10, cardHeight + 10
                 )
             end
-            
+
             love.graphics.setColor(1, 1, 1, 1)
             card:draw(x, y)
         end
