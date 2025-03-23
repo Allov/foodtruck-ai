@@ -113,136 +113,174 @@ end
 function ProvinceMap:generateMap()
     -- Store current random state
     local oldState = love.math.getRandomState()
-    
-    -- Use our seeded random generator
     love.math.setRandomState(self.randomGenerator:getState())
     
-    -- Create a 4-level tree structure
     self.nodes = {}
-    
-    -- First level (start) - Always a market
-    local startY = 500
-    self.nodes[1] = {
-        {x = love.graphics.getWidth() / 2, y = startY, type = "market", connections = {}}
-    }
-    
-    -- Second level (2-3 nodes)
-    local level2Count = love.math.random(2, 3)
-    local level2Y = 400
-    self.nodes[2] = {}
-    
-    -- Calculate section width for even distribution
-    local sectionWidth = love.graphics.getWidth() / (level2Count + 1)
-    
-    -- Ensure at least one battle in level 2
-    local battlePlaced = false
-    local battlePosition = love.math.random(1, level2Count)
-    
-    for i = 1, level2Count do
-        local x = (i * sectionWidth) + love.math.random(-30, 30)
-        x = math.max(100, math.min(love.graphics.getWidth() - 100, x))
+    local screenW, screenH = love.graphics.getWidth(), love.graphics.getHeight()
+    local LEVEL_HEIGHT = 100  -- Vertical spacing between levels
+    local HORIZONTAL_PADDING = 100  -- Minimum distance from screen edges
+
+    -- Constants
+    local NUM_LEVELS = 4
+    local START_Y = screenH - LEVEL_HEIGHT
+
+    -- 1. Generate node positions level by level
+    for level = 1, NUM_LEVELS do
+        self.nodes[level] = {}
+        local currentY = START_Y - (level - 1) * LEVEL_HEIGHT
         
-        -- If this is our chosen battle position, or we haven't placed a battle yet and this is the last position
-        local encounterType
-        if i == battlePosition then
-            encounterType = "card_battle"
-            battlePlaced = true
+        -- Determine number of nodes for this level
+        local nodeCount
+        if level == 1 or level == NUM_LEVELS then
+            nodeCount = 2  -- First and last levels always have 2 nodes
         else
-            encounterType = self:randomEncounterType(true) -- true means exclude card_battle
+            nodeCount = love.math.random(3, 4)  -- Middle levels have 3-4 nodes
         end
         
-        table.insert(self.nodes[2], {
-            x = x,
-            y = level2Y,
-            type = encounterType,
-            connections = {}
-        })
-    end
-    
-    -- Third level (3-4 nodes)
-    local level3Count = love.math.random(3, 4)
-    local level3Y = 300
-    self.nodes[3] = {}
-    
-    sectionWidth = love.graphics.getWidth() / (level3Count + 1)
-    
-    for i = 1, level3Count do
-        local x = (i * sectionWidth) + love.math.random(-30, 30)
-        x = math.max(100, math.min(love.graphics.getWidth() - 100, x))
+        -- Calculate horizontal spacing
+        local usableWidth = screenW - (2 * HORIZONTAL_PADDING)
+        local spacing = usableWidth / (nodeCount + 1)
         
-        table.insert(self.nodes[3], {
-            x = x,
-            y = level3Y,
-            type = self:randomEncounterType(),
-            connections = {}
-        })
+        -- Generate nodes for this level
+        for i = 1, nodeCount do
+            -- Calculate base position
+            local baseX = HORIZONTAL_PADDING + (i * spacing)
+            -- Add small random offset but ensure it stays within bounds
+            local offsetX = love.math.random(-20, 20)
+            local finalX = math.max(HORIZONTAL_PADDING, 
+                                  math.min(baseX + offsetX, screenW - HORIZONTAL_PADDING))
+            
+            -- Determine node type
+            local nodeType
+            if level == 1 then
+                nodeType = "market"  -- Starting nodes are markets
+            elseif level == NUM_LEVELS then
+                nodeType = "card_battle"  -- Final nodes are battles
+            else
+                nodeType = self:randomEncounterType()
+            end
+            
+            -- Create node
+            table.insert(self.nodes[level], {
+                x = finalX,
+                y = currentY,
+                type = nodeType,
+                connections = {}
+            })
+        end
     end
     
-    -- Fourth level (2 boss nodes)
-    local level4Y = 200
-    self.nodes[4] = {
-        {x = love.graphics.getWidth() / 3, y = level4Y, type = "card_battle", connections = {}},
-        {x = (love.graphics.getWidth() / 3) * 2, y = level4Y, type = "card_battle", connections = {}}
-    }
-    
-    -- Connect nodes without crossing lines
-    self:connectNodesWithoutCrossing()
+    -- 2. Create connections between levels
+    for level = 1, NUM_LEVELS - 1 do
+        self:connectLevels(level)
+    end
     
     -- Restore the original random state
     love.math.setRandomState(oldState)
 end
 
-function ProvinceMap:connectNodesWithoutCrossing()
-    -- Level 1 to 2: Connect start node to closest nodes
-    local startNode = self.nodes[1][1]
-    table.sort(self.nodes[2], function(a, b)
-        return math.abs(a.x - startNode.x) < math.abs(b.x - startNode.x)
-    end)
+function ProvinceMap:connectLevels(level)
+    local currentLevel = self.nodes[level]
+    local nextLevel = self.nodes[level + 1]
     
-    startNode.connections = {1}
-    if #self.nodes[2] > 1 then
-        table.insert(startNode.connections, 2)
+    -- First pass: Ensure each node has at least one connection
+    for i, node in ipairs(currentLevel) do
+        -- Calculate the most natural target based on position
+        local bestTargetIndex = math.floor(i * (#nextLevel / #currentLevel))
+        bestTargetIndex = math.max(1, math.min(bestTargetIndex, #nextLevel))
+        
+        -- Add primary connection
+        table.insert(node.connections, bestTargetIndex)
     end
     
-    -- Level 2 to 3: Connect to nearest nodes without crossing
-    for i, node in ipairs(self.nodes[2]) do
-        node.connections = {}
-        -- Find closest nodes in next level
-        local possibleConnections = {}
-        for j, nextNode in ipairs(self.nodes[3]) do
-            table.insert(possibleConnections, {
-                index = j,
-                distance = math.abs(node.x - nextNode.x)
-            })
-        end
-        
-        -- Sort by distance
-        table.sort(possibleConnections, function(a, b)
-            return a.distance < b.distance
-        end)
-        
-        -- Connect to closest 1-2 nodes
-        table.insert(node.connections, possibleConnections[1].index)
-        if love.math.random() > 0.5 and #possibleConnections > 1 then
-            table.insert(node.connections, possibleConnections[2].index)
+    -- Second pass: Add additional connections where possible
+    for i, node in ipairs(currentLevel) do
+        if #node.connections < 2 then  -- If node doesn't have second connection yet
+            local currentConn = node.connections[1]
+            
+            -- Try connecting to adjacent nodes
+            local potentialTargets = {}
+            if currentConn > 1 then
+                table.insert(potentialTargets, currentConn - 1)
+            end
+            if currentConn < #nextLevel then
+                table.insert(potentialTargets, currentConn + 1)
+            end
+            
+            -- Try each potential target
+            for _, targetIndex in ipairs(potentialTargets) do
+                if self:canAddConnection(level, i, targetIndex) then
+                    table.insert(node.connections, targetIndex)
+                    break
+                end
+            end
         end
     end
     
-    -- Level 3 to 4: Connect to boss nodes
-    for i, node in ipairs(self.nodes[3]) do
-        node.connections = {}
-        -- Connect to closest boss
-        if node.x < love.graphics.getWidth() / 2 then
-            table.insert(node.connections, 1)
-        else
-            table.insert(node.connections, 2)
-        end
-        
-        -- 30% chance to connect to both bosses
-        if love.math.random() > 0.7 then
-            table.insert(node.connections, node.connections[1] == 1 and 2 or 1)
+    -- Sort connections for consistent rendering
+    for _, node in ipairs(currentLevel) do
+        table.sort(node.connections)
+    end
+end
+
+function ProvinceMap:canAddConnection(level, fromIndex, toIndex)
+    local currentLevel = self.nodes[level]
+    
+    -- Check if this connection would cross any existing ones
+    for j, otherNode in ipairs(currentLevel) do
+        if j ~= fromIndex then  -- Don't check against self
+            for _, otherConn in ipairs(otherNode.connections) do
+                if self:wouldConnectionsCross(fromIndex, toIndex, j, otherConn) then
+                    return false
+                end
+            end
         end
     end
+    
+    -- Check if target already has too many incoming connections
+    local incomingCount = self:countIncomingConnections(level + 1, toIndex)
+    if incomingCount >= 2 then  -- Limit incoming connections to 2
+        return false
+    end
+    
+    return true
+end
+
+function ProvinceMap:wouldConnectionsCross(fromIndex1, toIndex1, fromIndex2, toIndex2)
+    -- If the connections share a node, they don't cross
+    if fromIndex1 == fromIndex2 or toIndex1 == toIndex2 then
+        return false
+    end
+    
+    -- Check if the connections cross
+    return (fromIndex1 < fromIndex2 and toIndex1 > toIndex2) or
+           (fromIndex1 > fromIndex2 and toIndex1 < toIndex2)
+end
+
+-- Helper function to check if a node already has a connection to a specific target
+function ProvinceMap:hasConnection(node, targetIndex)
+    for _, conn in ipairs(node.connections) do
+        if conn == targetIndex then
+            return true
+        end
+    end
+    return false
+end
+
+-- Helper function to count incoming connections for a node
+function ProvinceMap:countIncomingConnections(level, nodeIndex)
+    if level <= 1 then return 0 end
+    
+    local count = 0
+    local prevRow = self.nodes[level - 1]
+    for _, node in ipairs(prevRow) do
+        for _, conn in ipairs(node.connections) do
+            if conn == nodeIndex then
+                count = count + 1
+            end
+        end
+    end
+    return count
 end
 
 function ProvinceMap:randomEncounterType(excludeBattle)
@@ -376,7 +414,7 @@ end
 
 function ProvinceMap:draw()
     -- Draw animated road connections first
-    self:drawRoads()
+    self:drawConnections()
     
     -- Draw nodes
     for level, nodes in ipairs(self.nodes) do
@@ -403,42 +441,115 @@ function ProvinceMap:draw()
     end
 end
 
-function ProvinceMap:drawRoads()
-    for level, nodes in ipairs(self.nodes) do
-        for i, node in ipairs(nodes) do
-            for _, conn in ipairs(node.connections) do
-                if self.nodes[level + 1] and self.nodes[level + 1][conn] then
-                    local nextNode = self.nodes[level + 1][conn]
-                    self:drawRoadConnection(node, nextNode)
+function ProvinceMap:drawConnections()
+    love.graphics.setLineWidth(self.ROAD_WIDTH)
+    
+    -- Draw connection lines
+    for level = 1, #self.nodes - 1 do
+        local currentRow = self.nodes[level]
+        local nextRow = self.nodes[level + 1]
+        
+        for i, node in ipairs(currentRow) do
+            local startX = node.x
+            local startY = node.y
+            
+            for _, connIdx in ipairs(node.connections) do
+                local endX = nextRow[connIdx].x
+                local endY = nextRow[connIdx].y
+                
+                -- Generate path points using bezier curve
+                local points = {}
+                local segments = 20
+                for s = 0, segments do
+                    local t = s / segments
+                    -- Curved path using quadratic bezier
+                    local controlX = (startX + endX) / 2
+                    local controlY = startY + (endY - startY) * 0.5
+                    
+                    local px = math.pow(1-t, 2) * startX + 
+                              2 * (1-t) * t * controlX + 
+                              math.pow(t, 2) * endX
+                    local py = math.pow(1-t, 2) * startY + 
+                              2 * (1-t) * t * controlY + 
+                              math.pow(t, 2) * endY
+                    
+                    table.insert(points, px)
+                    table.insert(points, py)
+                end
+                
+                -- Draw path shadow
+                love.graphics.setColor(0, 0, 0, 0.3)
+                love.graphics.line(points)
+                
+                -- Draw dashed line with animation
+                love.graphics.setColor(self.ROAD_COLOR)
+                local dashLength = self.ROAD_DASH
+                local totalLength = 0
+                
+                -- Calculate total path length
+                for j = 1, #points - 2, 2 do
+                    local dx = points[j+2] - points[j]
+                    local dy = points[j+3] - points[j+1]
+                    totalLength = totalLength + math.sqrt(dx * dx + dy * dy)
+                end
+                
+                -- Draw dashed line segments
+                local currentLength = 0
+                local isDash = true
+                local lastX, lastY = points[1], points[2]
+                
+                -- Offset based on time (slowed down)
+                local timeOffset = (love.timer.getTime() * 30) % (dashLength * 2)
+                
+                for j = 1, #points - 2, 2 do
+                    local dx = points[j+2] - points[j]
+                    local dy = points[j+3] - points[j+1]
+                    local segLength = math.sqrt(dx * dx + dy * dy)
+                    
+                    -- Draw moving indicators (slowed down)
+                    local numIndicators = math.floor(totalLength / 80) -- Increased spacing
+                    for k = 1, numIndicators do
+                        local offset = (love.timer.getTime() * 40 + (k * totalLength / numIndicators)) % totalLength
+                        if offset >= currentLength and offset < currentLength + segLength then
+                            local t = (offset - currentLength) / segLength
+                            local ix = points[j] + dx * t
+                            local iy = points[j+1] + dy * t
+                            love.graphics.setColor(1, 1, 1, 0.9)
+                            love.graphics.circle('fill', ix, iy, 3)
+                        end
+                    end
+                    
+                    -- Draw dashed segments with fixed length
+                    local segmentStart = currentLength
+                    while segmentStart < currentLength + segLength do
+                        local dashStart = segmentStart + timeOffset
+                        local dashEnd = math.min(dashStart + dashLength, currentLength + segLength)
+                        
+                        if isDash then
+                            local t1 = (dashStart - currentLength) / segLength
+                            local t2 = (dashEnd - currentLength) / segLength
+                            
+                            local x1 = points[j] + dx * t1
+                            local y1 = points[j+1] + dy * t1
+                            local x2 = points[j] + dx * t2
+                            local y2 = points[j+1] + dy * t2
+                            
+                            love.graphics.line(x1, y1, x2, y2)
+                        end
+                        
+                        segmentStart = segmentStart + dashLength
+                        isDash = not isDash
+                    end
+                    
+                    currentLength = currentLength + segLength
                 end
             end
         end
     end
-end
-
-function ProvinceMap:drawRoadConnection(startNode, endNode)
-    -- Draw main road - more subtle
-    love.graphics.setColor(self.ROAD_COLOR)
-    love.graphics.setLineWidth(self.ROAD_WIDTH)
-    love.graphics.line(startNode.x, startNode.y, endNode.x, endNode.y)
     
-    -- Draw animated dashed line - more subtle
-    love.graphics.setColor(1, 1, 1, 0.3)  -- Reduced opacity
-    love.graphics.setLineWidth(1)  -- Thinner line
-    
-    local dx = endNode.x - startNode.x
-    local dy = endNode.y - startNode.y
-    local dist = math.sqrt(dx * dx + dy * dy)
-    local numDashes = math.floor(dist / (self.ROAD_DASH * 2))
-    
-    for i = 0, numDashes do
-        local t = (i / numDashes + self.roadOffset) % 1
-        local x1 = startNode.x + dx * t
-        local y1 = startNode.y + dy * t
-        local x2 = startNode.x + dx * math.min(t + 0.05, 1)  -- Shorter dashes
-        local y2 = startNode.y + dy * math.min(t + 0.05, 1)
-        love.graphics.line(x1, y1, x2, y2)
-    end
+    -- Reset graphics state
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setLineWidth(1)
 end
 
 function ProvinceMap:drawNode(level, i, node)
@@ -536,6 +647,16 @@ function ProvinceMap:getEventTypeName(type)
         lore = "Story"
     }
     return names[type] or "Unknown"
+end
+
+-- Helper function to check if table contains value
+function table.contains(table, element)
+    for _, value in pairs(table) do
+        if value == element then
+            return true
+        end
+    end
+    return false
 end
 
 return ProvinceMap
