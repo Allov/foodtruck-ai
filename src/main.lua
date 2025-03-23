@@ -125,17 +125,12 @@ function Main.draw()
     local Settings = require('src.settings')
     
     if Settings.crtEnabled then
-        -- Draw everything to the canvas
+        -- Draw everything except debug console to the canvas
         love.graphics.setCanvas(Main.canvas)
         love.graphics.clear()
         
         -- Draw current scene
         sceneManager:draw()
-        
-        -- Draw debug console if in debug mode
-        if _DEBUG and Main.debugConsole then
-            Main.debugConsole:draw()
-        end
         
         -- Reset canvas and apply CRT effect
         love.graphics.setCanvas()
@@ -149,10 +144,16 @@ function Main.draw()
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.draw(Main.canvas, 0, 0)
         love.graphics.setShader()
+        
+        -- Draw debug console last, after post-processing
+        if _DEBUG and Main.debugConsole then
+            Main.debugConsole:draw()
+        end
     else
         -- Draw directly without CRT effect
         sceneManager:draw()
         
+        -- Always draw debug console last
         if _DEBUG and Main.debugConsole then
             Main.debugConsole:draw()
         end
