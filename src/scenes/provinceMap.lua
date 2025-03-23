@@ -9,10 +9,18 @@ local Chef = require('src.entities.chef')  -- Add Chef requirement
 function ProvinceMap.new()
     local self = Scene.new()  -- Create a new Scene instance as base
     setmetatable(self, ProvinceMap)
-    
+
     -- Create a random generator but DON'T generate map yet
     self.randomGenerator = love.math.newRandomGenerator()
-    
+
+    -- Map configuration
+    self.NUM_LEVELS = 15  -- Changed from 8 to match actual number of rows
+    self.LEVEL_HEIGHT = 120  -- Vertical spacing between levels
+    self.HORIZONTAL_PADDING = 100
+
+    -- Calculate total map height
+    self.mapHeight = self.NUM_LEVELS * self.LEVEL_HEIGHT + 200  -- Added padding for top/bottom
+
     -- Load encounter icons with error handling
     self.encounterIcons = {}
     local iconPaths = {
@@ -29,7 +37,6 @@ function ProvinceMap.new()
             return love.graphics.newImage(path)
         end)
         if not success then
-            print("Warning: Could not load icon: " .. path)
             -- Create a fallback colored rectangle
             local canvas = love.graphics.newCanvas(32, 32)
             love.graphics.setCanvas(canvas)
@@ -43,10 +50,11 @@ function ProvinceMap.new()
             self.encounterIcons[type] = result
         end
     end
-    
+
     -- Store icon dimensions for centering
     self.ICON_SIZE = 32  -- Assuming icons are 32x32 pixels
-    
+
+    -- Initialize other properties...
     self.encounterNames = {
         starting_market = "Starting Market",
         farmers_market = "Farmers Market",
@@ -57,7 +65,7 @@ function ProvinceMap.new()
         negative = "Road Trouble",
         lore = "Local Story"
     }
-    
+
     self.encounterColors = {
         card_battle = {1, 0.4, 0, 1},      -- Orange for food competitions
         beneficial = {0.3, 0.8, 0.3, 1},    -- Green for festivals
@@ -65,39 +73,34 @@ function ProvinceMap.new()
         market = {0.2, 0.6, 1, 1},          -- Blue for markets
         lore = {0.8, 0.6, 1, 1}            -- Purple for stories
     }
-    
+
     -- Road style - more subtle
     self.ROAD_WIDTH = 3  -- Reduced from 6
     self.ROAD_COLOR = {0.85, 0.85, 0.85, 0.5}  -- Added transparency
     self.ROAD_DASH = 8  -- Reduced from 10
     self.roadOffset = 0
-    
+
     -- Node styling - smaller and sharper
     self.BASE_NODE_SIZE = 16  -- Reduced from 25
     self.NODE_PADDING = 6  -- Reduced from 10
     self.PULSE_SPEED = 2
-    
+
     -- Track completed nodes
     self.completedNodes = {}
     self.nodeScale = {}
-    
+
     -- Add status message system
     self.statusMessage = nil
     self.statusTimer = 0
     self.STATUS_DURATION = 2
-    
+
     -- Initialize current level and selection
     self.currentLevel = 1
     self.selected = 1
-    
+
     -- Store the original random state
     self.originalRandomState = love.math.getRandomState()
-    
-    -- Map configuration
-    self.NUM_LEVELS = 15  -- Changed from 8 to match actual number of rows
-    self.LEVEL_HEIGHT = 120  -- Vertical spacing between levels
-    self.HORIZONTAL_PADDING = 100
-    
+
     -- Camera/scroll properties
     self.camera = {
         x = 0,
@@ -106,7 +109,7 @@ function ProvinceMap.new()
         speed = 800,  -- Pixels per second
         padding = 100  -- Padding from top/bottom of screen
     }
-    
+
     self:init()  -- Call init right after creation
     return self
 end
@@ -114,14 +117,14 @@ end
 function ProvinceMap:init()
     -- Call parent init
     Scene.init(self)
-    
+
     -- Initialize confirmation dialog
     self:initConfirmDialog()
-    
+
     -- Initialize camera peek offset
     self.peekOffset = 0
     self.PEEK_SPEED = 800 -- Pixels per second
-    
+
     -- Generate the initial map
     self:generateMap()
 end
@@ -152,18 +155,13 @@ function ProvinceMap:generateNodesPerRow()
 end
 
 function ProvinceMap:generateMap()
-    -- Clear existing nodes
-    self.nodes = {}
-    
-    -- Generate node distribution using same seed
     local nodesPerRow = self:generateNodesPerRow()
-    
-    -- Calculate total map height using class properties
-    self.mapHeight = (self.NUM_LEVELS - 1) * self.LEVEL_HEIGHT + 200
-    
+    self.nodes = {}
+
     for row = 1, self.NUM_LEVELS do
         local rowNodes = {}
-        
+        self.currentRow = row  -- Set current row during generation
+
         for col = 1, nodesPerRow[row] do
             local node = {
                 x = 0,  -- Will be set later
@@ -172,29 +170,29 @@ function ProvinceMap:generateMap()
                 available = row == 1,
                 connections = {},
             }
-            
+
             -- Force battle encounters for row 2
             if row == 2 then
                 node.type = "card_battle"
-                node.encounterType = self.randomGenerator:random() < 0.5 and "food_critic" or "rush_hour"
+                node.encounterType = self:getSpecificEncounter("card_battle")
             else
                 -- Random encounter type for other rows
                 node.type = self:getRandomEncounterType(row)
                 node.encounterType = self:getSpecificEncounter(node.type)
             end
-            
+
             table.insert(rowNodes, node)
         end
-        
+
         -- Position nodes horizontally
         self:distributeNodesInRow(rowNodes)
-        
+
         -- Add row to map
         self.nodes[row] = rowNodes
     end
-    
-    -- Create connections between rows
-    self:createConnections()
+
+    self.currentRow = nil  -- Clear current row after generation
+    self:createConnections()  -- Changed from generateConnections to createConnections
 end
 
 function ProvinceMap:createConnections()
@@ -205,6 +203,16 @@ function ProvinceMap:createConnections()
 end
 
 function ProvinceMap:getRandomEncounterType(row)
+    -- Special handling for first row
+    if row == 1 then
+        return self.randomGenerator:random() < 0.5 and "market" or "beneficial"
+    end
+
+    -- Force battle for final node
+    if row == self.NUM_LEVELS then
+        return "card_battle"
+    end
+
     -- Define encounter weights for different rows
     local weights = {
         early = {
@@ -228,7 +236,7 @@ function ProvinceMap:getRandomEncounterType(row)
             lore = 0.1
         }
     }
-    
+
     -- Select weight table based on progress
     local weightTable
     if row < self.NUM_LEVELS * 0.3 then
@@ -238,7 +246,7 @@ function ProvinceMap:getRandomEncounterType(row)
     else
         weightTable = weights.late
     end
-    
+
     -- Use weights to select encounter type
     local roll = self.randomGenerator:random()
     local cumulative = 0
@@ -254,13 +262,14 @@ end
 function ProvinceMap:getSpecificEncounter(encounterType)
     -- Return specific encounter based on type
     if encounterType == "card_battle" then
-        if self.currentLevel == self.NUM_LEVELS then
-            return "final_showdown"  -- New encounter type for final battle
+        -- Check if this is the final level
+        if self.currentRow == self.NUM_LEVELS then
+            return "final_showdown"  -- Final boss battle
         else
             return self.randomGenerator:random() < 0.5 and "food_critic" or "rush_hour"
         end
     elseif encounterType == "market" then
-        if self.currentLevel == 1 then
+        if self.currentRow == 1 then
             return "starting_market"  -- Special first market type
         else
             return "farmers_market"
@@ -272,22 +281,22 @@ end
 function ProvinceMap:connectLevels(level)
     local currentLevel = self.nodes[level]
     local nextLevel = self.nodes[level + 1]
-    
+
     -- First pass: Ensure each node has at least one connection
     for i, node in ipairs(currentLevel) do
         -- Calculate the most natural target based on position
         local bestTargetIndex = math.floor(i * (#nextLevel / #currentLevel))
         bestTargetIndex = math.max(1, math.min(bestTargetIndex, #nextLevel))
-        
+
         -- Add primary connection
         table.insert(node.connections, bestTargetIndex)
     end
-    
+
     -- Second pass: Add additional connections where possible
     for i, node in ipairs(currentLevel) do
         if #node.connections < 2 then  -- If node doesn't have second connection yet
             local currentConn = node.connections[1]
-            
+
             -- Try connecting to adjacent nodes
             local potentialTargets = {}
             if currentConn > 1 then
@@ -296,7 +305,7 @@ function ProvinceMap:connectLevels(level)
             if currentConn < #nextLevel then
                 table.insert(potentialTargets, currentConn + 1)
             end
-            
+
             -- Try each potential target
             for _, targetIndex in ipairs(potentialTargets) do
                 if self:canAddConnection(level, i, targetIndex) then
@@ -306,7 +315,7 @@ function ProvinceMap:connectLevels(level)
             end
         end
     end
-    
+
     -- Sort connections for consistent rendering
     for _, node in ipairs(currentLevel) do
         table.sort(node.connections)
@@ -315,7 +324,7 @@ end
 
 function ProvinceMap:canAddConnection(level, fromIndex, toIndex)
     local currentLevel = self.nodes[level]
-    
+
     -- Check if this connection would cross any existing ones
     for j, otherNode in ipairs(currentLevel) do
         if j ~= fromIndex then  -- Don't check against self
@@ -326,13 +335,13 @@ function ProvinceMap:canAddConnection(level, fromIndex, toIndex)
             end
         end
     end
-    
+
     -- Check if target already has too many incoming connections
     local incomingCount = self:countIncomingConnections(level + 1, toIndex)
     if incomingCount >= 2 then  -- Limit incoming connections to 2
         return false
     end
-    
+
     return true
 end
 
@@ -341,7 +350,7 @@ function ProvinceMap:wouldConnectionsCross(fromIndex1, toIndex1, fromIndex2, toI
     if fromIndex1 == fromIndex2 or toIndex1 == toIndex2 then
         return false
     end
-    
+
     -- Check if the connections cross
     return (fromIndex1 < fromIndex2 and toIndex1 > toIndex2) or
            (fromIndex1 > fromIndex2 and toIndex1 < toIndex2)
@@ -360,7 +369,7 @@ end
 -- Helper function to count incoming connections for a node
 function ProvinceMap:countIncomingConnections(level, nodeIndex)
     if level <= 1 then return 0 end
-    
+
     local count = 0
     local prevRow = self.nodes[level - 1]
     for _, node in ipairs(prevRow) do
@@ -388,12 +397,12 @@ function ProvinceMap:canSelectNode(level, index)
     if self.completedNodes[level .. "," .. index] then
         return false
     end
-    
+
     -- Can only select nodes in current level
     if level ~= self.currentLevel then
         return false
     end
-    
+
     -- Check if there's a valid path to this node
     if level > 1 then
         local hasValidPath = false
@@ -409,7 +418,7 @@ function ProvinceMap:canSelectNode(level, index)
         end
         return hasValidPath
     end
-    
+
     return true
 end
 
@@ -434,7 +443,7 @@ function ProvinceMap:handleNodeSelection(selectedNode)
     -- Get the appropriate scene for this encounter
     local EncounterRegistry = require('src.encounters.encounterRegistry')
     local SceneClass = EncounterRegistry:getSceneClass(selectedNode.type)
-    
+
     if SceneClass then
         local sceneName = SceneClass.__name or selectedNode.type
         print("Switching to scene:", sceneName)
@@ -449,31 +458,31 @@ end
 function ProvinceMap:update(dt)
     -- Update camera position
     local screenH = love.graphics.getHeight()
-    
+
     -- Handle page up/down for peeking
     if love.keyboard.isDown('pageup') then
         self.peekOffset = math.min(self.peekOffset + self.PEEK_SPEED * dt, self.mapHeight)
     elseif love.keyboard.isDown('pagedown') then
         self.peekOffset = math.max(self.peekOffset - self.PEEK_SPEED * dt, -self.mapHeight)
     end
-    
+
     -- Calculate target camera Y based on current level plus peek offset
     local targetY = (self.NUM_LEVELS - self.currentLevel) * self.LEVEL_HEIGHT
     targetY = math.max(0, targetY - screenH/2)  -- Center current level
     targetY = math.min(targetY, self.mapHeight - screenH)  -- Clamp to map bounds
     targetY = targetY - self.peekOffset  -- Apply peek offset
     self.camera.targetY = targetY
-    
+
     -- Smooth camera movement
     local dy = self.camera.targetY - self.camera.y
     if math.abs(dy) > 1 then
         self.camera.y = self.camera.y + dy * math.min(dt * 5, 1)
     end
-    
+
     -- Handle node selection - only left/right movement
     if love.keyboard.wasPressed('left') then
         local newSelected = self.selected - 1
-        if newSelected < 1 then 
+        if newSelected < 1 then
             newSelected = #self.nodes[self.currentLevel]
         end
         -- Only select if node is valid
@@ -481,7 +490,7 @@ function ProvinceMap:update(dt)
             self.selected = newSelected
         end
     end
-    
+
     if love.keyboard.wasPressed('right') then
         local newSelected = self.selected + 1
         if newSelected > #self.nodes[self.currentLevel] then
@@ -492,7 +501,7 @@ function ProvinceMap:update(dt)
             self.selected = newSelected
         end
     end
-    
+
     -- Handle node confirmation
     if love.keyboard.wasPressed('return') or love.keyboard.wasPressed('space') then
         local selectedNode = self.nodes[self.currentLevel][self.selected]
@@ -500,7 +509,7 @@ function ProvinceMap:update(dt)
             self:handleNodeSelection(selectedNode)
         end
     end
-    
+
     -- Update node animations
     for level, nodes in ipairs(self.nodes) do
         for i, _ in ipairs(nodes) do
@@ -512,7 +521,7 @@ function ProvinceMap:update(dt)
             end
         end
     end
-    
+
     -- Update status message
     if self.statusMessage then
         self.statusTimer = math.max(0, self.statusTimer - dt)
@@ -530,31 +539,31 @@ function ProvinceMap:drawMapInfo()
     local panelHeight = 160  -- Increased height for additional info
     local x = padding
     local y = padding
-    
+
     -- Semi-transparent dark blue background
     love.graphics.setColor(0.1, 0.15, 0.2, 0.7)  -- Dark blue-gray with transparency
     love.graphics.rectangle('fill', x, y, panelWidth, panelHeight)
     love.graphics.setColor(1, 1, 1, 0.8)
     love.graphics.rectangle('line', x, y, panelWidth, panelHeight)
-    
+
     -- Set font for info text
     love.graphics.setFont(love.graphics.newFont(12))
     love.graphics.setColor(1, 1, 1, 1)
-    
+
     -- Draw info text
     local textX = x + padding
     local textY = y + padding
-    
+
     -- Display map seed
     love.graphics.print(string.format("Seed: %d", self:getSeed()), textX, textY)
     textY = textY + lineHeight
-    
+
     -- Draw separator line
     love.graphics.setColor(1, 1, 1, 0.3)
     love.graphics.line(textX, textY, textX + panelWidth - padding * 2, textY)
     love.graphics.setColor(1, 1, 1, 1)
     textY = textY + lineHeight/2
-    
+
     -- Display chef info
     local chef = gameState.selectedChef
     if chef then
@@ -562,12 +571,12 @@ function ProvinceMap:drawMapInfo()
         love.graphics.setColor(1, 0.8, 0.2, 1)  -- Gold color for name
         love.graphics.print("Chef " .. chef.name, textX, textY)
         textY = textY + lineHeight
-        
+
         -- Specialty
         love.graphics.setColor(0.8, 0.8, 1, 1)  -- Light blue for specialty
         love.graphics.print("Specialty: " .. chef.specialty, textX, textY)
         textY = textY + lineHeight
-        
+
         -- Rating with color coding
         local ratingColor = {1, 1, 1, 1}  -- Default white
         if chef.rating == 'S' then
@@ -581,17 +590,17 @@ function ProvinceMap:drawMapInfo()
         love.graphics.print("Rating: " .. chef.rating, textX, textY)
         textY = textY + lineHeight
     end
-    
+
     -- Draw separator line
     love.graphics.setColor(1, 1, 1, 0.3)
     love.graphics.line(textX, textY, textX + panelWidth - padding * 2, textY)
     love.graphics.setColor(1, 1, 1, 1)
     textY = textY + lineHeight/2
-    
+
     -- Display progress
     love.graphics.print(string.format("Level: %d/%d", self.currentLevel, self.NUM_LEVELS), textX, textY)
     textY = textY + lineHeight
-    
+
     -- Count total nodes and completed nodes
     local totalNodes = 0
     local completedNodes = 0
@@ -610,13 +619,13 @@ function ProvinceMap:draw()
     -- Draw background
     love.graphics.setColor(0.12, 0.15, 0.25, 1)  -- Deep blue background
     love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    
+
     love.graphics.push()
     love.graphics.translate(0, -self.camera.y)
-    
+
     -- Draw connections and nodes
     self:drawConnections()
-    
+
     for level, nodes in ipairs(self.nodes) do
         for i, node in ipairs(nodes) do
             if self:isNodeVisible(node) then
@@ -624,13 +633,13 @@ function ProvinceMap:draw()
             end
         end
     end
-    
+
     love.graphics.pop()
-    
+
     -- Draw UI elements that shouldn't scroll
     -- Add map info display
     self:drawMapInfo()
-    
+
     if self.statusMessage then
         love.graphics.setColor(1, 1, 1, math.min(self.statusTimer, 1))
         love.graphics.printf(
@@ -645,20 +654,20 @@ end
 
 function ProvinceMap:drawConnections()
     love.graphics.setLineWidth(self.ROAD_WIDTH)
-    
+
     -- Draw connection lines
     for level = 1, #self.nodes - 1 do
         local currentRow = self.nodes[level]
         local nextRow = self.nodes[level + 1]
-        
+
         for i, node in ipairs(currentRow) do
             local startX = node.x
             local startY = node.y
-            
+
             for _, connIdx in ipairs(node.connections) do
                 local endX = nextRow[connIdx].x
                 local endY = nextRow[connIdx].y
-                
+
                 -- Generate path points using bezier curve
                 local points = {}
                 local segments = 20
@@ -667,17 +676,17 @@ function ProvinceMap:drawConnections()
                     -- Curved path using quadratic bezier
                     local controlX = (startX + endX) / 2
                     local controlY = startY + (endY - startY) * 0.5
-                    
-                    local px = math.pow(1-t, 2) * startX + 
-                              2 * (1-t) * t * controlX + 
+
+                    local px = math.pow(1-t, 2) * startX +
+                              2 * (1-t) * t * controlX +
                               math.pow(t, 2) * endX
-                    local py = math.pow(1-t, 2) * startY + 
-                              2 * (1-t) * t * controlY + 
+                    local py = math.pow(1-t, 2) * startY +
+                              2 * (1-t) * t * controlY +
                               math.pow(t, 2) * endY
-                    
+
                     table.insert(points, {x = px, y = py})
                 end
-                
+
                 -- Draw path shadow
                 love.graphics.setColor(0, 0, 0, 0.3)
                 local linePoints = {}
@@ -686,23 +695,23 @@ function ProvinceMap:drawConnections()
                     table.insert(linePoints, point.y)
                 end
                 love.graphics.line(linePoints)
-                
+
                 -- Draw base road
                 love.graphics.setColor(self.ROAD_COLOR)
                 love.graphics.line(linePoints)
-                
+
                 -- Only animate if this connection leads to the selected node
-                local isConnectedToSelected = (level == self.currentLevel - 1 and 
+                local isConnectedToSelected = (level == self.currentLevel - 1 and
                                              connIdx == self.selected and
                                              self.completedNodes[level .. "," .. i])
-                
+
                 if isConnectedToSelected then
                     -- Draw animated dots
                     love.graphics.setColor(1, 1, 1, 0.8)
                     local dotSize = 2
                     local speed = 0.15
                     local numDots = 3  -- Number of dots per path
-                    
+
                     -- Draw smoothly moving dots
                     for dot = 0, numDots - 1 do
                         local time = (love.timer.getTime() * speed + dot / numDots) % 1
@@ -710,7 +719,7 @@ function ProvinceMap:drawConnections()
                         local idx = 1 + time * (#points - 1)
                         local i1, i2 = math.floor(idx), math.ceil(idx)
                         local t = idx - i1
-                        
+
                         if points[i1] and points[i2] then
                             local x = points[i1].x * (1 - t) + points[i2].x * t
                             local y = points[i1].y * (1 - t) + points[i2].y * t
@@ -721,7 +730,7 @@ function ProvinceMap:drawConnections()
             end
         end
     end
-    
+
     -- Reset graphics state
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setLineWidth(1)
@@ -730,11 +739,11 @@ end
 function ProvinceMap:drawNode(level, i, node)
     -- Convert node position to screen space for visibility checks
     local _, screenY = self:worldToScreen(node.x, node.y)
-    
+
     local nodeKey = level .. "," .. i
     local scale = self.nodeScale[nodeKey] or 1
     local size = self.BASE_NODE_SIZE * scale
-    
+
     -- Draw node background
     if self.completedNodes[nodeKey] then
         love.graphics.setColor(0.5, 0.5, 0.5, 0.8)
@@ -742,7 +751,7 @@ function ProvinceMap:drawNode(level, i, node)
         local color = self.encounterColors[node.type]
         love.graphics.setColor(color[1], color[2], color[3], 0.9)
     end
-    
+
     -- Draw node circle
     if level == self.currentLevel and i == self.selected then
         love.graphics.setLineWidth(2)
@@ -755,18 +764,18 @@ function ProvinceMap:drawNode(level, i, node)
         love.graphics.setLineWidth(1)
         love.graphics.circle('line', node.x, node.y, size)
     end
-    
+
     -- Add node glow effect
     if level == self.currentLevel and i == self.selected then
         -- Outer glow
         local glowColor = self.encounterColors[node.type]
         for radius = size + 10, size + 5, -1 do
-            love.graphics.setColor(glowColor[1], glowColor[2], glowColor[3], 
+            love.graphics.setColor(glowColor[1], glowColor[2], glowColor[3],
                                  0.1 * (1 - (radius - size - 5) / 5))
             love.graphics.circle('fill', node.x, node.y, radius)
         end
     end
-    
+
     -- Add completion effects
     if self.completedNodes[level .. "," .. i] then
         -- Draw completion sparkles
@@ -779,7 +788,7 @@ function ProvinceMap:drawNode(level, i, node)
             love.graphics.circle('fill', sparkleX, sparkleY, 2)
         end
     end
-    
+
     -- Draw encounter icon
     love.graphics.setColor(1, 1, 1, 1)
     local icon = self.encounterIcons[node.type]
@@ -789,14 +798,14 @@ function ProvinceMap:drawNode(level, i, node)
         local iconY = node.y - (self.ICON_SIZE * iconScale) / 2
         love.graphics.draw(icon, iconX, iconY, 0, iconScale, iconScale)
     end
-    
+
     -- Draw event name with better visibility
     local eventName = self.encounterNames[node.encounterType] or self.encounterNames[node.type] or "Unknown"
-    
+
     -- Draw text shadow/outline for better contrast
     love.graphics.setFont(love.graphics.newFont(12))  -- Slightly larger font
     love.graphics.setColor(0, 0, 0, 0.8)  -- Shadow color
-    
+
     -- Draw text multiple times offset slightly for outline effect
     local offsets = {{-1,-1}, {-1,1}, {1,-1}, {1,1}}
     for _, offset in ipairs(offsets) do
@@ -808,7 +817,7 @@ function ProvinceMap:drawNode(level, i, node)
             'center'
         )
     end
-    
+
     -- Draw main text
     love.graphics.setColor(1, 1, 1, 1)  -- Full opacity white
     love.graphics.printf(
@@ -883,16 +892,16 @@ function ProvinceMap:distributeNodesInRow(nodes)
     local margin = 100  -- Reduced from previous value
     local usableWidth = screenWidth - (margin * 2)
     local spacing = usableWidth / (math.max(3, #nodes + 1))  -- Ensure minimum spacing even with fewer nodes
-    
+
     -- Position nodes evenly across the screen
     for i, node in ipairs(nodes) do
         node.x = margin + spacing * i  -- Adjusted spacing calculation
     end
-    
+
     -- Center the nodes horizontally
     local totalWidth = spacing * (#nodes + 1)
     local offset = (screenWidth - totalWidth) / 2
-    
+
     for _, node in ipairs(nodes) do
         node.x = node.x + offset
     end
@@ -901,17 +910,17 @@ end
 function ProvinceMap:drawChefInfo(textX, textY, lineHeight)
     local chef = gameState.selectedChef
     if not chef then return textY end
-    
+
     -- Chef name with title styling
     love.graphics.setColor(1, 0.8, 0.2, 1)  -- Gold color for name
     love.graphics.print("Chef " .. chef.name, textX, textY)
     textY = textY + lineHeight
-    
+
     -- Specialty
     love.graphics.setColor(0.8, 0.8, 1, 1)  -- Light blue for specialty
     love.graphics.print("Specialty: " .. chef.specialty, textX, textY)
     textY = textY + lineHeight
-    
+
     -- Rating with color coding
     local ratingColor = {1, 1, 1, 1}  -- Default white
     if chef.rating == 'S' then
@@ -924,24 +933,30 @@ function ProvinceMap:drawChefInfo(textX, textY, lineHeight)
     love.graphics.setColor(ratingColor)
     love.graphics.print("Rating: " .. chef.rating, textX, textY)
     textY = textY + lineHeight
-    
+
     -- Add stats display
     love.graphics.setColor(0.9, 0.9, 0.9, 1)
-    love.graphics.print(string.format("Battles: %d Won / %d Lost", 
-        chef.stats.battlesWon, 
-        chef.stats.battlesLost), 
+    love.graphics.print(string.format("Battles: %d Won / %d Lost",
+        chef.stats.battlesWon,
+        chef.stats.battlesLost),
         textX, textY)
     textY = textY + lineHeight
-    
-    love.graphics.print(string.format("Perfect Dishes: %d", 
-        chef.stats.perfectDishes), 
+
+    love.graphics.print(string.format("Perfect Dishes: %d",
+        chef.stats.perfectDishes),
         textX, textY)
     textY = textY + lineHeight
-    
+
     return textY
 end
 
 return ProvinceMap
+
+
+
+
+
+
 
 
 
