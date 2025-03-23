@@ -32,7 +32,7 @@ BattleEncounter.PHASES = {
 BattleEncounter.PHASE_TIMINGS = {
     JUDGING = 2.0,  -- Total judging phase duration
     CARD_SCORE_ANIMATION = 0.7,  -- Time per card animation (slightly longer than Card.ANIMATION.SCORE_DURATION)
-    RESULTS = 3.0   -- Results phase duration
+    RESULTS = 0   -- Results phase duration
 }
 
 -- Remove ACTIONS as they're no longer needed
@@ -361,34 +361,58 @@ end
 -- end
 
 function BattleEncounter:updateJudgingPhase(dt)
-    local scoringState = self.state.scoringState
-    
-    -- Update main phase timer
+    self:updatePhaseTimer(dt)
+    self:updateCardScoring(dt)
+end
+
+function BattleEncounter:updatePhaseTimer(dt)
     if self.state.phaseTimer then
         self.state.phaseTimer = self.state.phaseTimer - dt
-    end
-
-    -- Handle card scoring animations
-    if scoringState.currentCardIndex < #self.state.selectedCards then
-        scoringState.animationTimer = scoringState.animationTimer - dt
         
-        -- Start next card animation when timer expires
-        if scoringState.animationTimer <= 0 then
-            scoringState.currentCardIndex = scoringState.currentCardIndex + 1
-            
-            -- Trigger animation for current card
-            if scoringState.currentCardIndex <= #self.state.selectedCards then
-                local card = self.state.selectedCards[scoringState.currentCardIndex]
-                local scoreValue = scoringState.cardScores[scoringState.currentCardIndex]
-                card:showScoreAnimation(scoreValue)
-                scoringState.animationTimer = self.PHASE_TIMINGS.CARD_SCORE_ANIMATION
-            end
+        if self.state.phaseTimer <= 0 then
+            self:transitionToPhase(self.PHASES.RESULTS)
         end
     end
+end
+
+function BattleEncounter:updateCardScoring(dt)
+    local scoringState = self.state.scoringState
     
-    -- Transition to results when all animations complete
-    if self.state.phaseTimer <= 0 then
-        self:transitionToPhase(self.PHASES.RESULTS)
+    -- If we've scored all cards, nothing to do
+    if scoringState.currentCardIndex >= #self.state.selectedCards then
+        return
+    end
+
+    scoringState.animationTimer = scoringState.animationTimer - dt
+    
+    -- Time to score next card
+    if scoringState.animationTimer <= 0 then
+        self:scoreNextCard()
+    end
+end
+
+function BattleEncounter:scoreNextCard()
+    local scoringState = self.state.scoringState
+    scoringState.currentCardIndex = scoringState.currentCardIndex + 1
+    
+    -- Check if we still have cards to score
+    if scoringState.currentCardIndex <= #self.state.selectedCards then
+        local card = self.state.selectedCards[scoringState.currentCardIndex]
+        local scoreValue = scoringState.cardScores[scoringState.currentCardIndex]
+        
+        self:applyCardScore(card)
+        card:showScoreAnimation(scoreValue)
+        scoringState.animationTimer = self.PHASE_TIMINGS.CARD_SCORE_ANIMATION
+    end
+end
+
+function BattleEncounter:applyCardScore(card)
+    if card.cardType == "ingredient" then
+        self.state.currentScore = self.state.currentScore + card.whiteScore
+    elseif card.cardType == "technique" then
+        self.state.currentScore = self.state.currentScore * card.redScore
+    elseif card.cardType == "recipe" then
+        self.state.currentScore = self.state.currentScore * card.pinkScore
     end
 end
 
@@ -920,13 +944,13 @@ function BattleEncounter:transitionToPhase(newPhase)
         -- Initialize scoring state
         self.state.scoringState = {
             currentCardIndex = 0,  -- Index of card being scored (0 means not started)
-            cardScores = {},       -- Will hold individual card contributions
+            cardScores = {},       -- Will hold score display strings
             animationTimer = 0,    -- Timer for current card animation
             totalScore = 0         -- Running total as cards are scored
         }
         
-        -- Calculate all card scores upfront
-        self:calculateCardScores()
+        -- Prepare display strings for scoring animations
+        self:prepareScoreDisplayStrings()
         
         -- Start phase timer
         self.state.phaseTimer = #self.state.selectedCards * self.PHASE_TIMINGS.CARD_SCORE_ANIMATION
@@ -941,22 +965,18 @@ function BattleEncounter:transitionToPhase(newPhase)
     self.state.currentPhase = newPhase
 end
 
-function BattleEncounter:calculateCardScores()
+function BattleEncounter:prepareScoreDisplayStrings()
     local scoringState = self.state.scoringState
     scoringState.cardScores = {}
     
-    -- Calculate individual card contributions
+    -- Prepare the score display strings for animations
     for i, card in ipairs(self.state.selectedCards) do
-        local score
         if card.cardType == "ingredient" then
-            score = card.whiteScore
-            scoringState.cardScores[i] = string.format("+%d", score)
+            scoringState.cardScores[i] = string.format("+%d", card.whiteScore)
         elseif card.cardType == "technique" then
-            score = card.redScore
-            scoringState.cardScores[i] = string.format("×%.1f", score)
+            scoringState.cardScores[i] = string.format("×%.1f", card.redScore)
         elseif card.cardType == "recipe" then
-            score = card.pinkScore
-            scoringState.cardScores[i] = string.format("×%.1f", score)
+            scoringState.cardScores[i] = string.format("×%.1f", card.pinkScore)
         end
     end
 end
