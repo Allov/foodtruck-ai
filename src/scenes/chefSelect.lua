@@ -72,27 +72,18 @@ end
 
 function ChefSelect:init()
     Scene.init(self)
-    self.chefs = self:loadChefs()
     self.selected = 1
+    self.chefs = self:loadChefs()
     
     -- Initialize animation variables
     self.titleOffset = 0
-    self.titleAlpha = 1
-    self.optionOffsets = {}
+    self.chefOffsets = {}
     for i = 1, #self.chefs do
-        self.optionOffsets[i] = 0
+        self.chefOffsets[i] = 0
     end
-    
-    -- Initialize shader
-    self.shader = love.graphics.newShader("src/shaders/scanline.glsl")
-    self.canvas = love.graphics.newCanvas()
 end
 
 function ChefSelect:update(dt)
-    -- Update shader uniforms
-    self.shader:send("time", love.timer.getTime())
-    self.shader:send("screen_size", {love.graphics.getWidth(), love.graphics.getHeight()})
-
     -- Update title animations
     self.titleOffset = math.sin(love.timer.getTime() * FLOAT_SPEED) * FLOAT_AMOUNT
     self.titleAlpha = 1 - math.abs(math.sin(love.timer.getTime() * SHIMMER_SPEED) * 0.2)
@@ -100,9 +91,9 @@ function ChefSelect:update(dt)
     -- Animate selected option
     for i = 1, #self.chefs do
         if i == self.selected then
-            self.optionOffsets[i] = math.sin(love.timer.getTime() * 2) * 3
+            self.chefOffsets[i] = math.sin(love.timer.getTime() * 2) * 3
         else
-            self.optionOffsets[i] = 0
+            self.chefOffsets[i] = 0
         end
     end
 
@@ -136,14 +127,10 @@ function ChefSelect:update(dt)
 end
 
 function ChefSelect:draw()
-    -- Draw everything to the canvas first
-    love.graphics.setCanvas(self.canvas)
-    love.graphics.clear()
-
     -- Draw background
     love.graphics.setColor(COLORS.BACKGROUND)
     love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-
+    
     -- Draw title with floating animation and shimmer
     love.graphics.setFont(FONTS.TITLE)
     love.graphics.setColor(COLORS.TITLE[1], COLORS.TITLE[2], COLORS.TITLE[3], self.titleAlpha)
@@ -152,7 +139,7 @@ function ChefSelect:draw()
     -- Draw chef options
     love.graphics.setFont(FONTS.MENU)
     for i, chef in ipairs(self.chefs) do
-        local y = 200 + i * 60 + self.optionOffsets[i]
+        local y = 200 + i * 60 + self.chefOffsets[i]
         
         -- Draw selection indicator to the left
         if i == self.selected then
@@ -179,16 +166,10 @@ function ChefSelect:draw()
         love.graphics.getWidth(),
         'center'
     )
-
-    -- Reset canvas and draw with shader
-    love.graphics.setCanvas()
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.setShader(self.shader)
-    love.graphics.draw(self.canvas, 0, 0)
-    love.graphics.setShader()
 end
 
 return ChefSelect
+
 
 
 
