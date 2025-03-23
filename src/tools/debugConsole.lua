@@ -9,7 +9,8 @@ local DebugConsole = {
     scrollOffset = 0,
     maxVisibleLines = 20,
     isFullscreen = false,
-    logFile = nil,  -- Add log file handle
+    logFile = nil,
+    commands = {}, -- Initialize empty commands table
     LOG_LEVELS = {
         DEBUG = {name = "DEBUG", color = {0.5, 0.5, 0.5, 1}},
         INFO = {name = "INFO", color = {0.8, 0.8, 1, 1}},      -- Softer blue-white
@@ -93,6 +94,24 @@ function DebugConsole:cleanupOldLogs(maxLogs)
 end
 
 function DebugConsole:init()
+    -- Initialize commands
+    self.commands = {
+        help = function() self:showHelp() end,
+        clear = function() self.history = {} end,
+        version = function() self:showVersion() end,
+        stats = function() self:showStats() end,
+        debug = function(value) self:toggleDebugInfo() end,
+        scene = function(name) self:gotoScene(name) end,
+        scenes = function() self:listScenes() end,
+        spawn = function(type, x, y) self:spawnEnemy(type, x, y) end,
+        win = function() self:winCurrentBattle() end,
+        lose = function() self:loseCurrentBattle() end,
+        mem = function() self:showMemoryUsage() end,
+        gc = function() self:forceGC() end,
+        cash = function(amount) self:giveCash(amount) end,
+        state = function() self:showGameState() end
+    }
+
     -- Create logs directory if it doesn't exist
     love.filesystem.createDirectory("logs")
 
@@ -593,6 +612,7 @@ function DebugConsole:cleanup()
 end
 
 return DebugConsole
+
 
 
 
