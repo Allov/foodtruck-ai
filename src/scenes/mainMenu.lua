@@ -37,7 +37,6 @@ end
 
 function MainMenu:init()
     Scene.init(self)
-    
     self.options = {
         "Start Food Truck Journey",
         "Options",
@@ -53,10 +52,7 @@ function MainMenu:init()
     for i = 1, #self.options do
         self.optionOffsets[i] = 0
     end
-    
-    -- Initialize shader
-    self.shader = love.graphics.newShader("src/shaders/scanline.glsl")
-    self.canvas = love.graphics.newCanvas()
+    -- Remove shader initialization since it's now global
 end
 
 function MainMenu:update(dt)
@@ -64,10 +60,6 @@ function MainMenu:update(dt)
         love.event.quit()
         return
     end
-
-    -- Update shader uniforms
-    self.shader:send("time", love.timer.getTime())
-    self.shader:send("screen_size", {love.graphics.getWidth(), love.graphics.getHeight()})
 
     -- Update title floating animation
     self.titleOffset = math.sin(love.timer.getTime() * FLOAT_SPEED) * FLOAT_AMOUNT
@@ -103,25 +95,15 @@ function MainMenu:update(dt)
 end
 
 function MainMenu:draw()
-    -- Draw everything to the canvas first
-    love.graphics.setCanvas(self.canvas)
-    love.graphics.clear()
-
     -- Draw background
     love.graphics.setColor(COLORS.BACKGROUND)
     love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-
+    
     -- Draw title with floating animation and shimmer
     love.graphics.setFont(FONTS.TITLE)
     love.graphics.setColor(COLORS.TITLE[1], COLORS.TITLE[2], COLORS.TITLE[3], self.titleAlpha)
+    love.graphics.printf("Choose Seed Type", 0, 100 + self.titleOffset, love.graphics.getWidth(), 'center')
     
-    local titleText = "Food Truck Journey"
-    local titleWidth = FONTS.TITLE:getWidth(titleText)
-    local titleX = love.graphics.getWidth() / 2
-    local titleY = 100 + self.titleOffset
-    
-    love.graphics.printf(titleText, -titleWidth/2 + titleX, titleY, titleWidth, 'center')
-
     -- Draw menu options
     love.graphics.setFont(FONTS.MENU)
     for i, option in ipairs(self.options) do
@@ -152,13 +134,6 @@ function MainMenu:draw()
         love.graphics.getWidth(),
         'center'
     )
-
-    -- Reset canvas and draw with shader
-    love.graphics.setCanvas()
-    love.graphics.setColor(1, 1, 1, 1)  -- Reset color to white
-    love.graphics.setShader(self.shader)
-    love.graphics.draw(self.canvas, 0, 0)  -- Draw canvas at correct position
-    love.graphics.setShader()
 end
 
 return MainMenu

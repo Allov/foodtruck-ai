@@ -16,7 +16,9 @@ gameState = {
 }
 
 local Main = {
-    debugConsole = nil  -- Initialize as nil
+    debugConsole = nil,  -- Initialize as nil
+    crtShader = nil,    -- Initialize shader reference
+    canvas = nil        -- Initialize canvas reference
 }
 
 function Main:registerEncounters()
@@ -59,6 +61,12 @@ function Main:registerEncounters()
 end
 
 function Main.load()
+    -- Initialize global CRT shader
+    Main.crtShader = love.graphics.newShader("src/shaders/scanline.glsl")
+    
+    -- Create global canvas for CRT effect
+    Main.canvas = love.graphics.newCanvas()
+
     -- Load all scenes
     local scenes = {
         mainMenu = require('src.scenes.mainMenu'),
@@ -109,10 +117,30 @@ function Main.update(dt)
 end
 
 function Main.draw()
+    -- Draw everything to the canvas
+    love.graphics.setCanvas(Main.canvas)
+    love.graphics.clear()
+    
+    -- Draw current scene
     sceneManager:draw()
+    
+    -- Draw debug console if in debug mode
     if _DEBUG and Main.debugConsole then
         Main.debugConsole:draw()
     end
+    
+    -- Reset canvas and apply CRT effect
+    love.graphics.setCanvas()
+    
+    -- Update shader uniforms
+    Main.crtShader:send("time", love.timer.getTime())
+    Main.crtShader:send("screen_size", {love.graphics.getWidth(), love.graphics.getHeight()})
+    
+    -- Draw canvas with CRT shader
+    love.graphics.setShader(Main.crtShader)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(Main.canvas, 0, 0)
+    love.graphics.setShader()
 end
 
 function Main.keypressed(key)
@@ -163,6 +191,17 @@ love.keyboard.keysReleased = {}
 
 function love.keyboard.wasPressed(key)
     return love.keyboard.keysPressed[key]
+end
+
+function love.load()
+    -- Initialize global CRT shader
+    Main.crtShader = love.graphics.newShader("src/shaders/scanline.glsl")
+    
+    -- Create global canvas for CRT effect
+    Main.canvas = love.graphics.newCanvas()
+    
+    -- Load the game
+    game.load()
 end
 
 return Main
