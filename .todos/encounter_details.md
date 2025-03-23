@@ -14,6 +14,10 @@
   - Reputation boost
   - Special ingredient card
   - Cash reward
+- Debug Features:
+  ✓ Round logging
+  ✓ Score tracking
+  - Combination tracking (pending)
 
 ### Rush Hour Service
 - Mechanics:
@@ -27,6 +31,10 @@
   - Cash bonus
   - Efficiency technique card
   - Customer loyalty boost
+- Debug Features:
+  ✓ Order tracking
+  ✓ Time logging
+  - Performance metrics (pending)
 
 ## Market Encounters
 
@@ -78,3 +86,9 @@
 3. UI elements and feedback
 4. Balance testing
 5. Polish and refinement
+
+## Debug Tools
+✓ Console commands for encounter testing
+✓ Performance logging
+✓ State inspection
+- Encounter simulation tools (pending)
