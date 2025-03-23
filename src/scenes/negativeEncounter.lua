@@ -4,6 +4,13 @@ NegativeEncounter.__index = NegativeEncounter
 NegativeEncounter.__name = "negativeEncounter"
 setmetatable(NegativeEncounter, Scene)
 
+local COLORS = {
+    PRIMARY = {1, 0.5, 0, 1},    -- Orange for negative theme
+    TEXT = {1, 1, 1, 1},
+    HIGHLIGHT = {1, 0.7, 0.4, 1},
+    ACCENT = {1, 0.6, 0.2, 1}
+}
+
 function NegativeEncounter.new()
     local self = Scene.new()
     setmetatable(self, NegativeEncounter)
@@ -52,9 +59,12 @@ function NegativeEncounter:update(dt)
 end
 
 function NegativeEncounter:draw()
-    love.graphics.setColor(1, 1, 1, 1)
+    -- Draw background overlay
+    love.graphics.setColor(COLORS.PRIMARY[1], COLORS.PRIMARY[2], COLORS.PRIMARY[3], 0.1)
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
     
     -- Draw encounter name and description
+    love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(self.state.config.name, 0, 50, love.graphics.getWidth(), 'center')
     love.graphics.printf(self.state.config.description, 50, 100, love.graphics.getWidth() - 100, 'center')
 
@@ -77,3 +87,4 @@ function NegativeEncounter:resolveEncounter()
 end
 
 return NegativeEncounter
+

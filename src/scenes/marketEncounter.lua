@@ -13,6 +13,13 @@ local CARD_SPACING = 20
 local CARDS_PER_ROW = 4
 local START_Y = 100
 
+local COLORS = {
+    PRIMARY = {0, 0.7, 1, 1},    -- Blue for market theme
+    TEXT = {1, 1, 1, 1},
+    HIGHLIGHT = {1, 0.8, 0, 1},  -- Gold for prices
+    ACCENT = {0.5, 0.8, 1, 1}    -- Light blue for accents
+}
+
 function MarketEncounter.new()
     local self = setmetatable({}, MarketEncounter)
     self.state = {
@@ -250,6 +257,10 @@ function MarketEncounter:tryPurchase(index)
 end
 
 function MarketEncounter:draw()
+    -- Draw background overlay
+    love.graphics.setColor(COLORS.PRIMARY[1], COLORS.PRIMARY[2], COLORS.PRIMARY[3], 0.1)
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    
     local cardWidth, cardHeight = Card.getDimensions()
     local spacing = CARD_SPACING
     local cardsPerRow = CARDS_PER_ROW
@@ -260,7 +271,7 @@ function MarketEncounter:draw()
     local startY = START_Y
     
     -- Draw title
-    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(self.state.title, 0, 30, love.graphics.getWidth(), 'center')
     
     -- Draw available cards in a grid
@@ -281,7 +292,7 @@ function MarketEncounter:draw()
         card:draw(x, y)
         
         -- Draw price
-        love.graphics.setColor(1, 1, 0, 1)
+        love.graphics.setColor(COLORS.HIGHLIGHT)
         love.graphics.printf(
             "Cost: " .. (card.cost or 0) .. " coins",
             x,

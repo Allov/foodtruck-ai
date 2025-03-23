@@ -3,6 +3,30 @@ local SeedInput = {}
 SeedInput.__index = SeedInput
 setmetatable(SeedInput, Scene) -- Inherit from Scene
 
+-- Consistent styling across menus
+local COLORS = {
+    TITLE = {1, 0.8, 0, 1},      -- Gold for title
+    TEXT = {1, 1, 1, 1},         -- White for regular text
+    SELECTED = {1, 0.8, 0, 1},   -- Gold for selected item
+    UNSELECTED = {0.7, 0.7, 0.7, 1}, -- Slightly dimmed for unselected
+    BACKGROUND = {0.1, 0.1, 0.2, 1} -- Dark blue background
+}
+
+local FONTS = {
+    TITLE = love.graphics.newFont(48),
+    MENU = love.graphics.newFont(24),
+    INSTRUCTIONS = love.graphics.newFont(16)
+}
+
+-- Animation constants
+local FLOAT_SPEED = 1.5
+local FLOAT_AMOUNT = 8
+local SHIMMER_SPEED = 2
+
+-- Constants for styling
+local MENU_INDENT = 40
+local DOT_OFFSET = -20
+
 function SeedInput.new()
     local self = setmetatable({}, SeedInput)
     self:init() -- Call init after creation
@@ -10,14 +34,26 @@ function SeedInput.new()
 end
 
 function SeedInput:init()
-    self.seedInput = ""
-    self.useRandomSeed = true
-    self.options = {"Random Seed", "Enter Seed"}
+    Scene.init(self)
+    self.options = {
+        "Random Seed",
+        "Enter Custom Seed"
+    }
     self.selected = 1
     self.inputtingSeed = false
+    self.seedInput = ""
     
-    -- Initialize confirmation dialog
-    self:initConfirmDialog()
+    -- Initialize animation variables
+    self.titleOffset = 0
+    self.titleAlpha = 1
+    self.optionOffsets = {}
+    for i = 1, #self.options do
+        self.optionOffsets[i] = 0
+    end
+    
+    -- Initialize shader
+    self.shader = love.graphics.newShader("src/shaders/scanline.glsl")
+    self.canvas = love.graphics.newCanvas()
     
     -- Convert string to numeric seed
     self.stringToSeed = function(str)
@@ -30,6 +66,23 @@ function SeedInput:init()
 end
 
 function SeedInput:update(dt)
+    -- Update shader uniforms
+    self.shader:send("time", love.timer.getTime())
+    self.shader:send("screen_size", {love.graphics.getWidth(), love.graphics.getHeight()})
+
+    -- Update title animations
+    self.titleOffset = math.sin(love.timer.getTime() * FLOAT_SPEED) * FLOAT_AMOUNT
+    self.titleAlpha = 1 - math.abs(math.sin(love.timer.getTime() * SHIMMER_SPEED) * 0.2)
+
+    -- Animate selected option
+    for i = 1, #self.options do
+        if i == self.selected then
+            self.optionOffsets[i] = math.sin(love.timer.getTime() * 2) * 3
+        else
+            self.optionOffsets[i] = 0
+        end
+    end
+
     if self.showingConfirmDialog then
         self:updateConfirmDialog()
         return
@@ -74,53 +127,63 @@ function SeedInput:update(dt)
 end
 
 function SeedInput:draw()
-    -- Draw regular scene content
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("Choose Seed Type", 0, 100, love.graphics.getWidth(), 'center')
-    
+    -- Draw everything to the canvas first
+    love.graphics.setCanvas(self.canvas)
+    love.graphics.clear()
+
+    -- Draw background
+    love.graphics.setColor(COLORS.BACKGROUND)
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+
+    -- Draw title with floating animation and shimmer
+    love.graphics.setFont(FONTS.TITLE)
+    love.graphics.setColor(COLORS.TITLE[1], COLORS.TITLE[2], COLORS.TITLE[3], self.titleAlpha)
+    love.graphics.printf("Choose Seed Type", 0, 100 + self.titleOffset, love.graphics.getWidth(), 'center')
+
     if self.inputtingSeed then
-        love.graphics.printf("Enter Seed Name:", 0, 200, love.graphics.getWidth(), 'center')
-        
-        -- Draw input box
-        local boxWidth = love.graphics.getWidth() / 2
-        local boxHeight = 40
-        local boxX = love.graphics.getWidth() / 4
-        local boxY = 250
-        
-        love.graphics.rectangle('line', boxX, boxY, boxWidth, boxHeight)
-        love.graphics.printf(
-            self.seedInput .. (love.timer.getTime() % 1 < 0.5 and "|" or ""),
-            boxX, boxY + 10, boxWidth, 'center'
-        )
-        
-        -- Instructions
-        love.graphics.printf(
-            "Press Enter to confirm or Escape to cancel",
-            0, boxY + 60, love.graphics.getWidth(), 'center'
-        )
+        -- Draw seed input interface
+        love.graphics.setFont(FONTS.MENU)
+        love.graphics.setColor(COLORS.TEXT)
+        love.graphics.printf("Enter Seed:", 0, 200, love.graphics.getWidth(), 'center')
+        love.graphics.printf(self.seedInput .. "_", 0, 250, love.graphics.getWidth(), 'center')
     else
+        -- Draw menu options
+        love.graphics.setFont(FONTS.MENU)
         for i, option in ipairs(self.options) do
+            local y = 200 + i * 40 + self.optionOffsets[i]
+            
+            -- Draw selection indicator to the left
             if i == self.selected then
-                love.graphics.setColor(1, 1, 0, 1)
-            else
-                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.setColor(COLORS.SELECTED)
+                love.graphics.printf("•", DOT_OFFSET, y, love.graphics.getWidth(), 'center')
             end
-            love.graphics.printf(option, 0, 200 + i * 40, love.graphics.getWidth(), 'center')
+
+            love.graphics.setColor(i == self.selected and COLORS.SELECTED or COLORS.UNSELECTED)
+            love.graphics.printf(option, 0, y, love.graphics.getWidth(), 'center')
         end
-        
-        -- Instructions
-        love.graphics.setColor(1, 1, 1, 0.7)
-        love.graphics.printf(
-            "Use Up/Down to select, Enter to confirm, Escape to return",
-            0, 350, love.graphics.getWidth(), 'center'
-        )
     end
 
-    -- Draw confirmation dialog if active
-    if self.showingConfirmDialog then
-        self:drawConfirmDialog()
-    end
+    -- Draw instructions
+    love.graphics.setFont(FONTS.INSTRUCTIONS)
+    love.graphics.setColor(COLORS.TEXT[1], COLORS.TEXT[2], COLORS.TEXT[3], 0.7)
+    love.graphics.printf(
+        "Use Up/Down to select, Enter to confirm, Escape to return",
+        0,
+        love.graphics.getHeight() - 50,
+        love.graphics.getWidth(),
+        'center'
+    )
+
+    -- Reset canvas and draw with shader
+    love.graphics.setCanvas()
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setShader(self.shader)
+    love.graphics.draw(self.canvas, 0, 0)
+    love.graphics.setShader()
 end
 
 return SeedInput
+
+
+
 

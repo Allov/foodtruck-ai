@@ -4,6 +4,13 @@ BeneficialEncounter.__index = BeneficialEncounter
 BeneficialEncounter.__name = "beneficialEncounter"
 setmetatable(BeneficialEncounter, Scene)
 
+local COLORS = {
+    PRIMARY = {0, 1, 0, 1},      -- Green for beneficial theme
+    TEXT = {1, 1, 1, 1},
+    HIGHLIGHT = {0.8, 1, 0.8, 1},
+    ACCENT = {0.5, 1, 0.5, 1}
+}
+
 function BeneficialEncounter.new()
     local self = Scene.new()
     setmetatable(self, BeneficialEncounter)
@@ -41,9 +48,12 @@ function BeneficialEncounter:update(dt)
 end
 
 function BeneficialEncounter:draw()
-    love.graphics.setColor(1, 1, 1, 1)
+    -- Draw background overlay
+    love.graphics.setColor(COLORS.PRIMARY[1], COLORS.PRIMARY[2], COLORS.PRIMARY[3], 0.1)
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
     
     -- Draw encounter name and description
+    love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(self.state.config.name, 0, 50, love.graphics.getWidth(), 'center')
     love.graphics.printf(self.state.config.description, 50, 100, love.graphics.getWidth() - 100, 'center')
 
@@ -62,3 +72,4 @@ function BeneficialEncounter:resolveEncounter()
 end
 
 return BeneficialEncounter
+

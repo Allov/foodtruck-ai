@@ -5,8 +5,12 @@ Card.__index = Card
 -- Constants for card display
 local CARD_WIDTH = 120
 local CARD_HEIGHT = 180
-local LIFT_AMOUNT = 30
+local LIFT_AMOUNT = 20  -- Reduced from 30 for subtler effect
 local ANIMATION_SPEED = 8
+
+-- Animation constants (matching menu style)
+local HOVER_SPEED = 2
+local HOVER_AMOUNT = 3
 
 function Card.new(id, name, description)
     local self = setmetatable({}, Card)
@@ -20,12 +24,20 @@ function Card.new(id, name, description)
     self.targetOffset = 0       -- Target vertical offset
     self.isSelected = false     -- Currently highlighted/selected
     self.isLocked = false       -- Locked in for use
+    self.hoverOffset = 0        -- New property for hover animation
     
     return self
 end
 
 function Card:update(dt)
-    -- Update animation
+    -- Update hover animation when selected
+    if self.isSelected and not self.isLocked then
+        self.hoverOffset = math.sin(love.timer.getTime() * HOVER_SPEED) * HOVER_AMOUNT
+    else
+        self.hoverOffset = 0
+    end
+
+    -- Update lift animation
     if self.currentOffset < self.targetOffset then
         self.currentOffset = math.min(self.currentOffset + ANIMATION_SPEED, self.targetOffset)
     elseif self.currentOffset > self.targetOffset then
@@ -54,7 +66,8 @@ function Card:updateTargetOffset()
 end
 
 function Card:draw(x, y)
-    local actualY = y - self.currentOffset
+    -- Apply both the hover animation and the regular offset
+    local actualY = y - self.currentOffset - self.hoverOffset
     
     -- Draw card background
     if self.isLocked then

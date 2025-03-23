@@ -86,6 +86,10 @@ function DebugMenu:update(dt)
     end
 end
 
+-- Constants for styling
+local MENU_INDENT = 40
+local DOT_OFFSET = -20
+
 function DebugMenu:draw()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.printf("Debug Menu", 0, 100, love.graphics.getWidth(), 'center')
@@ -93,30 +97,40 @@ function DebugMenu:draw()
     if self.showingChefSelect then
         love.graphics.printf("Select Chef Deck to View", 0, 160, love.graphics.getWidth(), 'center')
         for i, chef in ipairs(self.chefs) do
+            local y = 200 + i * 40
+            
+            -- Draw selection indicator to the left
             if i == self.selectedChef then
                 love.graphics.setColor(1, 1, 0, 1)
-            else
-                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.printf("•", DOT_OFFSET, y, love.graphics.getWidth(), 'center')
             end
+
+            love.graphics.setColor(i == self.selectedChef and COLORS.SELECTED or COLORS.UNSELECTED)
             love.graphics.printf(
                 chef.name .. " - " .. chef.specialty,
-                0, 200 + i * 40,
+                0, y,
                 love.graphics.getWidth(),
                 'center'
             )
         end
     else
         for i, option in ipairs(self.options) do
+            local y = 200 + i * 40
+            
+            -- Draw selection indicator to the left
             if i == self.selected then
                 love.graphics.setColor(1, 1, 0, 1)
-            else
-                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.printf("•", DOT_OFFSET, y, love.graphics.getWidth(), 'center')
             end
-            love.graphics.printf(option, 0, 200 + i * 40, love.graphics.getWidth(), 'center')
+
+            love.graphics.setColor(i == self.selected and COLORS.SELECTED or COLORS.UNSELECTED)
+            love.graphics.printf(option, 0, y, love.graphics.getWidth(), 'center')
         end
     end
 end
 
 return DebugMenu
+
+
 
 

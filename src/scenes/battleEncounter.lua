@@ -6,6 +6,21 @@ BattleEncounter.__index = BattleEncounter
 BattleEncounter.__name = "battleEncounter"
 setmetatable(BattleEncounter, Scene)
 
+local COLORS = {
+    PRIMARY = {1, 0, 0, 1},      -- Red for battle theme
+    TEXT = {1, 1, 1, 1},         -- White for regular text
+    HIGHLIGHT = {1, 0.8, 0, 1},  -- Gold for important numbers
+    SUCCESS = {0, 1, 0, 1},      -- Green for positive feedback
+    FAILURE = {1, 0.3, 0.3, 1},  -- Red for negative feedback
+    ACCENT = {1, 0.5, 0.5, 1}    -- Light red for accents
+}
+
+local FONTS = {
+    LARGE = love.graphics.newFont(24),
+    MEDIUM = love.graphics.newFont(18),
+    SMALL = love.graphics.newFont(14)
+}
+
 BattleEncounter.PHASES = {
     PREPARATION = "PREPARATION",
     COOKING = "COOKING",
@@ -400,15 +415,20 @@ function BattleEncounter:draw()
 end
 
 function BattleEncounter:drawCommonElements()
+    -- Draw semi-transparent background overlay
+    love.graphics.setColor(COLORS.PRIMARY[1], COLORS.PRIMARY[2], COLORS.PRIMARY[3], 0.1)
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+
     -- Draw enemy stats at the top
     if self.state.enemy then
-        love.graphics.setColor(1, 1, 1, 1)
         local enemyStatsY = 10
         local enemyNameY = enemyStatsY
-        local enemyDetailsY = enemyNameY + 30
-        local enemySatisfactionY = enemyDetailsY + 30
+        local enemyDetailsY = enemyNameY + 35
+        local enemySatisfactionY = enemyDetailsY + 35
         
-        -- Enemy name
+        -- Enemy name with larger font
+        love.graphics.setFont(FONTS.LARGE)
+        love.graphics.setColor(COLORS.TEXT)
         love.graphics.printf(
             self.state.enemy.name,
             0,
@@ -417,21 +437,40 @@ function BattleEncounter:drawCommonElements()
             'center'
         )
         
-        -- Enemy details
+        -- Enemy details with medium font
+        love.graphics.setFont(FONTS.MEDIUM)
         love.graphics.printf(
-            string.format("Specialty: %s | Prefers: %s, %s", 
-                self.state.enemy.specialty,
-                self.state.enemy.preferences.primary,
-                self.state.enemy.preferences.bonus),
+            string.format("Specialty: %s", self.state.enemy.specialty),
             0,
             enemyDetailsY,
             love.graphics.getWidth(),
             'center'
         )
         
-        -- Satisfaction level
+        -- Preferences with accent color
+        love.graphics.setColor(COLORS.ACCENT)
         love.graphics.printf(
-            string.format("Satisfaction: %d%%", self.state.enemy.satisfaction),
+            string.format("Prefers: %s, %s", 
+                self.state.enemy.preferences.primary,
+                self.state.enemy.preferences.bonus),
+            0,
+            enemyDetailsY + 25,
+            love.graphics.getWidth(),
+            'center'
+        )
+        
+        -- Satisfaction level with color based on value
+        local satisfaction = self.state.enemy.satisfaction
+        if satisfaction >= 80 then
+            love.graphics.setColor(COLORS.SUCCESS)
+        elseif satisfaction >= 50 then
+            love.graphics.setColor(COLORS.HIGHLIGHT)
+        else
+            love.graphics.setColor(COLORS.FAILURE)
+        end
+        
+        love.graphics.printf(
+            string.format("Satisfaction: %d%%", satisfaction),
             0,
             enemySatisfactionY,
             love.graphics.getWidth(),
@@ -440,37 +479,65 @@ function BattleEncounter:drawCommonElements()
     end
 
     -- Battle progress info
-    local topY = self.state.enemy and 160 or 10  -- Adjust Y position based on whether enemy info is shown
+    local topY = self.state.enemy and 160 or 10
+    love.graphics.setFont(FONTS.MEDIUM)
     
+    -- Round number
+    love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(
-        "Round " .. self.state.roundNumber .. "/" .. self.state.maxRounds,
+        "Round",
         0,
         topY,
         love.graphics.getWidth(),
         'center'
     )
-    
+    love.graphics.setColor(COLORS.HIGHLIGHT)
     love.graphics.printf(
-        "Score: " .. self.state.currentScore,
+        string.format("%d/%d", self.state.roundNumber, self.state.maxRounds),
         0,
-        topY + 30,
+        topY + 25,
         love.graphics.getWidth(),
         'center'
     )
     
+    -- Score with dynamic color based on target
+    love.graphics.setColor(COLORS.TEXT)
     love.graphics.printf(
-        "Phase: " .. self.state.currentPhase,
+        "Score",
         0,
         topY + 60,
         love.graphics.getWidth(),
         'center'
     )
     
+    local scoreColor = self.state.currentScore >= self.state.targetScore and COLORS.SUCCESS or COLORS.HIGHLIGHT
+    love.graphics.setColor(scoreColor)
+    love.graphics.printf(
+        string.format("%d / %d", self.state.currentScore, self.state.targetScore),
+        0,
+        topY + 85,
+        love.graphics.getWidth(),
+        'center'
+    )
+    
+    -- Phase indicator
+    love.graphics.setColor(COLORS.ACCENT)
+    love.graphics.printf(
+        self.state.currentPhase,
+        0,
+        topY + 120,
+        love.graphics.getWidth(),
+        'center'
+    )
+    
+    -- Timer with warning color when low
     if self.state.currentPhase == BattleEncounter.PHASES.COOKING then
+        local timeColor = self.state.timeRemaining <= 10 and COLORS.FAILURE or COLORS.TEXT
+        love.graphics.setColor(timeColor)
         love.graphics.printf(
             string.format("Time: %.1f", self.state.timeRemaining),
             0,
-            topY + 90,
+            topY + 150,
             love.graphics.getWidth(),
             'center'
         )
