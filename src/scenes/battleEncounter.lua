@@ -160,13 +160,13 @@ function BattleEncounter:updateRating(finalScore)
 end
 
 function BattleEncounter:endBattle(won)
-    -- Update rating based on final score
-    self:updateRating(self.state.currentScore)
+    -- Update rating based on final total score
+    self:updateRating(self.state.totalScore)
     
     -- Store battle results
     gameState.battleResults = {
         won = won,
-        score = self.state.currentScore,
+        score = self.state.totalScore,
         rounds = self.state.roundNumber,
         rating = gameState.selectedChef.rating,
         previousRating = self.state.previousRating,
@@ -188,7 +188,7 @@ end
 
 function BattleEncounter:isBattleComplete()
     return self.state.roundNumber > self.state.maxRounds or
-           self.state.currentScore >= self.state.targetScore
+           self.state.totalScore >= self.state.targetScore
 end
 
 function BattleEncounter:update(dt)
@@ -376,12 +376,13 @@ function BattleEncounter:applyCardScore(card)
     local scoreValue = card.scoring:getValue()
     
     if card.cardType == "ingredient" then
-        self.state.currentScore = self.state.currentScore + scoreValue
+        self.state.roundScore = (self.state.roundScore or 0) + scoreValue
     elseif card.cardType == "technique" or card.cardType == "recipe" then
-        self.state.currentScore = self.state.currentScore * scoreValue
+        self.state.roundScore = (self.state.roundScore or 0) * scoreValue
     end
     
-    self.state.scoringState.displayTotal = self.state.currentScore  -- Track for display
+    self.state.currentScore = self.state.roundScore  -- Update current score for display
+    self.state.scoringState.displayTotal = self.state.currentScore
 end
 
 function BattleEncounter:updateResultsPhase(dt)
@@ -390,7 +391,7 @@ function BattleEncounter:updateResultsPhase(dt)
         if self.state.phaseTimer <= 0 then
             self.state.phaseTimer = nil
             if self:isBattleComplete() then
-                self:endBattle(self.state.currentScore >= self.state.targetScore)
+                self:endBattle(self.state.totalScore >= self.state.targetScore)
             else
                 self:startNextRound()
             end
@@ -513,12 +514,13 @@ function BattleEncounter:drawBattleStats(y)
         200, 'right'
     )
     
-    -- Score
-    local scoreColor = self.state.currentScore >= self.state.targetScore and COLORS.SUCCESS or COLORS.HIGHLIGHT
+    -- Score - now showing total score instead of current round score
+    local totalScore = self.state.totalScore or 0
+    local scoreColor = totalScore >= self.state.targetScore and COLORS.SUCCESS or COLORS.HIGHLIGHT
     love.graphics.setColor(scoreColor)
     love.graphics.printf(
         string.format("Score: %d/%d",
-            self.state.currentScore,
+            totalScore,
             self.state.targetScore
         ),
         statsX, y + statSpacing,
@@ -881,6 +883,7 @@ function BattleEncounter:transitionToPhase(newPhase)
             animatedTotal = 0,    -- Add animated total that will count up
             totalScore = 0         -- Running total as cards are scored
         }
+        self.state.roundScore = 0  -- Initialize round score
         
         -- Prepare display strings for scoring animations
         self:prepareScoreDisplayStrings()
@@ -892,6 +895,9 @@ function BattleEncounter:transitionToPhase(newPhase)
         -- Remove selected cards from hand but keep them in selectedCards
         self:removeCardsFromHand()
     elseif newPhase == self.PHASES.RESULTS then
+        -- Add round score to total score
+        self.state.totalScore = (self.state.totalScore or 0) + self.state.roundScore
+        self.state.currentScore = self.state.totalScore  -- Update current score to total
         self:discardPlayedCards()
         self.state.phaseTimer = self.PHASE_TIMINGS.RESULTS
     end
@@ -953,8 +959,8 @@ function BattleEncounter:startNextRound()
     self.state.selectedCards = {}
     self.state.comboMultiplier = 1
     self.state.actionFeedback = nil
-    
-    -- Note: We no longer reset currentScore here
+    self.state.currentScore = 0  -- Reset score at the start of each round
+    self.state.roundScore = 0  -- Reset round score
     
     -- Get max hand size from battle parameters
     local config = encounterConfigs[self.state.battleType] or encounterConfigs.food_critic
