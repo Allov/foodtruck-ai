@@ -61,6 +61,19 @@ function BattleEncounter:enter()
     self.state.battleType = gameState.currentBattleType or "food_critic"
     self.state.difficulty = gameState.battleDifficulty or "normal"
     
+    -- Initialize enemy based on battle type
+    self.state.enemy = {
+        name = self.state.battleType == "food_critic" and "Food Critic" or "Lunch Rush",
+        specialty = self.state.battleType == "food_critic" and "Fine Dining" or "Speed Service",
+        targetScore = self.state.battleType == "food_critic" and 100 or 150,
+        preferences = {
+            -- Preferences affect scoring
+            primary = self.state.battleType == "food_critic" and "quality" or "speed",
+            bonus = self.state.battleType == "food_critic" and "presentation" or "efficiency"
+        },
+        satisfaction = 100  -- Starts at 100, changes based on performance
+    }
+    
     -- Use the current deck directly
     self.state.deck = gameState.currentDeck
     
@@ -327,14 +340,20 @@ function BattleEncounter:performCookingAction()
 end
 
 function BattleEncounter:applyCookingEffect(card)
-    -- Calculate base success chance
+    -- Calculate success based on enemy preferences
     local baseChance = 70
+    local enemy = self.state.enemy
     
-    -- Modify chance based on card type and conditions
-    if card.type == "ingredient" then
+    -- Modify chance based on card type and enemy preferences
+    if card.type == enemy.preferences.primary then
+        baseChance = baseChance + 15
+    elseif card.type == enemy.preferences.bonus then
         baseChance = baseChance + 10
-    elseif card.type == "technique" then
-        baseChance = baseChance + (self.state.skillLevel or 0)
+    end
+    
+    -- Additional modifiers based on card quality and technique level
+    if card.quality then
+        baseChance = baseChance + (card.quality * 2)
     end
     
     -- Roll for success
@@ -343,9 +362,20 @@ function BattleEncounter:applyCookingEffect(card)
     
     -- Apply effects
     if success then
-        self.state.currentScore = self.state.currentScore + (card.quality or 10)
+        local scoreGain = (card.quality or 10)
+        -- Bonus points if matching preferences
+        if card.type == enemy.preferences.primary then
+            scoreGain = scoreGain * 1.5
+        elseif card.type == enemy.preferences.bonus then
+            scoreGain = scoreGain * 1.25
+        end
+        
+        self.state.currentScore = self.state.currentScore + scoreGain
+        -- Adjust satisfaction based on performance
+        self.state.enemy.satisfaction = math.min(100, self.state.enemy.satisfaction + 5)
     else
         self.state.currentScore = self.state.currentScore - 5
+        self.state.enemy.satisfaction = math.max(0, self.state.enemy.satisfaction - 10)
     end
     
     return success
@@ -370,21 +400,60 @@ function BattleEncounter:draw()
 end
 
 function BattleEncounter:drawCommonElements()
-    -- Draw round number
-    love.graphics.setColor(1, 1, 1, 1)
+    -- Draw enemy stats at the top
+    if self.state.enemy then
+        love.graphics.setColor(1, 1, 1, 1)
+        local enemyStatsY = 10
+        local enemyNameY = enemyStatsY
+        local enemyDetailsY = enemyNameY + 30
+        local enemySatisfactionY = enemyDetailsY + 30
+        
+        -- Enemy name
+        love.graphics.printf(
+            self.state.enemy.name,
+            0,
+            enemyNameY,
+            love.graphics.getWidth(),
+            'center'
+        )
+        
+        -- Enemy details
+        love.graphics.printf(
+            string.format("Specialty: %s | Prefers: %s, %s", 
+                self.state.enemy.specialty,
+                self.state.enemy.preferences.primary,
+                self.state.enemy.preferences.bonus),
+            0,
+            enemyDetailsY,
+            love.graphics.getWidth(),
+            'center'
+        )
+        
+        -- Satisfaction level
+        love.graphics.printf(
+            string.format("Satisfaction: %d%%", self.state.enemy.satisfaction),
+            0,
+            enemySatisfactionY,
+            love.graphics.getWidth(),
+            'center'
+        )
+    end
+
+    -- Battle progress info
+    local topY = self.state.enemy and 160 or 10  -- Adjust Y position based on whether enemy info is shown
+    
     love.graphics.printf(
         "Round " .. self.state.roundNumber .. "/" .. self.state.maxRounds,
         0,
-        10,
+        topY,
         love.graphics.getWidth(),
         'center'
     )
     
-    -- Draw current score and phase (keep existing code)
     love.graphics.printf(
         "Score: " .. self.state.currentScore,
         0,
-        40,
+        topY + 30,
         love.graphics.getWidth(),
         'center'
     )
@@ -392,48 +461,47 @@ function BattleEncounter:drawCommonElements()
     love.graphics.printf(
         "Phase: " .. self.state.currentPhase,
         0,
-        70,
+        topY + 60,
         love.graphics.getWidth(),
         'center'
     )
     
-    -- If in cooking phase, draw timer (keep existing code)
     if self.state.currentPhase == BattleEncounter.PHASES.COOKING then
         love.graphics.printf(
             string.format("Time: %.1f", self.state.timeRemaining),
             0,
-            100,
+            topY + 90,
             love.graphics.getWidth(),
             'center'
         )
     end
 
-    -- Card dimensions
+    -- Card dimensions and layout constants
     local cardWidth, cardHeight = Card.getDimensions()
     local padding = 20
-    local stackOffset = 2  -- How much each card in the stack is offset from the one below
-
-    -- Draw pile (top-right corner)
-    local drawPileX = love.graphics.getWidth() - cardWidth - padding
-    local drawPileY = padding
+    local stackOffset = 2  -- How much each card in the stack is offset
+    local pileSpacing = 20 -- Space between draw and discard piles
     
-    -- Only draw the pile if there are cards in it
+    -- Position both piles at the bottom right
+    local pilesY = love.graphics.getHeight() - cardHeight - padding
+    local drawPileX = love.graphics.getWidth() - (cardWidth * 2 + pileSpacing + padding)
+    local discardPileX = love.graphics.getWidth() - (cardWidth + padding)
+    
+    -- Draw pile
     if #self.state.deck.drawPile > 0 then
         -- Draw stack of cards from bottom to top
         local numCardsToShow = math.min(5, #self.state.deck.drawPile)
         for i = numCardsToShow, 1, -1 do
-            -- Calculate offset position for this card
             local cardX = drawPileX - (i * stackOffset)
-            local cardY = drawPileY - (i * stackOffset)
+            local cardY = pilesY - (i * stackOffset)
             
-            -- Draw card back
             love.graphics.setColor(1, 1, 1, 1)
             Card.new(0, "", ""):drawBack(cardX, cardY)
         end
     else
         -- Draw empty pile outline
         love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
-        love.graphics.rectangle('line', drawPileX, drawPileY, cardWidth, cardHeight)
+        love.graphics.rectangle('line', drawPileX, pilesY, cardWidth, cardHeight)
     end
 
     -- Draw pile count
@@ -441,32 +509,25 @@ function BattleEncounter:drawCommonElements()
     love.graphics.printf(
         "Draw: " .. #self.state.deck.drawPile,
         drawPileX,
-        drawPileY + cardHeight + 5,
+        pilesY - 25,
         cardWidth,
         'center'
     )
 
-    -- Discard pile (top-left corner)
-    local discardPileX = padding
-    local discardPileY = padding
-    
-    -- Only draw the pile if there are cards in it
+    -- Discard pile
     if #self.state.deck.discardPile > 0 then
-        -- Draw stack of cards from bottom to top
         local numCardsToShow = math.min(5, #self.state.deck.discardPile)
         for i = numCardsToShow, 1, -1 do
-            -- Calculate offset position for this card
             local cardX = discardPileX - (i * stackOffset)
-            local cardY = discardPileY - (i * stackOffset)
+            local cardY = pilesY - (i * stackOffset)
             
-            -- Draw card back
             love.graphics.setColor(1, 1, 1, 1)
             Card.new(0, "", ""):drawBack(cardX, cardY)
         end
     else
         -- Draw empty pile outline
         love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
-        love.graphics.rectangle('line', discardPileX, discardPileY, cardWidth, cardHeight)
+        love.graphics.rectangle('line', discardPileX, pilesY, cardWidth, cardHeight)
     end
 
     -- Discard pile count
@@ -474,7 +535,7 @@ function BattleEncounter:drawCommonElements()
     love.graphics.printf(
         "Discard: " .. #self.state.deck.discardPile,
         discardPileX,
-        discardPileY + cardHeight + 5,
+        pilesY - 25,
         cardWidth,
         'center'
     )
@@ -503,41 +564,44 @@ end
 
 function BattleEncounter:drawPreparationPhase()
     local cardWidth, cardHeight = Card.getDimensions()
-    local baseY = love.graphics.getHeight() - cardHeight - 50
+    local padding = 20
+    local baseY = love.graphics.getHeight() - cardHeight - padding
+    
+    -- Calculate available width for hand cards (leaving space for piles)
+    local pilesWidth = (cardWidth * 2 + 20 + padding * 2) -- Two piles plus spacing and padding
+    local availableWidth = love.graphics.getWidth() - pilesWidth - padding
     
     -- Calculate overlap amount based on number of cards
-    local totalWidth = love.graphics.getWidth() - 200  -- Leave some margin on sides
     local overlapAmount = math.min(
-        cardWidth * 0.8,  -- Increased overlap (80% of card width)
-        (cardWidth * #self.state.handCards - totalWidth) / (#self.state.handCards - 1)
+        cardWidth * 0.8,  -- Maximum overlap (80% of card width)
+        (cardWidth * #self.state.handCards - availableWidth) / (#self.state.handCards - 1)
     )
-    local startX = (love.graphics.getWidth() - (cardWidth + overlapAmount * (#self.state.handCards - 1))) / 2
+    
+    -- Start X position from the left with padding
+    local startX = padding
     
     -- Calculate curve parameters
-    local curveHeight = 30  -- Reduced from 40 to tighten curve
+    local curveHeight = 30
     local middleIndex = math.ceil(#self.state.handCards / 2)
     
-    -- First draw non-selected cards from right to left
-    for i = #self.state.handCards, 1, -1 do  -- Reversed loop
+    -- First draw non-selected cards
+    for i = #self.state.handCards, 1, -1 do
         if i ~= self.state.selectedCardIndex then
             local card = self.state.handCards[i]
             local x = startX + ((i-1) * (cardWidth - overlapAmount))
             
-            -- Modified curve calculation to be more balanced
+            -- Modified curve calculation
             local progress = (i - 1) / (#self.state.handCards - 1)
             local curveOffset = math.sin(progress * math.pi) * curveHeight
             local y = baseY - curveOffset
             
-            -- Adjusted rotation to be more subtle
-            local rotation = math.rad((i - middleIndex) * 2)  -- Reduced from 3 to 2 degrees
+            local rotation = math.rad((i - middleIndex) * 2)
             
-            -- Highlight locked/selected cards
             if card.isLocked then
                 love.graphics.setColor(0.2, 0.8, 0.2, 0.3)
                 love.graphics.rectangle('fill', x, y, cardWidth, cardHeight)
             end
             
-            -- Draw the card
             love.graphics.setColor(1, 1, 1, 1)
             love.graphics.push()
             love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
@@ -548,41 +612,18 @@ function BattleEncounter:drawPreparationPhase()
         end
     end
     
-    -- Then draw the selected card last (on top)
+    -- Then draw selected card
     if self.state.selectedCardIndex > 0 and self.state.selectedCardIndex <= #self.state.handCards then
         local card = self.state.handCards[self.state.selectedCardIndex]
         local i = self.state.selectedCardIndex
         local x = startX + ((i-1) * (cardWidth - overlapAmount))
         
-        -- Use same curve calculation for selected card
         local progress = (i - 1) / (#self.state.handCards - 1)
         local curveOffset = math.sin(progress * math.pi) * curveHeight
-        local y = baseY - curveOffset - 20  -- Raise selected card
+        local y = baseY - curveOffset - 20
         
-        -- Use same rotation calculation
         local rotation = math.rad((i - middleIndex) * 2)
         
-        -- Draw selection highlight
-        love.graphics.setColor(0.8, 0.8, 0.2, 0.3)
-        love.graphics.push()
-        love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
-        love.graphics.rotate(rotation)
-        love.graphics.translate(-cardWidth/2 - 5, -cardHeight/2 - 5)
-        love.graphics.rectangle('fill', 0, 0, cardWidth + 10, cardHeight + 10)
-        love.graphics.pop()
-        
-        -- Highlight if locked
-        if card.isLocked then
-            love.graphics.setColor(0.2, 0.8, 0.2, 0.3)
-            love.graphics.push()
-            love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
-            love.graphics.rotate(rotation)
-            love.graphics.translate(-cardWidth/2, -cardHeight/2)
-            love.graphics.rectangle('fill', 0, 0, cardWidth, cardHeight)
-            love.graphics.pop()
-        end
-        
-        -- Draw the card
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.push()
         love.graphics.translate(x + cardWidth/2, y + cardHeight/2)
@@ -602,17 +643,14 @@ function BattleEncounter:drawPreparationPhase()
         'center'
     )
     
+    -- Draw instructions at the very bottom
     love.graphics.printf(
-        "← → to move  |  SPACE to select  |  ENTER to confirm  |  D to discard",
+        "← → to move  |  SPACE to select  |  ENTER to confirm",
         0,
         love.graphics.getHeight() - 30,
         love.graphics.getWidth(),
         'center'
     )
-
-    if self.state.currentAction == self.ACTIONS.DISCARD then
-        self:drawDiscardUI()
-    end
 end
 
 function BattleEncounter:drawDiscardUI()
