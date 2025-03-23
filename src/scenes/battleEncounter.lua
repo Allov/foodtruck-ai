@@ -416,29 +416,15 @@ function BattleEncounter:scoreCards()
     -- Reset round score
     self.state.roundScore = 0
 
-    -- First pass: Calculate base scores from ingredients
+    -- Calculate base scores from all cards
     for _, card in ipairs(self.state.selectedCards) do
-        if card.cardType == "ingredient" then
-            self.state.roundScore = self.state.roundScore + card.scoring:getValue()
-        end
+        self.state.roundScore = self.state.roundScore + card.scoring:getValue()
     end
-
-    -- Apply technique and recipe multipliers
-    local multiplier = 1.0
-    for _, card in ipairs(self.state.selectedCards) do
-        if card.cardType == "technique" or card.cardType == "recipe" then
-            multiplier = multiplier * card.scoring:getValue()
-        end
-    end
-
-    -- Apply base multipliers
-    self.state.roundScore = self.state.roundScore * multiplier
 
     -- Get combinations and apply their bonuses
     local combinations = CombinationSystem:identifyCombinations(self.state.selectedCards)
     if combinations and #combinations > 0 then
         local bonusMultiplier = CombinationSystem:calculateBonusMultiplier(combinations)
-
         -- Apply bonus multiplier
         self.state.roundScore = self.state.roundScore * bonusMultiplier
     end
@@ -1201,6 +1187,7 @@ function BattleEncounter:drawPileView()
 end
 
 return BattleEncounter  -- NOT return true/false
+
 
 
 

@@ -2,19 +2,14 @@ local MenuStyle = require('src.ui.menuStyle')
 local Card = require('src.cards.card')
 
 local CombinationSystem = {
-    -- Combination types and their associated bonus values
+    -- Only keeping ingredient pair type
     TYPES = {
-        INGREDIENT_PAIR = "INGREDIENT_PAIR",  -- Applied once per matching ingredient group
-        TECHNIQUE_BOOST = "TECHNIQUE_BOOST",
-        RECIPE_MATCH = "RECIPE_MATCH"
+        INGREDIENT_PAIR = "INGREDIENT_PAIR"  -- Applied once per matching ingredient group
     },
 
-    -- Bonus values for each combination type
-    -- Ingredient pairs give a single 20% bonus regardless of group size
+    -- Only keeping ingredient pair bonus
     BONUS_VALUES = {
-        INGREDIENT_PAIR = 0.2,  -- 20% bonus per matching ingredient group
-        TECHNIQUE_BOOST = 0.3,  -- 30% bonus per technique-ingredient match
-        RECIPE_MATCH = 0.5      -- 50% bonus per completed recipe
+        INGREDIENT_PAIR = 0.2  -- 20% bonus per matching ingredient group
     }
 }
 
@@ -83,12 +78,11 @@ local function findIngredientPairs(ingredients)
             end
 
             -- Create single combination for the group
-            table.insert(pairCombos, {
-                type = CombinationSystem.TYPES.INGREDIENT_PAIR,
-                cards = matchingCards,
-                bonus = CombinationSystem.BONUS_VALUES.INGREDIENT_PAIR,
-                tag = tag
-            })
+            table.insert(pairCombos, newCombination(
+                CombinationSystem.TYPES.INGREDIENT_PAIR,
+                matchingCards,
+                CombinationSystem.BONUS_VALUES.INGREDIENT_PAIR
+            ))
         end
     end
 
@@ -98,97 +92,9 @@ end
 -- Add this to the CombinationSystem table
 CombinationSystem.findIngredientPairs = findIngredientPairs
 
--- Check for technique boosts (technique cards that enhance specific ingredients)
-local function findTechniqueBoosts(ingredients, techniques)
-    local boosts = {}
-
-    for _, technique in ipairs(techniques) do
-        for _, ingredient in ipairs(ingredients) do
-            -- Check if technique tags complement ingredient tags
-            local isMatch = false
-            for _, techTag in ipairs(technique.tags or {}) do
-                for _, ingTag in ipairs(ingredient.tags or {}) do
-                    if (techTag == "heat" and ingTag == "protein") or
-                       (techTag == "slice" and ingTag == "vegetable") or
-                       (techTag == "slow_cook" and ingTag == "tough_meat") then
-                        isMatch = true
-                        break
-                    end
-                end
-                if isMatch then break end
-            end
-
-            if isMatch then
-                table.insert(boosts, newCombination(
-                    CombinationSystem.TYPES.TECHNIQUE_BOOST,
-                    {technique, ingredient},
-                    0.3  -- 30% bonus
-                ))
-            end
-        end
-    end
-
-    return boosts
-end
-
--- Check for recipe matches (when ingredients and techniques match a recipe)
-local function findRecipeMatches(ingredients, techniques, recipes)
-    local matches = {}
-
-    for _, recipe in ipairs(recipes) do
-        local requiredTags = recipe.tags or {}
-        local matchCount = 0
-        local matchingCards = {recipe}
-
-        -- Check if we have matching ingredients and techniques
-        for _, tag in ipairs(requiredTags) do
-            for _, card in ipairs(ingredients) do
-                if card.tags and table.concat(card.tags, ","):find(tag) then
-                    matchCount = matchCount + 1
-                    table.insert(matchingCards, card)
-                    break
-                end
-            end
-            for _, card in ipairs(techniques) do
-                if card.tags and table.concat(card.tags, ","):find(tag) then
-                    matchCount = matchCount + 1
-                    table.insert(matchingCards, card)
-                    break
-                end
-            end
-        end
-
-        -- If we found all required elements, it's a match
-        if matchCount >= #requiredTags then
-            table.insert(matches, newCombination(
-                CombinationSystem.TYPES.RECIPE_MATCH,
-                matchingCards,
-                0.5  -- 50% bonus
-            ))
-        end
-    end
-
-    return matches
-end
-
 function CombinationSystem:identifyCombinations(cards)
-    local combinations = {}
-
-    -- Filter to only ingredient cards
-    local ingredients = {}
-    for _, card in ipairs(cards) do
-        if card.cardType == "ingredient" then
-            table.insert(ingredients, card)
-        end
-    end
-
-    -- Find ingredient pairs
-    local ingredientPairs = findIngredientPairs(ingredients)
-    for _, combo in ipairs(ingredientPairs) do
-        table.insert(combinations, combo)
-    end
-
-    return combinations
+    -- Now only checks for ingredient pairs
+    return self.findIngredientPairs(cards)
 end
 
 -- Draw combination feedback using our existing style system
@@ -222,11 +128,7 @@ function CombinationSystem:calculateBonusMultiplier(combinations)
     local totalBonus = 1.0
 
     for _, combo in ipairs(combinations) do
-        if combo.type == self.TYPES.RECIPE_MATCH then
-            totalBonus = totalBonus + self.BONUS_VALUES.RECIPE_MATCH
-        elseif combo.type == self.TYPES.TECHNIQUE_BOOST then
-            totalBonus = totalBonus + self.BONUS_VALUES.TECHNIQUE_BOOST
-        elseif combo.type == self.TYPES.INGREDIENT_PAIR then
+        if combo.type == self.TYPES.INGREDIENT_PAIR then
             totalBonus = totalBonus + self.BONUS_VALUES.INGREDIENT_PAIR
         end
     end
@@ -236,19 +138,11 @@ end
 
 -- Get formatted description of combination bonuses
 function CombinationSystem:getComboDescription(combo)
-    local descriptions = {
-        [self.TYPES.INGREDIENT_PAIR] = string.format("Ingredient Pair (+%d%%)", self.BONUS_VALUES.INGREDIENT_PAIR * 100),
-        [self.TYPES.TECHNIQUE_BOOST] = string.format("Technique Boost (+%d%%)", self.BONUS_VALUES.TECHNIQUE_BOOST * 100),
-        [self.TYPES.RECIPE_MATCH] = string.format("Recipe Match (+%d%%)", self.BONUS_VALUES.RECIPE_MATCH * 100)
-    }
-    return descriptions[combo.type] or ""
+    if combo.type == self.TYPES.INGREDIENT_PAIR then
+        return string.format("Ingredient Pair (+%d%%)", self.BONUS_VALUES.INGREDIENT_PAIR * 100)
+    end
+    return ""
 end
 
 return CombinationSystem
-
-
-
-
-
-
 
