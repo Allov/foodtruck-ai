@@ -10,13 +10,15 @@ local COLORS = {
     SELECTED = {1, 0.8, 0, 1},   -- Gold for selected item
     UNSELECTED = {0.7, 0.7, 0.7, 1}, -- Slightly dimmed for unselected
     DEBUG = {0.5, 0.5, 0.5, 1},  -- Dimmed for debug option
-    BACKGROUND = {0.1, 0.1, 0.2, 1} -- Dark blue background
+    BACKGROUND = {0.1, 0.1, 0.2, 1}, -- Dark blue background
+    VERSION = {0.6, 0.6, 0.6, 0.8}  -- New: Subtle gray for version info
 }
 
 local FONTS = {
     TITLE = love.graphics.newFont(48),
     MENU = love.graphics.newFont(24),
-    INSTRUCTIONS = love.graphics.newFont(16)
+    INSTRUCTIONS = love.graphics.newFont(16),
+    VERSION = love.graphics.newFont(12)  -- New: Small font for version info
 }
 
 -- Title animation constants
@@ -132,10 +134,13 @@ function MainMenu:draw()
     love.graphics.printf(
         "Use ↑↓ to select, Enter to confirm",
         0,
-        love.graphics.getHeight() - 50,
+        love.graphics.getHeight() - 100,
         love.graphics.getWidth(),
         'center'
     )
+
+    -- Call base class draw to show prototype info
+    Scene.draw(self)
 end
 
 return MainMenu

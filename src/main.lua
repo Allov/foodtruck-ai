@@ -125,7 +125,7 @@ function Main.draw()
     local Settings = require('src.settings')
     
     if Settings.crtEnabled then
-        -- Draw everything except debug console to the canvas
+        -- Draw everything except global overlays to the canvas
         love.graphics.setCanvas(Main.canvas)
         love.graphics.clear()
         
@@ -145,19 +145,56 @@ function Main.draw()
         love.graphics.draw(Main.canvas, 0, 0)
         love.graphics.setShader()
         
-        -- Draw debug console last, after post-processing
+        -- Draw global overlays after post-processing
+        Main:drawGlobalOverlays()
+        
+        -- Draw debug console last
         if _DEBUG and Main.debugConsole then
             Main.debugConsole:draw()
         end
     else
         -- Draw directly without CRT effect
         sceneManager:draw()
+        Main:drawGlobalOverlays()
         
-        -- Always draw debug console last
         if _DEBUG and Main.debugConsole then
             Main.debugConsole:draw()
         end
     end
+end
+
+function Main:drawGlobalOverlays()
+    -- Draw prototype info
+    local stats = {
+        _DEBUG and "Debug Mode: Enabled" or "Debug Mode: Disabled",
+        string.format("Memory: %.1f MB", collectgarbage("count") / 1024),
+        string.format("FPS: %d", love.timer.getFPS()),
+        string.format("Resolution: %dx%d", love.graphics.getWidth(), love.graphics.getHeight()),
+        string.format("Version: %s (LÖVE %s)", "0.1.0-prototype", love.getVersion())
+    }
+    
+    -- Save current graphics state
+    local prevFont = love.graphics.getFont()
+    local r, g, b, a = love.graphics.getColor()
+    
+    -- Draw stats
+    love.graphics.setFont(love.graphics.newFont(12))
+    love.graphics.setColor(0.6, 0.6, 0.6, 0.8)
+    
+    local bottomMargin = 80
+    for i, stat in ipairs(stats) do
+        love.graphics.printf(
+            stat,
+            10,
+            love.graphics.getHeight() - bottomMargin + ((#stats - i) * 15),
+            love.graphics.getWidth() - 20,
+            'left'
+        )
+    end
+    
+    -- Restore graphics state
+    love.graphics.setFont(prevFont)
+    love.graphics.setColor(r, g, b, a)
 end
 
 function Main.keypressed(key)
