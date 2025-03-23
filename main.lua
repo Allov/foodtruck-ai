@@ -10,8 +10,8 @@ if arg[#arg] == "vsc_debug" then
 end
 
 if arg[#arg] == "test" then
-    -- Run tests
-    local testRunner = require('tests.settings_test')
+    -- Run all tests
+    local testRunner = require('tests.all')
     local success = testRunner:runAll()
     love.event.quit(success and 0 or 1)
     return
@@ -54,5 +54,6 @@ function love.quit()
         game.debugConsole:cleanup()
     end
 end
+
 
 

@@ -21,6 +21,18 @@ function TestRunner:assert(condition, message)
     end
 end
 
+function TestRunner:assertEquals(received, expected, message)
+    local errorMsg = message or "Values are not equal"
+    if received ~= expected then
+        errorMsg = string.format("%s\nExpected: %s\nReceived: %s",
+            errorMsg,
+            tostring(expected),
+            tostring(received)
+        )
+        self:assert(false, errorMsg)
+    end
+end
+
 function TestRunner:runAll()
     print("\n=== Running Tests ===\n")
 
@@ -51,5 +63,9 @@ function TestRunner:runAll()
 end
 
 return TestRunner
+
+
+
+
 
 
