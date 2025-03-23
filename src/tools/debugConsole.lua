@@ -60,10 +60,35 @@ local DebugConsole = {
 
 function DebugConsole:init()
     self.commands = {
+        -- Help and utility commands
         help = function() self:showHelp() end,
-        clear = function() self.history = {} end,  -- Added clear command
+        clear = function() self.history = {} end,
+        version = function() self:showVersion() end,
+        stats = function() self:showStats() end,
+
+        -- Game state commands
         give_cash = function(amount) self:giveCash(amount) end,
-        show_state = function() self:showGameState() end
+        show_state = function() self:showGameState() end,
+        set_level = function(level) self:setLevel(level) end,
+        set_score = function(score) self:setScore(score) end,
+        
+        -- Debug commands
+        toggle_fps = function() self:toggleFPS() end,
+        toggle_hitbox = function() self:toggleHitbox() end,
+        toggle_debug = function() self:toggleDebugInfo() end,
+        
+        -- Scene management
+        goto_scene = function(sceneName) self:gotoScene(sceneName) end,
+        list_scenes = function() self:listScenes() end,
+        
+        -- Game testing
+        spawn_enemy = function(type, x, y) self:spawnEnemy(type, x, y) end,
+        win_battle = function() self:winCurrentBattle() end,
+        lose_battle = function() self:loseCurrentBattle() end,
+        
+        -- Performance commands
+        mem = function() self:showMemoryUsage() end,
+        gc = function() self:forceGC() end
     }
     self:updateMaxVisibleLines()
 end
@@ -409,7 +434,114 @@ function DebugConsole:wheelmoved(x, y)
     ))
 end
 
+-- New command implementations
+function DebugConsole:showVersion()
+    self:info("Game Version: 0.1.0-prototype")
+    self:info("LÖVE Version: " .. love.getVersion())
+end
+
+function DebugConsole:showStats()
+    local stats = Main.contentManager:getProjectStats()
+    self:info("Project Statistics:")
+    self:info("Files: " .. stats.files .. " (" .. stats.luaFiles .. " Lua)")
+    self:info("Lines of Code: " .. stats.lines)
+    self:info("Asset Size: " .. stats.assetSizeMB .. " MB")
+end
+
+function DebugConsole:setLevel(level)
+    level = tonumber(level)
+    if not level then
+        self:error("Invalid level number")
+        return
+    end
+    gameState.progress.level = level
+    self:success("Set level to " .. level)
+end
+
+function DebugConsole:setScore(score)
+    score = tonumber(score)
+    if not score then
+        self:error("Invalid score value")
+        return
+    end
+    gameState.progress.score = score
+    self:success("Set score to " .. score)
+end
+
+function DebugConsole:toggleFPS()
+    Settings.showFPS = not Settings.showFPS
+    self:info("FPS Display: " .. (Settings.showFPS and "ON" or "OFF"))
+end
+
+function DebugConsole:toggleHitbox()
+    Settings.showHitbox = not Settings.showHitbox
+    self:info("Hitbox Display: " .. (Settings.showHitbox and "ON" or "OFF"))
+end
+
+function DebugConsole:toggleDebugInfo()
+    Settings.showDebugInfo = not Settings.showDebugInfo
+    self:info("Debug Info: " .. (Settings.showDebugInfo and "ON" or "OFF"))
+end
+
+function DebugConsole:gotoScene(sceneName)
+    if not sceneManager.scenes[sceneName] then
+        self:error("Invalid scene: " .. sceneName)
+        return
+    end
+    sceneManager:switch(sceneName)
+    self:success("Switched to scene: " .. sceneName)
+end
+
+function DebugConsole:listScenes()
+    self:info("Available scenes:")
+    for sceneName, _ in pairs(sceneManager.scenes) do
+        self:info("  " .. sceneName)
+    end
+end
+
+function DebugConsole:spawnEnemy(type, x, y)
+    if not sceneManager.current.spawnEnemy then
+        self:error("Current scene doesn't support enemy spawning")
+        return
+    end
+    x = tonumber(x) or 0
+    y = tonumber(y) or 0
+    sceneManager.current:spawnEnemy(type, x, y)
+    self:success("Spawned enemy: " .. type)
+end
+
+function DebugConsole:winCurrentBattle()
+    if sceneManager.current.winBattle then
+        sceneManager.current:winBattle()
+        self:success("Battle won")
+    else
+        self:error("Not in a battle")
+    end
+end
+
+function DebugConsole:loseCurrentBattle()
+    if sceneManager.current.loseBattle then
+        sceneManager.current:loseBattle()
+        self:success("Battle lost")
+    else
+        self:error("Not in a battle")
+    end
+end
+
+function DebugConsole:showMemoryUsage()
+    local mem = collectgarbage("count")
+    self:info(string.format("Memory Usage: %.2f MB", mem/1024))
+end
+
+function DebugConsole:forceGC()
+    local before = collectgarbage("count")
+    collectgarbage("collect")
+    local after = collectgarbage("count")
+    self:info(string.format("Garbage collected: %.2f MB", (before-after)/1024))
+end
+
 return DebugConsole
+
 
 
 
