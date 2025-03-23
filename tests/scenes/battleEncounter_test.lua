@@ -162,7 +162,113 @@ TestRunner:addTest("CombinationSystem - Calculate Bonus Multiplier", function(t)
     )
 end)
 
+TestRunner:addTest("BattleEncounter - Score Calculation Order", function(t)
+    local battle = BattleEncounter.new()
+
+    -- Test case with all card types
+    battle.state.selectedCards = {
+        -- Ingredients (10 + 10 = 20 base)
+        TestHelpers.createTestCard("Tomato", "ingredient", {
+            scoreValue = 10
+        }),
+        TestHelpers.createTestCard("Onion", "ingredient", {
+            scoreValue = 10
+        }),
+        -- Techniques (1.0 + 1.5 + 2.0 = 4.5 multiplier)
+        TestHelpers.createTestCard("Slice", "technique", {
+            scoreValue = 1.5
+        }),
+        TestHelpers.createTestCard("Dice", "technique", {
+            scoreValue = 2.0
+        }),
+        -- Recipe (1.0 + 1.5 = 2.5 multiplier)
+        TestHelpers.createTestCard("Soup", "recipe", {
+            scoreValue = 1.5
+        })
+    }
+
+    battle:scoreCards()
+    -- 20 (ingredients) * 4.5 (techniques) * 2.5 (recipe) = 225
+    t:assertEquals(battle.state.roundScore, 225, "Should calculate score in correct order")
+end)
+
+TestRunner:addTest("BattleEncounter - Score with Only Ingredients", function(t)
+    local battle = BattleEncounter.new()
+
+    battle.state.selectedCards = {
+        TestHelpers.createTestCard("Tomato", "ingredient", {
+            scoreValue = 10
+        }),
+        TestHelpers.createTestCard("Onion", "ingredient", {
+            scoreValue = 15
+        })
+    }
+
+    battle:scoreCards()
+    t:assertEquals(battle.state.roundScore, 25, "Should sum ingredients correctly")
+end)
+
+TestRunner:addTest("BattleEncounter - Score with Techniques Only", function(t)
+    local battle = BattleEncounter.new()
+
+    battle.state.selectedCards = {
+        TestHelpers.createTestCard("Tomato", "ingredient", {
+            scoreValue = 10
+        }),
+        TestHelpers.createTestCard("Slice", "technique", {
+            scoreValue = 1.5
+        }),
+        TestHelpers.createTestCard("Dice", "technique", {
+            scoreValue = 2.0
+        })
+    }
+
+    battle:scoreCards()
+    -- 10 * (1.0 + 1.5 + 2.0) = 45
+    t:assertEquals(battle.state.roundScore, 45, "Should apply technique multipliers correctly")
+end)
+
+TestRunner:addTest("BattleEncounter - Score with Recipe Only", function(t)
+    local battle = BattleEncounter.new()
+
+    battle.state.selectedCards = {
+        TestHelpers.createTestCard("Tomato", "ingredient", {
+            scoreValue = 10
+        }),
+        TestHelpers.createTestCard("Soup", "recipe", {
+            scoreValue = 1.5
+        })
+    }
+
+    battle:scoreCards()
+    -- 10 * (1.0 + 1.5) = 25
+    t:assertEquals(battle.state.roundScore, 25, "Should apply recipe multiplier correctly")
+end)
+
+TestRunner:addTest("BattleEncounter - Score with Combinations", function(t)
+    local battle = BattleEncounter.new()
+
+    battle.state.selectedCards = {
+        TestHelpers.createTestCard("Tomato", "ingredient", {
+            tags = {"vegetable"},
+            scoreValue = 10
+        }),
+        TestHelpers.createTestCard("Carrot", "ingredient", {
+            tags = {"vegetable"},
+            scoreValue = 10
+        }),
+        TestHelpers.createTestCard("Slice", "technique", {
+            scoreValue = 1.5
+        })
+    }
+
+    battle:scoreCards()
+    -- (20 * 2.5) * 1.2 = 60
+    t:assertEquals(battle.state.roundScore, 60, "Should apply combinations after multipliers")
+end)
+
 return TestRunner
+
 
 
 
