@@ -194,6 +194,11 @@ end
 function BattleEncounter:update(dt)
     Encounter.update(self, dt)
     
+    -- Update all cards in hand
+    for _, card in ipairs(self.state.handCards) do
+        card:update(dt)
+    end
+    
     if self.state.showingConfirmDialog then
         return
     end

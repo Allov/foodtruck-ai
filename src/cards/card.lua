@@ -61,17 +61,32 @@ end
 function Card:drawCardBase(x, y, style, visualState)
     local typeColors = self.visuals.TYPE_COLORS[self.cardType]
     
-    -- Draw shadow
-    local shadowOpacity = visualState.state == "disabled" and 0.05 or 0.1
-    love.graphics.setColor(0, 0, 0, shadowOpacity)
-    love.graphics.rectangle(
-        "fill",
-        x + 2,
-        y + 2,
-        style.DIMENSIONS.WIDTH,
-        style.DIMENSIONS.HEIGHT,
-        style.DIMENSIONS.CORNER_RADIUS
-    )
+    -- Enhanced shadow
+    local baseShadowOpacity = visualState.state == "disabled" and 0.2 or 0.3
+    local shadowOffsetX = 4
+    local shadowOffsetY = 6
+    local shadowSpread = 4  -- How much larger the shadow is than the card
+    
+    -- Make shadow more prominent when card is lifted or hovering
+    local liftAmount = visualState.lift + math.abs(math.sin(visualState.hover) * self.visuals.ANIMATION.HOVER.AMOUNT)
+    shadowOffsetY = shadowOffsetY + (liftAmount * 0.5)
+    baseShadowOpacity = baseShadowOpacity + (liftAmount / 100)
+    
+    -- Draw multiple shadows for a soft blur effect
+    for i = 1, 3 do
+        local spreadMultiplier = (i - 1) * shadowSpread
+        local opacity = baseShadowOpacity / i  -- Fade out each layer
+        
+        love.graphics.setColor(0, 0, 0, opacity)
+        love.graphics.rectangle(
+            "fill",
+            x + shadowOffsetX - spreadMultiplier/2,
+            y + shadowOffsetY - spreadMultiplier/2,
+            style.DIMENSIONS.WIDTH + spreadMultiplier,
+            style.DIMENSIONS.HEIGHT + spreadMultiplier,
+            style.DIMENSIONS.CORNER_RADIUS
+        )
+    end
     
     -- Draw card background
     local bgColor = typeColors.PRIMARY

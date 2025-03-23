@@ -130,7 +130,8 @@ function CardVisuals.new()
             target = 0
         },
         hover = {
-            offset = 0
+            offset = math.random() * math.pi * 2,  -- Random starting point in the sine wave
+            speed = 1.8 + math.random() * 0.4      -- Slightly randomized speed (1.8-2.2)
         },
         score = {
             active = false,
@@ -197,11 +198,11 @@ function CardVisuals:update(dt)
         lift.current = lift.target
     end
     
-    -- Update hover animation
+    -- Update hover animation with individual speed
     local hover = self.animations.hover
-    hover.offset = hover.offset + (self.ANIMATION.HOVER.SPEED * dt)
+    hover.offset = hover.offset + (hover.speed * dt)
     if hover.offset > math.pi * 2 then
-        hover.offset = 0
+        hover.offset = hover.offset - math.pi * 2  -- Keep it within 0-2π
     end
     
     -- Update score animation
