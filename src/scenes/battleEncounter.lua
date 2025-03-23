@@ -305,60 +305,9 @@ function BattleEncounter:adjustSelectionAfterDiscard()
     end
 end
 
-function BattleEncounter:handleCardDiscard()
-    if love.keyboard.wasPressed('escape') then
-        -- Return to selection mode
-        self.state.selectedForDiscard = {}
-    elseif love.keyboard.wasPressed('space') then
-        self:discardAndDrawNew()
-    end
-end
-
-function BattleEncounter:discardAndDrawNew()
-    local card = self.state.handCards[self.state.selectedCardIndex]
-    if not card then return end
-
-    -- Remove from hand
-    table.remove(self.state.handCards, self.state.selectedCardIndex)
-    
-    -- Add to deck's discard pile (not just the battle state discard pile)
-    self.state.deck:discard(card)
-    
-    -- Draw a new card from the deck
-    local newCard = self.state.deck:draw()
-    if newCard then
-        table.insert(self.state.handCards, self.state.selectedCardIndex, newCard)
-    end
-    
-    -- Adjust selected card index if needed
-    if self.state.selectedCardIndex > #self.state.handCards then
-        self.state.selectedCardIndex = #self.state.handCards
-    end
-    
-    -- Update card selection
-    for i, handCard in ipairs(self.state.handCards) do
-        handCard:setSelected(i == self.state.selectedCardIndex)
-    end
-    
-    -- Return to selection mode
-    self.state.currentAction = self.ACTIONS.SELECT
-end
-
 -- Remove these functions as they're no longer used:
--- function BattleEncounter:updateCookingPhase(dt)
---     -- Update timer
---     self.state.timeRemaining = self.state.timeRemaining - dt
---     
---     -- Handle cooking actions
---     if love.keyboard.wasPressed('space') then
---         self:performCookingAction()
---     end
---     
---     -- Check for phase end
---     if self.state.timeRemaining <= 0 then
---         self:transitionToPhase(BattleEncounter.PHASES.JUDGING)
---     end
--- end
+-- function BattleEncounter:handleCardDiscard()
+-- function BattleEncounter:discardAndDrawNew()
 
 function BattleEncounter:updateJudgingPhase(dt)
     self:updatePhaseTimer(dt)
@@ -455,62 +404,7 @@ end
 
 -- Remove these functions as they're no longer used:
 -- function BattleEncounter:performCookingAction()
---     local currentCard = self.state.selectedCards[self.state.currentCookingIndex]
---     if not currentCard then return end
---     
---     -- Apply card effects
---     local success = self:applyCookingEffect(currentCard)
---     
---     -- Move to next card
---     if success then
---         self.state.currentCookingIndex = self.state.currentCookingIndex + 1
---         if self.state.currentCookingIndex > #self.state.selectedCards then
---             self.state.currentCookingIndex = 1
---         end
---     end
--- end
-
 -- function BattleEncounter:applyCookingEffect(card)
---     -- Calculate success based on enemy preferences
---     local baseChance = 70
---     local enemy = self.state.enemy
---     
---     -- Modify chance based on card type and enemy preferences
---     if card.type == enemy.preferences.primary then
---         baseChance = baseChance + 15
---     elseif card.type == enemy.preferences.bonus then
---         baseChance = baseChance + 10
---     end
---     
---     -- Additional modifiers based on card quality and technique level
---     if card.quality then
---         baseChance = baseChance + (card.quality * 2)
---     end
---     
---     -- Roll for success
---     local roll = love.math.random(100)
---     local success = roll <= baseChance
---     
---     -- Apply effects
---     if success then
---         local scoreGain = (card.quality or 10)
---         -- Bonus points if matching preferences
---         if card.type == enemy.preferences.primary then
---             scoreGain = scoreGain * 1.5
---         elseif card.type == enemy.preferences.bonus then
---             scoreGain = scoreGain * 1.25
---         end
---         
---         self.state.currentScore = self.state.currentScore + scoreGain
---         -- Adjust satisfaction based on performance
---         self.state.enemy.satisfaction = math.min(100, self.state.enemy.satisfaction + 5)
---     else
---         self.state.currentScore = self.state.currentScore - 5
---         self.state.enemy.satisfaction = math.max(0, self.state.enemy.satisfaction - 10)
---     end
---     
---     return success
--- end
 
 function BattleEncounter:draw()
     if self.state.viewingPile then
