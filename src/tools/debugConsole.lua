@@ -4,13 +4,20 @@ local DebugConsole = {
     input = "",
     maxHistory = 50,
     cursorBlink = 0,
+    scrollOffset = 0,  -- New: tracks scroll position
+    maxVisibleLines = 20,  -- New: how many lines to show at once
     LOG_LEVELS = {
         DEBUG = {name = "DEBUG", color = {0.5, 0.5, 0.5, 1}},
         INFO = {name = "INFO", color = {1, 1, 1, 1}},
         WARN = {name = "WARN", color = {1, 0.7, 0, 1}},
         ERROR = {name = "ERROR", color = {1, 0, 0, 1}},
         SUCCESS = {name = "SUCCESS", color = {0, 1, 0, 1}}
-    }
+    },
+    -- Debounce settings
+    lastMessage = "",
+    lastMessageTime = 0,
+    messageCount = 1,
+    debounceTime = 0.1  -- Seconds to wait before allowing duplicate messages
 }
 
 function DebugConsole:init()
@@ -54,6 +61,19 @@ end
 
 function DebugConsole:log(message, level)
     level = level or self.LOG_LEVELS.INFO
+    local currentTime = love.timer.getTime()
+    
+    -- Check if this is a duplicate message within the debounce time
+    if message == self.lastMessage and 
+       (currentTime - self.lastMessageTime) < self.debounceTime then
+        -- Update the last message to include the count
+        self.messageCount = self.messageCount + 1
+        self.history[#self.history].message = string.format("%s (x%d)", 
+            message, self.messageCount)
+        return
+    end
+    
+    -- New message or outside debounce time
     local entry = {
         timestamp = self:formatTimestamp(),
         message = tostring(message),
@@ -64,6 +84,11 @@ function DebugConsole:log(message, level)
     if #self.history > self.maxHistory then
         table.remove(self.history, 1)
     end
+    
+    -- Reset debounce tracking
+    self.lastMessage = message
+    self.lastMessageTime = currentTime
+    self.messageCount = 1
 end
 
 -- Convenience methods for different log levels
@@ -93,8 +118,13 @@ function DebugConsole:handleInput(key)
     if key == "return" and self.input ~= "" then
         self:executeCommand(self.input)
         self.input = ""
+        self.scrollOffset = 0  -- Reset scroll when executing command
     elseif key == "backspace" then
         self.input = string.sub(self.input, 1, -2)
+    elseif key == "pageup" then
+        self.scrollOffset = math.min(self.scrollOffset + 5, #self.history - self.maxVisibleLines)
+    elseif key == "pagedown" then
+        self.scrollOffset = math.max(self.scrollOffset - 5, 0)
     end
 end
 
@@ -125,20 +155,38 @@ function DebugConsole:draw()
         25
     )
     
-    -- Draw command history
+    -- Draw command history with scrolling
     local y = love.graphics.getHeight() * 0.3 - 40
-    for i = #self.history, math.max(1, #self.history - 10), -1 do
+    local startIndex = #self.history - self.scrollOffset
+    local endIndex = math.max(1, startIndex - self.maxVisibleLines + 1)
+    
+    for i = startIndex, endIndex, -1 do
         local entry = self.history[i]
-        love.graphics.setColor(entry.level.color)
+        if entry then
+            love.graphics.setColor(entry.level.color)
+            love.graphics.print(
+                string.format("[%s][%s] %s", 
+                    entry.timestamp, 
+                    entry.level.name, 
+                    entry.message
+                ),
+                10, y
+            )
+            y = y - 20
+        end
+    end
+    
+    -- Draw scroll indicator if there are more messages
+    if #self.history > self.maxVisibleLines then
+        love.graphics.setColor(1, 1, 1, 0.5)
         love.graphics.print(
-            string.format("[%s][%s] %s", 
-                entry.timestamp, 
-                entry.level.name, 
-                entry.message
+            string.format("Scroll: %d/%d", 
+                self.scrollOffset, 
+                math.max(0, #self.history - self.maxVisibleLines)
             ),
-            10, y - 20
+            love.graphics.getWidth() - 100,
+            love.graphics.getHeight() * 0.3 - 25
         )
-        y = y - 20
     end
     
     -- Draw input line with blinking cursor
@@ -175,3 +223,12 @@ function DebugConsole:showGameState()
 end
 
 return DebugConsole
+
+
+
+
+
+
+
+
+
