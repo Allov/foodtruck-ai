@@ -277,17 +277,140 @@ function Card:drawOverlayEffects(x, y, style, visualState)
 end
 
 function Card:drawBack(x, y)
-    -- Draw card back
-    love.graphics.setColor(0.2, 0.2, 0.8, 1) -- Blue background for card back
-    love.graphics.rectangle("fill", x, y, self.WIDTH, self.HEIGHT)
+    local style = self.visuals.STYLE
     
-    -- Draw decorative pattern
-    love.graphics.setColor(0.3, 0.3, 0.9, 1)
-    love.graphics.rectangle("line", x + 5, y + 5, self.WIDTH - 10, self.HEIGHT - 10)
+    -- Enhanced shadow
+    local baseShadowOpacity = 0.3
+    local shadowOffsetX = 4
+    local shadowOffsetY = 6
+    local shadowSpread = 4
     
-    -- Draw logo or pattern in the center
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("★", x, y + (self.HEIGHT/2) - 20, self.WIDTH, "center")
+    for i = 1, 3 do
+        local spreadMultiplier = (i - 1) * shadowSpread
+        local opacity = baseShadowOpacity / i
+        
+        love.graphics.setColor(0, 0, 0, opacity)
+        love.graphics.rectangle(
+            "fill",
+            x + shadowOffsetX - spreadMultiplier/2,
+            y + shadowOffsetY - spreadMultiplier/2,
+            style.DIMENSIONS.WIDTH + spreadMultiplier,
+            style.DIMENSIONS.HEIGHT + spreadMultiplier,
+            style.DIMENSIONS.CORNER_RADIUS
+        )
+    end
+    
+    -- Main background - More sophisticated dark blue-gray
+    love.graphics.setColor(0.15, 0.17, 0.22, 1)
+    love.graphics.rectangle(
+        "fill",
+        x,
+        y,
+        style.DIMENSIONS.WIDTH,
+        style.DIMENSIONS.HEIGHT,
+        style.DIMENSIONS.CORNER_RADIUS
+    )
+    
+    -- Outer border - Sharp and distinct
+    love.graphics.setColor(0.8, 0.85, 0.9, 0.9)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle(
+        "line",
+        x,
+        y,
+        style.DIMENSIONS.WIDTH,
+        style.DIMENSIONS.HEIGHT,
+        style.DIMENSIONS.CORNER_RADIUS
+    )
+    
+    -- Inner border with gradient effect
+    local margin = style.DIMENSIONS.INNER_MARGIN
+    love.graphics.setColor(0.4, 0.45, 0.5, 0.6)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle(
+        "line",
+        x + margin,
+        y + margin,
+        style.DIMENSIONS.WIDTH - margin * 2,
+        style.DIMENSIONS.HEIGHT - margin * 2,
+        style.DIMENSIONS.CORNER_RADIUS - 2
+    )
+    
+    -- Center pattern
+    local centerX = x + style.DIMENSIONS.WIDTH / 2
+    local centerY = y + style.DIMENSIONS.HEIGHT / 2
+    local patternSize = 70  -- Slightly larger pattern
+    
+    -- Main diamond outline
+    love.graphics.setColor(0.8, 0.85, 0.9, 0.8)
+    love.graphics.setLineWidth(2)
+    local points = {
+        centerX, centerY - patternSize,
+        centerX + patternSize, centerY,
+        centerX, centerY + patternSize,
+        centerX - patternSize, centerY
+    }
+    love.graphics.polygon("line", points)
+    
+    -- Inner diamond with fill
+    local innerSize = patternSize * 0.7
+    love.graphics.setColor(0.2, 0.22, 0.28, 0.6)
+    local innerPoints = {
+        centerX, centerY - innerSize,
+        centerX + innerSize, centerY,
+        centerX, centerY + innerSize,
+        centerX - innerSize, centerY
+    }
+    love.graphics.polygon("fill", innerPoints)
+    love.graphics.setColor(0.6, 0.65, 0.7, 0.4)
+    love.graphics.polygon("line", innerPoints)
+    
+    -- Corner accents
+    love.graphics.setColor(0.8, 0.85, 0.9, 0.9)
+    local circleSize = 8
+    local cornerDist = patternSize * 0.8
+    
+    -- Corner circles with inner detail
+    local function drawCornerAccent(cx, cy)
+        love.graphics.circle("fill", cx, cy, circleSize)
+        love.graphics.setColor(0.15, 0.17, 0.22, 0.8)
+        love.graphics.circle("fill", cx, cy, circleSize * 0.6)
+        love.graphics.setColor(0.8, 0.85, 0.9, 0.9)
+        love.graphics.circle("fill", cx, cy, circleSize * 0.2)
+    end
+    
+    drawCornerAccent(centerX, centerY - cornerDist)
+    drawCornerAccent(centerX + cornerDist, centerY)
+    drawCornerAccent(centerX, centerY + cornerDist)
+    drawCornerAccent(centerX - cornerDist, centerY)
+    
+    -- Center medallion
+    love.graphics.setColor(0.8, 0.85, 0.9, 0.9)
+    love.graphics.circle("fill", centerX, centerY, circleSize * 1.5)
+    love.graphics.setColor(0.15, 0.17, 0.22, 0.8)
+    love.graphics.circle("fill", centerX, centerY, circleSize * 0.9)
+    love.graphics.setColor(0.8, 0.85, 0.9, 0.7)
+    love.graphics.circle("fill", centerX, centerY, circleSize * 0.3)
+    
+    -- Subtle background pattern
+    love.graphics.setColor(0.8, 0.85, 0.9, 0.04)
+    local gridSize = 12
+    for i = 0, style.DIMENSIONS.WIDTH, gridSize do
+        love.graphics.line(
+            x + i, 
+            y, 
+            x + i, 
+            y + style.DIMENSIONS.HEIGHT
+        )
+    end
+    for i = 0, style.DIMENSIONS.HEIGHT, gridSize do
+        love.graphics.line(
+            x, 
+            y + i, 
+            x + style.DIMENSIONS.WIDTH, 
+            y + i
+        )
+    end
 end
 
 function Card:setSelected(selected)
