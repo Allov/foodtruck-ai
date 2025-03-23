@@ -1,15 +1,15 @@
 local Scene = require('src.scenes.scene')
 local Settings = require('src.settings')
+local MenuStyle = require('src.ui.menuStyle')
 
 local OptionsMenu = {}
 OptionsMenu.__index = OptionsMenu
 setmetatable(OptionsMenu, Scene)
 
-local COLORS = {
-    TEXT = {1, 1, 1, 1},
-    SELECTED = {1, 0.8, 0, 1},
-    TITLE = {0.4, 0.8, 1, 1}
-}
+-- Title animation constants
+local FLOAT_SPEED = 1.5
+local FLOAT_AMOUNT = 8
+local SHIMMER_SPEED = 2
 
 function OptionsMenu.new()
     local self = setmetatable({}, OptionsMenu)
@@ -35,9 +35,17 @@ function OptionsMenu:init()
         }
     }
     self.selected = 1
+    
+    -- Initialize animation variables
+    self.titleOffset = 0
+    self.titleAlpha = 1
 end
 
 function OptionsMenu:update(dt)
+    -- Update title animations
+    self.titleOffset = math.sin(love.timer.getTime() * FLOAT_SPEED) * FLOAT_AMOUNT
+    self.titleAlpha = 1 - math.abs(math.sin(love.timer.getTime() * SHIMMER_SPEED) * 0.2)
+
     if love.keyboard.wasPressed('up') then
         self.selected = self.selected - 1
         if self.selected < 1 then 
@@ -62,23 +70,27 @@ function OptionsMenu:update(dt)
 end
 
 function OptionsMenu:draw()
-    love.graphics.setColor(COLORS.TITLE)
-    love.graphics.printf("Options", 0, 100, love.graphics.getWidth(), 'center')
+    MenuStyle.drawBackground()
     
+    -- Draw animated title
+    love.graphics.setFont(MenuStyle.FONTS.TITLE)
+    love.graphics.setColor(MenuStyle.COLORS.TITLE[1], MenuStyle.COLORS.TITLE[2], 
+        MenuStyle.COLORS.TITLE[3], self.titleAlpha)
+    love.graphics.printf("Options", 0, MenuStyle.LAYOUT.TITLE_Y + self.titleOffset, 
+        love.graphics.getWidth(), 'center')
+    
+    -- Draw menu options
     for i, option in ipairs(self.options) do
-        local y = 200 + (i - 1) * 40
-        love.graphics.setColor(self.selected == i and COLORS.SELECTED or COLORS.TEXT)
-        
+        local displayText = option.name
         if option.toggle then
             local status = option.value and "ON" or "OFF"
-            love.graphics.printf(
-                string.format("%s: %s", option.name, status),
-                0, y, love.graphics.getWidth(), 'center'
-            )
-        else
-            love.graphics.printf(option.name, 0, y, love.graphics.getWidth(), 'center')
+            displayText = string.format("%s: %s", option.name, status)
         end
+        MenuStyle.drawMenuItem(displayText, i, i == self.selected, false)
     end
+
+    -- Draw instructions
+    MenuStyle.drawInstructions("Use ↑↓ to select, Enter to confirm, Esc to return")
 end
 
 return OptionsMenu

@@ -22,7 +22,6 @@ function MainMenu:init()
     self.options = {
         "Start Food Truck Journey",
         "Options",
-        "Debug Menu",
         "Exit"
     }
     self.selected = 1
@@ -57,8 +56,6 @@ function MainMenu:update(dt)
         elseif self.selected == 2 then
             sceneManager:switch('optionsMenu')
         elseif self.selected == 3 then
-            sceneManager:switch('debugMenu')
-        elseif self.selected == 4 then
             love.event.quit()
         end
     end
@@ -76,8 +73,7 @@ function MainMenu:draw()
     
     -- Draw menu options
     for i, option in ipairs(self.options) do
-        local isDisabled = (i == 3 and not _DEBUG)
-        MenuStyle.drawMenuItem(option, i, i == self.selected, isDisabled)
+        MenuStyle.drawMenuItem(option, i, i == self.selected, false)
     end
 
     -- Draw instructions

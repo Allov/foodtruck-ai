@@ -1,15 +1,26 @@
 local Scene = require('src.scenes.scene')
 local Deck = require('src.cards.deck')
 local ChefSelect = require('src.scenes.chefSelect')
-local DebugMenu = setmetatable({}, Scene)
+local MenuStyle = require('src.ui.menuStyle')
+
+local DebugMenu = {}
 DebugMenu.__index = DebugMenu
+setmetatable(DebugMenu, Scene)
+
+-- Title animation constants
+local FLOAT_SPEED = 1.5
+local FLOAT_AMOUNT = 8
+local SHIMMER_SPEED = 2
 
 function DebugMenu.new()
-    local self = setmetatable({}, Scene)
-    return setmetatable(self, DebugMenu)
+    local self = Scene.new()
+    setmetatable(self, DebugMenu)
+    self:init()
+    return self
 end
 
 function DebugMenu:init()
+    Scene.init(self)
     self.options = {
         "Encounter Tester",
         "View Test Deck",
@@ -19,6 +30,10 @@ function DebugMenu:init()
     }
     self.selected = 1
     
+    -- Initialize animation variables
+    self.titleOffset = 0
+    self.titleAlpha = 1
+    
     -- Initialize chef selection submenu
     self.chefSelect = ChefSelect.new()
     self.showingChefSelect = false
@@ -27,6 +42,10 @@ function DebugMenu:init()
 end
 
 function DebugMenu:update(dt)
+    -- Update title animations
+    self.titleOffset = math.sin(love.timer.getTime() * FLOAT_SPEED) * FLOAT_AMOUNT
+    self.titleAlpha = 1 - math.abs(math.sin(love.timer.getTime() * SHIMMER_SPEED) * 0.2)
+
     if self.showingChefSelect then
         if love.keyboard.wasPressed('escape') then
             self.showingChefSelect = false
@@ -67,18 +86,15 @@ function DebugMenu:update(dt)
         if self.selected == 1 then
             sceneManager:switch('encounterTester')
         elseif self.selected == 2 then
-            -- Generate and set a test deck
             gameState.currentDeck = Deck.generateTestDeck()
             gameState.previousScene = 'debugMenu'
             sceneManager:switch('deckViewer')
         elseif self.selected == 3 then
-            -- Show chef selection submenu
             self.showingChefSelect = true
         elseif self.selected == 4 then
-            -- Test market
-            gameState.cash = 20  -- Give some test money
+            gameState.cash = 20
             gameState.previousScene = 'debugMenu'
-            gameState.currentMarketType = 'farmers_market'  -- Default to farmers market
+            gameState.currentMarketType = 'farmers_market'
             sceneManager:switch('marketEncounter')
         elseif self.selected == 5 then
             sceneManager:switch('mainMenu')
@@ -86,51 +102,36 @@ function DebugMenu:update(dt)
     end
 end
 
--- Constants for styling
-local MENU_INDENT = 40
-local DOT_OFFSET = -20
-
 function DebugMenu:draw()
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("Debug Menu", 0, 100, love.graphics.getWidth(), 'center')
+    MenuStyle.drawBackground()
+    
+    -- Draw animated title
+    love.graphics.setFont(MenuStyle.FONTS.TITLE)
+    love.graphics.setColor(MenuStyle.COLORS.TITLE[1], MenuStyle.COLORS.TITLE[2], 
+        MenuStyle.COLORS.TITLE[3], self.titleAlpha)
+    love.graphics.printf("Debug Menu", 0, MenuStyle.LAYOUT.TITLE_Y + self.titleOffset, 
+        love.graphics.getWidth(), 'center')
     
     if self.showingChefSelect then
+        love.graphics.setFont(MenuStyle.FONTS.MENU)
         love.graphics.printf("Select Chef Deck to View", 0, 160, love.graphics.getWidth(), 'center')
+        
         for i, chef in ipairs(self.chefs) do
-            local y = 200 + i * 40
-            
-            -- Draw selection indicator to the left
-            if i == self.selectedChef then
-                love.graphics.setColor(1, 1, 0, 1)
-                love.graphics.printf("•", DOT_OFFSET, y, love.graphics.getWidth(), 'center')
-            end
-
-            love.graphics.setColor(i == self.selectedChef and COLORS.SELECTED or COLORS.UNSELECTED)
-            love.graphics.printf(
-                chef.name .. " - " .. chef.specialty,
-                0, y,
-                love.graphics.getWidth(),
-                'center'
-            )
+            local displayText = chef.name .. " - " .. chef.specialty
+            MenuStyle.drawMenuItem(displayText, i, i == self.selectedChef, false)
         end
     else
+        -- Draw menu options
         for i, option in ipairs(self.options) do
-            local y = 200 + i * 40
-            
-            -- Draw selection indicator to the left
-            if i == self.selected then
-                love.graphics.setColor(1, 1, 0, 1)
-                love.graphics.printf("•", DOT_OFFSET, y, love.graphics.getWidth(), 'center')
-            end
-
-            love.graphics.setColor(i == self.selected and COLORS.SELECTED or COLORS.UNSELECTED)
-            love.graphics.printf(option, 0, y, love.graphics.getWidth(), 'center')
+            MenuStyle.drawMenuItem(option, i, i == self.selected, false)
         end
     end
+
+    -- Draw instructions
+    local instructions = self.showingChefSelect and 
+        "Use ↑↓ to select, Enter to confirm, Esc to return" or
+        "Use ↑↓ to select, Enter to confirm, Esc to exit"
+    MenuStyle.drawInstructions(instructions)
 end
 
 return DebugMenu
-
-
-
-
