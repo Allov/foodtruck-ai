@@ -86,6 +86,8 @@ function MainMenu:update(dt)
     if love.keyboard.wasPressed('return') then
         if self.selected == 1 then
             sceneManager:switch('seedInput')
+        elseif self.selected == 2 then
+            sceneManager:switch('optionsMenu')
         elseif self.selected == 3 then
             sceneManager:switch('debugMenu')
         elseif self.selected == 4 then

@@ -66,7 +66,11 @@ function Main.load()
     
     -- Create global canvas for CRT effect
     Main.canvas = love.graphics.newCanvas()
-
+    
+    -- Load settings
+    local Settings = require('src.settings')
+    Settings:load()  -- Add this line to load saved settings
+    
     -- Load all scenes
     local scenes = {
         mainMenu = require('src.scenes.mainMenu'),
@@ -81,7 +85,8 @@ function Main.load()
         debugMenu = require('src.scenes.debugMenu'),
         encounterTester = require('src.scenes.encounterTester'),
         deckViewer = require('src.scenes.deckViewer'),
-        game = require('src.scenes.game')
+        game = require('src.scenes.game'),
+        optionsMenu = require('src.scenes.optionsMenu')
     }
 
     -- Initialize scene manager with scenes
@@ -117,30 +122,41 @@ function Main.update(dt)
 end
 
 function Main.draw()
-    -- Draw everything to the canvas
-    love.graphics.setCanvas(Main.canvas)
-    love.graphics.clear()
+    local Settings = require('src.settings')
     
-    -- Draw current scene
-    sceneManager:draw()
-    
-    -- Draw debug console if in debug mode
-    if _DEBUG and Main.debugConsole then
-        Main.debugConsole:draw()
+    if Settings.crtEnabled then
+        -- Draw everything to the canvas
+        love.graphics.setCanvas(Main.canvas)
+        love.graphics.clear()
+        
+        -- Draw current scene
+        sceneManager:draw()
+        
+        -- Draw debug console if in debug mode
+        if _DEBUG and Main.debugConsole then
+            Main.debugConsole:draw()
+        end
+        
+        -- Reset canvas and apply CRT effect
+        love.graphics.setCanvas()
+        
+        -- Update shader uniforms
+        Main.crtShader:send("time", love.timer.getTime())
+        Main.crtShader:send("screen_size", {love.graphics.getWidth(), love.graphics.getHeight()})
+        
+        -- Draw canvas with CRT shader
+        love.graphics.setShader(Main.crtShader)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(Main.canvas, 0, 0)
+        love.graphics.setShader()
+    else
+        -- Draw directly without CRT effect
+        sceneManager:draw()
+        
+        if _DEBUG and Main.debugConsole then
+            Main.debugConsole:draw()
+        end
     end
-    
-    -- Reset canvas and apply CRT effect
-    love.graphics.setCanvas()
-    
-    -- Update shader uniforms
-    Main.crtShader:send("time", love.timer.getTime())
-    Main.crtShader:send("screen_size", {love.graphics.getWidth(), love.graphics.getHeight()})
-    
-    -- Draw canvas with CRT shader
-    love.graphics.setShader(Main.crtShader)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(Main.canvas, 0, 0)
-    love.graphics.setShader()
 end
 
 function Main.keypressed(key)
