@@ -182,7 +182,8 @@ function BattleEncounter:endBattle(won)
     -- Calculate and give reward to player
     local reward = self:calculateReward()
     if reward > 0 then
-        gameState.money = (gameState.money or 0) + reward
+        gameState.cash = (gameState.cash or 0) + reward
+        print("[BattleEncounter] Rewarding player with", reward, "coins. New total:", gameState.cash)
     end
 
     -- Store battle results
@@ -193,7 +194,7 @@ function BattleEncounter:endBattle(won)
         rating = gameState.selectedChef.rating,
         previousRating = self.state.previousRating,
         ratingChanged = self.state.ratingChanged,
-        reward = reward  -- Add reward to results
+        reward = reward
     }
 
     -- Mark node as completed if from province map
@@ -1279,6 +1280,7 @@ function BattleEncounter:calculateReward()
 end
 
 return BattleEncounter  -- NOT return true/false
+
 
 
 
