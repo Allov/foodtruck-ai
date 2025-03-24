@@ -47,13 +47,13 @@ function ChefSelect:loadChefs()
             rating = "C"
         }
     }
-    
+
     -- Convert raw data to Chef objects
     local chefs = {}
     for _, data in ipairs(chefData) do
         table.insert(chefs, Chef.new(data))
     end
-    
+
     return chefs
 end
 
@@ -65,7 +65,7 @@ function ChefSelect:init()
     Scene.init(self)
     self.selected = 1
     self.chefs = self:loadChefs()
-    
+
     -- Initialize animation variables
     self.titleOffset = 0
     self.titleAlpha = 1
@@ -93,30 +93,28 @@ function ChefSelect:update(dt)
         local selectedChef = self.chefs[self.selected]
         gameState.selectedChef = selectedChef
         gameState.currentDeck = self:generateStarterDeck(selectedChef)
-        local provinceMap = sceneManager.scenes['provinceMap']
-        provinceMap:setSeed(gameState.mapSeed)
         sceneManager:switch('provinceMap')
     end
 end
 
 function ChefSelect:draw()
     MenuStyle.drawBackground()
-    
+
     -- Draw animated title
     love.graphics.setFont(MenuStyle.FONTS.TITLE)
-    love.graphics.setColor(MenuStyle.COLORS.TITLE[1], MenuStyle.COLORS.TITLE[2], 
+    love.graphics.setColor(MenuStyle.COLORS.TITLE[1], MenuStyle.COLORS.TITLE[2],
         MenuStyle.COLORS.TITLE[3], self.titleAlpha)
-    love.graphics.printf("Select Your Chef", 0, MenuStyle.LAYOUT.TITLE_Y + self.titleOffset, 
+    love.graphics.printf("Select Your Chef", 0, MenuStyle.LAYOUT.TITLE_Y + self.titleOffset,
         love.graphics.getWidth(), 'center')
-    
+
     -- Draw chef options with increased spacing for two lines
     for i, chef in ipairs(self.chefs) do
         -- Calculate base Y position for this chef entry
         local baseY = MenuStyle.LAYOUT.MENU_START_Y + (i - 1) * (MenuStyle.LAYOUT.MENU_ITEM_HEIGHT * 2)
-        
+
         -- Draw chef name
         MenuStyle.drawMenuItem(chef.name, i * 2 - 1, i == self.selected, false)
-        
+
         -- Draw specialty closer to the name
         love.graphics.setFont(MenuStyle.FONTS.INSTRUCTIONS)
         love.graphics.setColor(MenuStyle.COLORS.UNSELECTED)
