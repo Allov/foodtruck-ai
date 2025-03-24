@@ -420,6 +420,7 @@ TestRunner:addTest("BattleEncounter - Rush Hour Reward Scaling", function(t)
     battle.config = encounterConfigs.rush_hour
 
     -- Test C rating (exactly meeting target)
+    battle.state.targetScore = battle.config.targetScore
     battle.state.totalScore = battle.config.targetScore
     local reward = battle:calculateReward()
     t:assertEquals(reward, 9, "Rush hour should give base (7) + C rating bonus (2)")

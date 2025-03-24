@@ -114,22 +114,12 @@ function BattleEncounter:enter()
 end
 
 function BattleEncounter:setupBattleParameters()
-    local battleConfigs = {
-        food_critic = {
-            rounds = 3,
-            timePerRound = 60,
-            maxCards = 5,
-            targetScore = 150
-        },
-        rush_hour = {
-            rounds = 5,
-            timePerRound = 60,
-            maxCards = 5,
-            targetScore = 100
-        }
-    }
+    -- Use encounterConfigs instead of local battleConfigs
+    local config = encounterConfigs[self.state.battleType] or encounterConfigs.food_critic
 
-    local config = battleConfigs[self.state.battleType] or battleConfigs.food_critic
+    -- Store the config for use in other methods
+    self.config = config
+
     self.state.maxRounds = config.rounds
     self.state.timeRemaining = config.timePerRound
     self.state.maxSelectedCards = config.maxCards
@@ -189,6 +179,12 @@ function BattleEncounter:endBattle(won)
     -- Update rating based on final total score
     self:updateRating(self.state.totalScore)
 
+    -- Calculate and give reward to player
+    local reward = self:calculateReward()
+    if reward > 0 then
+        gameState.money = (gameState.money or 0) + reward
+    end
+
     -- Store battle results
     gameState.battleResults = {
         won = won,
@@ -196,7 +192,8 @@ function BattleEncounter:endBattle(won)
         rounds = self.state.roundNumber,
         rating = gameState.selectedChef.rating,
         previousRating = self.state.previousRating,
-        ratingChanged = self.state.ratingChanged
+        ratingChanged = self.state.ratingChanged,
+        reward = reward  -- Add reward to results
     }
 
     -- Mark node as completed if from province map
@@ -1251,8 +1248,10 @@ function BattleEncounter:drawPileView()
 end
 
 function BattleEncounter:calculateReward()
-    local targetScore = self.config.targetScore
+    local targetScore = self.state.targetScore
     local scoreRatio = self.state.totalScore / targetScore
+
+    print(targetScore)
 
     -- Determine rating based on score ratio
     local rating
@@ -1280,6 +1279,8 @@ function BattleEncounter:calculateReward()
 end
 
 return BattleEncounter  -- NOT return true/false
+
+
 
 
 
