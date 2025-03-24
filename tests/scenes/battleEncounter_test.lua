@@ -102,22 +102,40 @@ TestRunner:addTest("BattleEncounter - Multiple Ingredient Pair Combination", fun
         })
     }
 
+    -- Apply individual card scores first
+    for _, card in ipairs(battle.state.selectedCards) do
+        battle:applyCardScore(card)
+    end
+
     battle:scoreCards()
     t:assertEquals(battle.state.roundScore, 42, "Should apply 40% bonus for matching vegetables twice")
 end)
 
 TestRunner:addTest("BattleEncounter - No Combinations", function(t)
     local battle = BattleEncounter.new()
+
+    -- Reset running totals
+    battle.state.runningTotals = {
+        ingredients = 0,
+        techniques = 0,
+        recipes = 0
+    }
+
     battle.state.selectedCards = {
-        TestHelpers.createTestCard("Random1", "ingredient", {
-            tags = {"unique1"},
+        TestHelpers.createTestCard("Tomato", "ingredient", {
+            tags = {"vegetable"},
             scoreValue = 10
         }),
-        TestHelpers.createTestCard("Random2", "ingredient", {
-            tags = {"unique2"},
+        TestHelpers.createTestCard("Milk", "ingredient", {
+            tags = {"dairy"},
             scoreValue = 10
         })
     }
+
+    -- Apply individual card scores first
+    for _, card in ipairs(battle.state.selectedCards) do
+        battle:applyCardScore(card)
+    end
 
     battle:scoreCards()
     t:assertEquals(battle.state.roundScore, 20, "Should not apply any bonus when no combinations exist")
@@ -165,7 +183,6 @@ end)
 TestRunner:addTest("BattleEncounter - Score Calculation Order", function(t)
     local battle = BattleEncounter.new()
 
-    -- Test case with all card types
     battle.state.selectedCards = {
         -- Ingredients (10 + 10 = 20 base)
         TestHelpers.createTestCard("Tomato", "ingredient", {
@@ -187,6 +204,11 @@ TestRunner:addTest("BattleEncounter - Score Calculation Order", function(t)
         })
     }
 
+    -- Apply individual card scores first
+    for _, card in ipairs(battle.state.selectedCards) do
+        battle:applyCardScore(card)
+    end
+
     battle:scoreCards()
     -- 20 (ingredients) * 4.5 (techniques) * 2.5 (recipe) = 225
     t:assertEquals(battle.state.roundScore, 225, "Should calculate score in correct order")
@@ -203,6 +225,11 @@ TestRunner:addTest("BattleEncounter - Score with Only Ingredients", function(t)
             scoreValue = 15
         })
     }
+
+    -- Apply individual card scores first
+    for _, card in ipairs(battle.state.selectedCards) do
+        battle:applyCardScore(card)
+    end
 
     battle:scoreCards()
     t:assertEquals(battle.state.roundScore, 25, "Should sum ingredients correctly")
@@ -223,6 +250,11 @@ TestRunner:addTest("BattleEncounter - Score with Techniques Only", function(t)
         })
     }
 
+    -- Apply individual card scores first
+    for _, card in ipairs(battle.state.selectedCards) do
+        battle:applyCardScore(card)
+    end
+
     battle:scoreCards()
     -- 10 * (1.0 + 1.5 + 2.0) = 45
     t:assertEquals(battle.state.roundScore, 45, "Should apply technique multipliers correctly")
@@ -239,6 +271,11 @@ TestRunner:addTest("BattleEncounter - Score with Recipe Only", function(t)
             scoreValue = 1.5
         })
     }
+
+    -- Apply individual card scores first
+    for _, card in ipairs(battle.state.selectedCards) do
+        battle:applyCardScore(card)
+    end
 
     battle:scoreCards()
     -- 10 * (1.0 + 1.5) = 25
@@ -261,6 +298,11 @@ TestRunner:addTest("BattleEncounter - Score with Combinations", function(t)
             scoreValue = 1.5
         })
     }
+
+    -- Apply individual card scores first
+    for _, card in ipairs(battle.state.selectedCards) do
+        battle:applyCardScore(card)
+    end
 
     battle:scoreCards()
     -- (20 * 2.5) * 1.2 = 60
@@ -293,9 +335,13 @@ TestRunner:addTest("BattleEncounter - Complex Score Calculation", function(t)
         })
     }
 
+    -- Apply individual card scores first
+    for _, card in ipairs(battle.state.selectedCards) do
+        battle:applyCardScore(card)
+    end
+
     battle:scoreCards()
-    -- 25 * 4.5 * 2.5 * 1.2 = 337.5
-    t:assertEquals(battle.state.roundScore, 337.5, "Should apply all multipliers and combinations correctly")
+    t:assertEquals(battle.state.roundScore, 337.5, "Should correctly apply single pair bonus with high technique multiplier")
 end)
 
 TestRunner:addTest("BattleEncounter - Four Ingredients With Single Pair And High Technique", function(t)
@@ -326,11 +372,17 @@ TestRunner:addTest("BattleEncounter - Four Ingredients With Single Pair And High
         })
     }
 
+    -- Apply individual card scores first
+    for _, card in ipairs(battle.state.selectedCards) do
+        battle:applyCardScore(card)
+    end
+
     battle:scoreCards()
     t:assertEquals(battle.state.roundScore, 240, "Should correctly apply single pair bonus with high technique multiplier")
 end)
 
 return TestRunner
+
 
 
 

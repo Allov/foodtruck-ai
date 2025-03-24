@@ -23,7 +23,8 @@ local COLORS = {
 local FONTS = {
     LARGE = love.graphics.newFont(24),
     MEDIUM = love.graphics.newFont(18),
-    SMALL = love.graphics.newFont(14)
+    SMALL = love.graphics.newFont(14),
+    TITLE = love.graphics.newFont(32)  -- Added TITLE font
 }
 
 BattleEncounter.PHASES = {
@@ -52,14 +53,20 @@ function BattleEncounter.new()
         discardPile = {},
         selectedCardIndex = 1,
         currentScore = 0,
-        totalScore = 0,  -- Initialize totalScore
-        roundScore = 0,  -- Initialize roundScore
+        totalScore = 0,
+        roundScore = 0,
         roundNumber = 1,
         maxRounds = 3,
         actionFeedback = nil,
         comboMultiplier = 1,
-        viewingPile = nil,  -- 'draw' or 'discard' when viewing piles
-        pileCardIndex = 1   -- Selected card index when viewing piles
+        viewingPile = nil,
+        pileCardIndex = 1,
+        -- Add running totals state
+        runningTotals = {
+            ingredients = 0,
+            techniques = 0,
+            recipes = 0
+        }
     }
 
     self:setupBattleParameters()
@@ -378,43 +385,51 @@ function BattleEncounter:scoreNextCard()
     local scoringState = self.state.scoringState
     scoringState.currentCardIndex = scoringState.currentCardIndex + 1
 
-    -- Check if we still have cards to score
     if scoringState.currentCardIndex <= #self.state.selectedCards then
         local card = self.state.selectedCards[scoringState.currentCardIndex]
-        local scoreValue = card.scoring:getValue()  -- Get the actual score value from the card
-
-        -- Only check combinations when scoring the last card
-        if scoringState.currentCardIndex == #self.state.selectedCards then
-            -- Store combinations for display
-            scoringState.combinations = CombinationSystem:identifyCombinations(self.state.selectedCards)
-        end
 
         -- Apply the score
         self:applyCardScore(card)
 
-        -- Show animation with the actual score value
-        card:showScoreAnimation(scoreValue)
+        -- Update formula display
+        local ingredients = self.state.runningTotals.ingredients
+        local techniques = 1.0 + self.state.runningTotals.techniques
+        local recipes = 1.0 + self.state.runningTotals.recipes
+
+        scoringState.formula = {
+            string.format("%d + ", ingredients),
+            string.format("(%.1f × %.1f)", techniques, recipes),
+            string.format("× %.1f", 1.0)  -- Show 1.0 until all cards are scored
+        }
+
+        -- Show animation with the card's value
+        card:showScoreAnimation(card.scoring:getValue())
         scoringState.animationTimer = self.PHASE_TIMINGS.CARD_SCORE_ANIMATION
 
-        -- Update the display total
-        scoringState.displayTotal = self.state.roundScore
+        -- If this was the last card, calculate final score
+        if scoringState.currentCardIndex == #self.state.selectedCards then
+            -- Calculate combinations after all cards are scored
+            local combinations = CombinationSystem:calculateBonusMultiplier(
+                CombinationSystem:identifyCombinations(self.state.selectedCards)
+            )
+
+            -- Update final formula with combination multiplier
+            scoringState.formula[3] = string.format("× %.1f", combinations)
+
+            -- Calculate final score
+            self.state.roundScore = ingredients * techniques * recipes * combinations
+            scoringState.displayTotal = self.state.roundScore
+        end
     end
 end
 
 function BattleEncounter:applyCardScore(card)
-    -- Get base score from card
-    local baseScore = card.scoring:getValue()
-
-    -- For technique cards, they act as multipliers
     if card.cardType == "technique" then
-        -- Technique cards don't add to base score directly
-        return
+        self.state.runningTotals.techniques = self.state.runningTotals.techniques + card.scoring:getValue()
     elseif card.cardType == "recipe" then
-        -- Recipe cards act as multipliers
-        return
+        self.state.runningTotals.recipes = self.state.runningTotals.recipes + card.scoring:getValue()
     else
-        -- Add score for ingredient cards
-        self.state.roundScore = self.state.roundScore + baseScore
+        self.state.runningTotals.ingredients = self.state.runningTotals.ingredients + card.scoring:getValue()
     end
 end
 
@@ -422,29 +437,10 @@ function BattleEncounter:scoreCards()
     -- Reset round score
     self.state.roundScore = 0
 
-    -- 1. Calculate technique multiplier
-    local techniqueMultiplier = 1.0
-    for _, card in ipairs(self.state.selectedCards) do
-        if card.cardType == "technique" then
-            techniqueMultiplier = techniqueMultiplier + card.scoring:getValue()
-        end
-    end
-
-    -- 2. Calculate recipe multiplier
-    local recipeMultiplier = 1.0
-    for _, card in ipairs(self.state.selectedCards) do
-        if card.cardType == "recipe" then
-            recipeMultiplier = recipeMultiplier + card.scoring:getValue()
-        end
-    end
-
-    -- 3. Sum ingredient scores
-    local ingredientSum = 0
-    for _, card in ipairs(self.state.selectedCards) do
-        if card.cardType == "ingredient" then
-            ingredientSum = ingredientSum + card.scoring:getValue()
-        end
-    end
+    -- Use running totals instead of recalculating
+    local techniqueMultiplier = 1.0 + self.state.runningTotals.techniques
+    local recipeMultiplier = 1.0 + self.state.runningTotals.recipes
+    local ingredientSum = self.state.runningTotals.ingredients
 
     -- Apply multipliers in order
     self.state.roundScore = ingredientSum * techniqueMultiplier * recipeMultiplier
@@ -841,27 +837,47 @@ function BattleEncounter:drawJudgingPhase()
 
     -- Calculate starting X position to center the row
     local startX = (screenWidth - totalWidth) / 2
-    -- Position cards higher up (at 1/3 of screen height instead of 1/2)
-    local centerY = (screenHeight / 3) - (cardHeight / 2)
+
+    -- Position scoring text at 10% of screen height
+    local textY = screenHeight * 0.10
+    -- Position cards at 45% of screen height
+    local cardY = screenHeight * 0.45 - (cardHeight / 2)
+
+    -- Draw scoring formula and total
+    if self.state.scoringState then
+        -- Draw formula with larger font
+        if self.state.scoringState.formula then
+            love.graphics.setFont(FONTS.LARGE)
+            local formula = table.concat(self.state.scoringState.formula)
+            love.graphics.setColor(COLORS.TEXT)
+            love.graphics.printf(
+                formula,
+                0,
+                textY,
+                screenWidth,
+                'center'
+            )
+        end
+
+        -- Draw animated total below formula with even larger font
+        if self.state.scoringState.displayTotal > 0 then
+            love.graphics.setFont(FONTS.TITLE)
+            love.graphics.setColor(COLORS.HIGHLIGHT)
+            love.graphics.printf(
+                tostring(math.ceil(self.state.scoringState.animatedTotal)),
+                0,
+                textY + 50,  -- 50 pixels below the formula
+                screenWidth,
+                'center'
+            )
+        end
+    end
 
     -- Draw each selected card
     for i, card in ipairs(self.state.selectedCards) do
         local x = startX + ((i-1) * (cardWidth + cardSpacing))
         love.graphics.setColor(1, 1, 1, 1)
-        card:draw(x, centerY)
-    end
-
-    -- Draw animated running total below the cards
-    if self.state.scoringState and self.state.scoringState.displayTotal > 0 then
-        love.graphics.setFont(FONTS.LARGE)
-        love.graphics.setColor(COLORS.HIGHLIGHT)
-        love.graphics.printf(
-            tostring(math.ceil(self.state.scoringState.animatedTotal)),
-            0,
-            centerY + cardHeight + 40,
-            screenWidth,
-            'center'
-        )
+        card:draw(x, cardY)
     end
 end
 
@@ -988,16 +1004,30 @@ function BattleEncounter:prepareScoreDisplayStrings()
     local scoringState = self.state.scoringState
     scoringState.cardScores = {}
 
-    -- Just prepare the display strings for each card
+    -- Prepare the display strings for each card
     for i, card in ipairs(self.state.selectedCards) do
         if card.cardType == "ingredient" then
-            scoringState.cardScores[i] = string.format("+%d", card.scoring.whiteScore)
+            scoringState.cardScores[i] = string.format("+%d", card.scoring:getValue())
         elseif card.cardType == "technique" then
-            scoringState.cardScores[i] = string.format("×%.1f", card.scoring.redScore)
+            scoringState.cardScores[i] = string.format("×%.1f", card.scoring:getValue())
         elseif card.cardType == "recipe" then
-            scoringState.cardScores[i] = string.format("×%.1f", card.scoring.pinkScore)
+            scoringState.cardScores[i] = string.format("×%.1f", card.scoring:getValue())
         end
     end
+
+    -- Add formula breakdown
+    local ingredients = self.state.runningTotals.ingredients
+    local techniques = 1.0 + self.state.runningTotals.techniques
+    local recipes = 1.0 + self.state.runningTotals.recipes
+    local combinations = CombinationSystem:calculateBonusMultiplier(
+        CombinationSystem:identifyCombinations(self.state.selectedCards)
+    )
+
+    scoringState.formula = {
+        string.format("%d + ", ingredients),
+        string.format("(%.1f × %.1f)", techniques, recipes),
+        string.format("× %.1f", combinations)
+    }
 end
 
 -- New function to remove cards from hand only
@@ -1040,6 +1070,13 @@ function BattleEncounter:startNextRound()
     self.state.actionFeedback = nil
     self.state.currentScore = 0  -- Reset score at the start of each round
     self.state.roundScore = 0  -- Reset round score
+
+    -- Reset running totals
+    self.state.runningTotals = {
+        ingredients = 0,
+        techniques = 0,
+        recipes = 0
+    }
 
     -- Get max hand size from battle parameters
     local config = encounterConfigs[self.state.battleType] or encounterConfigs.food_critic
@@ -1214,6 +1251,22 @@ function BattleEncounter:drawPileView()
 end
 
 return BattleEncounter  -- NOT return true/false
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
