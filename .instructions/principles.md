@@ -121,3 +121,32 @@
 - Debug console must be initialized before any logging
 - All logs are automatically saved to log files for debugging
 
+### Log Message Format
+
+#### Basic Format
+- Component names should be in square brackets: `[ComponentName]`
+- Use four spaces between multiple values
+- Examples:
+  ```lua
+  debugConsole:info("[Settings] Initializing settings...")
+  debugConsole:debug("[DeckFactory] Created starter deck with    22 cards")
+  debugConsole:warn("[CardVisuals] Invalid state:    " .. state)
+  ```
+
+#### Component Context
+- Always prefix component-specific logs with the component name in brackets
+- Use consistent naming: `[ComponentName]` for classes/modules
+- Examples:
+  ```lua
+  debugConsole:debug("[CardVisuals] State changed from    default    to    selected")
+  debugConsole:info("[DeckFactory] Generating new deck")
+  debugConsole:error("[Settings] Failed to save settings")
+  ```
+
+The debug console will automatically handle:
+- Timestamps
+- Log levels
+- Message formatting
+- Duplicate message grouping
+
+
