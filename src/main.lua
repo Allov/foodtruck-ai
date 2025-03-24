@@ -62,9 +62,6 @@ function Main:registerEncounters()
 end
 
 function Main.load()
-    -- Initialize Settings first, before any other systems that might need it
-    Settings:init()
-
     -- Initialize debug tools first, before any other operations
     if _DEBUG then
         -- Initialize debug console first
@@ -75,6 +72,9 @@ function Main.load()
         local initializePrintOverride = require('src.tools.printOverride')
         initializePrintOverride(Main.debugConsole)
 
+        -- Initialize settings with debug console
+        Settings:init(Main.debugConsole)
+
         -- Print launch arguments after logger is ready
         Main.debugConsole:info("Launch Arguments:")
         for i, v in ipairs(arg) do
@@ -82,6 +82,9 @@ function Main.load()
         end
         Main.debugConsole:info("Total arguments: " .. #arg)
         Main.debugConsole:info("------------------------")
+    else
+        -- Initialize settings without debug console in non-debug mode
+        Settings:init(nil)
     end
 
     -- Load all scenes

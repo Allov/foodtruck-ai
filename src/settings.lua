@@ -1,5 +1,5 @@
 local Settings = {
-    initialized = false,  -- Add initialization flag
+    initialized = false,
     crtEnabled = true,
     filepath = "settings.dat",
     baseResolution = {
@@ -8,16 +8,19 @@ local Settings = {
     },
     debug = {
         logSaveLoad = true
-    }
+    },
+    debugConsole = nil  -- Add reference to debugConsole
 }
 
-function Settings:init()
+function Settings:init(debugConsole)
     if self.initialized then
         return self
     end
 
-    if self.debug.logSaveLoad then
-        print("[Settings] Initializing settings...")
+    self.debugConsole = debugConsole
+
+    if self.debug.logSaveLoad and self.debugConsole then
+        self.debugConsole:info("[Settings] Initializing settings...")
     end
 
     -- Create save directory if it doesn't exist
@@ -28,8 +31,8 @@ function Settings:init()
 
     -- If load failed, save default settings
     if not loaded then
-        if self.debug.logSaveLoad then
-            print("[Settings] No settings found, saving defaults...")
+        if self.debug.logSaveLoad and self.debugConsole then
+            self.debugConsole:info("[Settings] No settings found, saving defaults...")
         end
         self:save()
     end
