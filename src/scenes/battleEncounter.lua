@@ -1251,31 +1251,38 @@ function BattleEncounter:drawPileView()
 end
 
 function BattleEncounter:calculateReward()
-    -- If score is below target, no reward
-    if self.state.totalScore < self.config.targetScore then
+    local targetScore = self.config.targetScore
+    local scoreRatio = self.state.totalScore / targetScore
+
+    -- Determine rating based on score ratio
+    local rating
+    if scoreRatio >= 2.0 then
+        rating = "S"
+    elseif scoreRatio >= 1.5 then
+        rating = "A"
+    elseif scoreRatio >= 1.2 then
+        rating = "B"
+    elseif scoreRatio >= 1.0 then
+        rating = "C"
+    elseif scoreRatio >= 0.5 then
+        rating = "D"
+    else
+        rating = "F"
+    end
+
+    -- If score is below half target, no reward
+    if rating == "F" then
         return 0
     end
 
-    local base_reward = self.config.rewards.base_money
-
-    local perfect_bonus = 0
-
-    -- Perfect score bonus (2x target score or more)
-    if self.state.totalScore >= (self.config.targetScore * 2) then
-        perfect_bonus = perfect_bonus + self.config.rewards.perfect_bonus
-    end
-
-    -- Above target bonus (5% of excess points, rounded down)
-    local excessPoints = self.state.totalScore - self.config.targetScore
-    local above_target_bonus = 0
-    if excessPoints > 0 then
-        above_target_bonus = above_target_bonus + math.floor(excessPoints * self.config.rewards.above_target_multiplier)
-    end
-
-    return base_reward + perfect_bonus + above_target_bonus
+    -- Return base reward plus rating bonus
+    return self.config.rewards.base_money + (self.config.rewards.rating_bonus[rating] or 0)
 end
 
 return BattleEncounter  -- NOT return true/false
+
+
+
 
 
 

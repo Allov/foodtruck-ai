@@ -387,78 +387,58 @@ TestRunner:addTest("BattleEncounter - Basic Reward Calculation", function(t)
     local battle = BattleEncounter.new("food_critic")
     battle.config = encounterConfigs.food_critic
 
-    -- Set up minimum winning condition
+    -- Test C rating (exactly meeting target)
     battle.state.totalScore = battle.config.targetScore
-    battle.state.roundNumber = battle.config.rounds
-
     local reward = battle:calculateReward()
-    t:assertEquals(reward, 5, "Should receive base reward for meeting target score")
+    t:assertEquals(reward, 8, "Should receive base (5) + C rating bonus (3)")
 end)
 
-TestRunner:addTest("BattleEncounter - Perfect Score Reward", function(t)
+TestRunner:addTest("BattleEncounter - Rating Based Rewards", function(t)
     local battle = BattleEncounter.new("food_critic")
     battle.config = encounterConfigs.food_critic
 
-    -- Set up perfect score condition (2x target score)
-    battle.state.totalScore = battle.config.targetScore * 2
-    battle.state.roundNumber = battle.config.rounds
+    local testCases = {
+        { score = battle.config.targetScore * 2.0, expected = 15, rating = "S" },    -- base(5) + S(10)
+        { score = battle.config.targetScore * 1.5, expected = 12, rating = "A" },    -- base(5) + A(7)
+        { score = battle.config.targetScore * 1.2, expected = 10, rating = "B" },    -- base(5) + B(5)
+        { score = battle.config.targetScore * 1.0, expected = 8,  rating = "C" },    -- base(5) + C(3)
+        { score = battle.config.targetScore * 0.7, expected = 6,  rating = "D" },    -- base(5) + D(1)
+        { score = battle.config.targetScore * 0.4, expected = 0,  rating = "F" }     -- No reward
+    }
 
-    local reward = battle:calculateReward()
-    t:assertEquals(reward, 15, "Should receive base + perfect bonus reward + above target bonus")
-end)
-
-TestRunner:addTest("BattleEncounter - Above Target Score Bonus", function(t)
-    local battle = BattleEncounter.new("food_critic")
-    battle.config = encounterConfigs.food_critic
-
-    -- Score 50 points above target
-    battle.state.totalScore = battle.config.targetScore + 50
-    battle.state.roundNumber = battle.config.rounds
-
-    local reward = battle:calculateReward()
-    t:assertEquals(reward, 7, "Should receive base + above target bonus")
-end)
-
-TestRunner:addTest("BattleEncounter - Maximum Possible Reward", function(t)
-    local battle = BattleEncounter.new("food_critic")
-    battle.config = encounterConfigs.food_critic
-
-    -- Set up maximum score condition
-    battle.state.totalScore = battle.config.targetScore * 2.5  -- Well above perfect
-    battle.state.roundNumber = battle.config.rounds
-
-    local reward = battle:calculateReward()
-    -- Maximum should be:
-    -- Base (5) + Perfect (3) + Above target bonus (max ~5) = ~13
-    t:assert(reward <= 20, "Maximum reward should not exceed 20 coins")
-    t:assert(reward >= 10, "Maximum reward should be at least 10 coins")
+    for _, case in ipairs(testCases) do
+        battle.state.totalScore = case.score
+        local reward = battle:calculateReward()
+        t:assertEquals(reward, case.expected,
+            string.format("%s rating (%.1f%% of target) should give %d reward",
+                case.rating, (case.score/battle.config.targetScore)*100, case.expected))
+    end
 end)
 
 TestRunner:addTest("BattleEncounter - Rush Hour Reward Scaling", function(t)
     local battle = BattleEncounter.new("rush_hour")
     battle.config = encounterConfigs.rush_hour
 
-    -- Set up basic winning condition
+    -- Test C rating (exactly meeting target)
     battle.state.totalScore = battle.config.targetScore
-    battle.state.roundNumber = battle.config.rounds
-
     local reward = battle:calculateReward()
-    t:assertEquals(reward, 7, "Rush hour should have higher base reward")
+    t:assertEquals(reward, 9, "Rush hour should give base (7) + C rating bonus (2)")
 end)
 
 TestRunner:addTest("BattleEncounter - No Reward on Loss", function(t)
     local battle = BattleEncounter.new("food_critic")
     battle.config = encounterConfigs.food_critic
 
-    -- Set up losing condition
-    battle.state.totalScore = battle.config.targetScore - 1
-    battle.state.roundNumber = battle.config.rounds
-
+    -- Set up losing condition (F rating)
+    battle.state.totalScore = battle.config.targetScore * 0.4
     local reward = battle:calculateReward()
-    t:assertEquals(reward, 0, "Should receive no reward when losing")
+    t:assertEquals(reward, 0, "Should receive no reward for F rating")
 end)
 
 return TestRunner
+
+
+
 
 
 
