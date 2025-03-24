@@ -1250,7 +1250,34 @@ function BattleEncounter:drawPileView()
     )
 end
 
+function BattleEncounter:calculateReward()
+    -- If score is below target, no reward
+    if self.state.totalScore < self.config.targetScore then
+        return 0
+    end
+
+    local base_reward = self.config.rewards.base_money
+
+    local perfect_bonus = 0
+
+    -- Perfect score bonus (2x target score or more)
+    if self.state.totalScore >= (self.config.targetScore * 2) then
+        perfect_bonus = perfect_bonus + self.config.rewards.perfect_bonus
+    end
+
+    -- Above target bonus (5% of excess points, rounded down)
+    local excessPoints = self.state.totalScore - self.config.targetScore
+    local above_target_bonus = 0
+    if excessPoints > 0 then
+        above_target_bonus = above_target_bonus + math.floor(excessPoints * self.config.rewards.above_target_multiplier)
+    end
+
+    return base_reward + perfect_bonus + above_target_bonus
+end
+
 return BattleEncounter  -- NOT return true/false
+
+
 
 
 

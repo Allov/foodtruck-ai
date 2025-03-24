@@ -6,7 +6,19 @@ return {
         description = "Impress a demanding food critic with your culinary skills.",
         rounds = 3,
         maxCards = 5,
-        targetScore = 150  -- Higher target score
+        targetScore = 150,  -- Higher target score
+        rewards = {
+            base_money = 5,            -- Base money reward
+            perfect_bonus = 3,         -- Additional money for perfect score
+            above_target_multiplier = 0.05,  -- 5% of points above target as bonus money
+            rating_bonus = {           -- Bonus based on final rating
+                ["S"] = 10,
+                ["A"] = 7,
+                ["B"] = 5,
+                ["C"] = 3,
+                ["D"] = 1
+            }
+        }
     },
     rush_hour = {
         type = "card_battle",
@@ -14,7 +26,19 @@ return {
         description = "Handle the pressure of a busy restaurant rush!",
         rounds = 5,
         maxCards = 5,
-        targetScore = 100  -- Lower target score
+        targetScore = 100,  -- Lower target score
+        rewards = {
+            base_money = 7,            -- Base money reward
+            perfect_bonus = 4,         -- Additional money for perfect score
+            above_target_multiplier = 0.07,  -- 7% of points above target as bonus money
+            rating_bonus = {           -- Bonus based on final rating
+                ["S"] = 8,
+                ["A"] = 6,
+                ["B"] = 4,
+                ["C"] = 2,
+                ["D"] = 1
+            }
+        }
     },
 
     -- Market encounters

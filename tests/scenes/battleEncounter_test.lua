@@ -3,6 +3,8 @@ local BattleEncounter = require('src.scenes.battleEncounter')
 local CombinationSystem = require('src.cards.combinationSystem')
 local Chef = require('src.entities.chef')
 local TestHelpers = require('tests.helpers')
+-- First, we need to require the encounter configs
+local encounterConfigs = require("src.encounters.encounterConfigs")
 
 TestRunner:addTest("BattleEncounter - Basic initialization", function(t)
     local battle = BattleEncounter.new()
@@ -381,7 +383,86 @@ TestRunner:addTest("BattleEncounter - Four Ingredients With Single Pair And High
     t:assertEquals(battle.state.roundScore, 240, "Should correctly apply single pair bonus with high technique multiplier")
 end)
 
+TestRunner:addTest("BattleEncounter - Basic Reward Calculation", function(t)
+    local battle = BattleEncounter.new("food_critic")
+    battle.config = encounterConfigs.food_critic
+
+    -- Set up minimum winning condition
+    battle.state.totalScore = battle.config.targetScore
+    battle.state.roundNumber = battle.config.rounds
+
+    local reward = battle:calculateReward()
+    t:assertEquals(reward, 5, "Should receive base reward for meeting target score")
+end)
+
+TestRunner:addTest("BattleEncounter - Perfect Score Reward", function(t)
+    local battle = BattleEncounter.new("food_critic")
+    battle.config = encounterConfigs.food_critic
+
+    -- Set up perfect score condition (2x target score)
+    battle.state.totalScore = battle.config.targetScore * 2
+    battle.state.roundNumber = battle.config.rounds
+
+    local reward = battle:calculateReward()
+    t:assertEquals(reward, 15, "Should receive base + perfect bonus reward + above target bonus")
+end)
+
+TestRunner:addTest("BattleEncounter - Above Target Score Bonus", function(t)
+    local battle = BattleEncounter.new("food_critic")
+    battle.config = encounterConfigs.food_critic
+
+    -- Score 50 points above target
+    battle.state.totalScore = battle.config.targetScore + 50
+    battle.state.roundNumber = battle.config.rounds
+
+    local reward = battle:calculateReward()
+    t:assertEquals(reward, 7, "Should receive base + above target bonus")
+end)
+
+TestRunner:addTest("BattleEncounter - Maximum Possible Reward", function(t)
+    local battle = BattleEncounter.new("food_critic")
+    battle.config = encounterConfigs.food_critic
+
+    -- Set up maximum score condition
+    battle.state.totalScore = battle.config.targetScore * 2.5  -- Well above perfect
+    battle.state.roundNumber = battle.config.rounds
+
+    local reward = battle:calculateReward()
+    -- Maximum should be:
+    -- Base (5) + Perfect (3) + Above target bonus (max ~5) = ~13
+    t:assert(reward <= 20, "Maximum reward should not exceed 20 coins")
+    t:assert(reward >= 10, "Maximum reward should be at least 10 coins")
+end)
+
+TestRunner:addTest("BattleEncounter - Rush Hour Reward Scaling", function(t)
+    local battle = BattleEncounter.new("rush_hour")
+    battle.config = encounterConfigs.rush_hour
+
+    -- Set up basic winning condition
+    battle.state.totalScore = battle.config.targetScore
+    battle.state.roundNumber = battle.config.rounds
+
+    local reward = battle:calculateReward()
+    t:assertEquals(reward, 7, "Rush hour should have higher base reward")
+end)
+
+TestRunner:addTest("BattleEncounter - No Reward on Loss", function(t)
+    local battle = BattleEncounter.new("food_critic")
+    battle.config = encounterConfigs.food_critic
+
+    -- Set up losing condition
+    battle.state.totalScore = battle.config.targetScore - 1
+    battle.state.roundNumber = battle.config.rounds
+
+    local reward = battle:calculateReward()
+    t:assertEquals(reward, 0, "Should receive no reward when losing")
+end)
+
 return TestRunner
+
+
+
+
 
 
 
