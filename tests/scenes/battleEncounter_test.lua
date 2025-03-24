@@ -267,7 +267,72 @@ TestRunner:addTest("BattleEncounter - Score with Combinations", function(t)
     t:assertEquals(battle.state.roundScore, 60, "Should apply combinations after multipliers")
 end)
 
+TestRunner:addTest("BattleEncounter - Complex Score Calculation", function(t)
+    local battle = BattleEncounter.new()
+
+    battle.state.selectedCards = {
+        -- Ingredients (10 + 15 = 25 base)
+        TestHelpers.createTestCard("Tomato", "ingredient", {
+            tags = {"vegetable"},
+            scoreValue = 10
+        }),
+        TestHelpers.createTestCard("Premium Mushroom", "ingredient", {
+            tags = {"vegetable"},
+            scoreValue = 15
+        }),
+        -- Techniques (1.0 + 1.5 + 2.0 = 4.5 multiplier)
+        TestHelpers.createTestCard("Slice", "technique", {
+            scoreValue = 1.5
+        }),
+        TestHelpers.createTestCard("Grill", "technique", {
+            scoreValue = 2.0
+        }),
+        -- Recipe (1.0 + 1.5 = 2.5 multiplier)
+        TestHelpers.createTestCard("Special Dish", "recipe", {
+            scoreValue = 1.5
+        })
+    }
+
+    battle:scoreCards()
+    -- 25 * 4.5 * 2.5 * 1.2 = 337.5
+    t:assertEquals(battle.state.roundScore, 337.5, "Should apply all multipliers and combinations correctly")
+end)
+
+TestRunner:addTest("BattleEncounter - Four Ingredients With Single Pair And High Technique", function(t)
+    local battle = BattleEncounter.new()
+
+    battle.state.selectedCards = {
+        -- Paired ingredients (vegetables)
+        TestHelpers.createTestCard("Carrot", "ingredient", {
+            tags = {"vegetable", "root"},
+            scoreValue = 10
+        }),
+        TestHelpers.createTestCard("Celery", "ingredient", {
+            tags = {"vegetable", "aromatic"},
+            scoreValue = 10
+        }),
+        -- Non-paired ingredients
+        TestHelpers.createTestCard("Chicken", "ingredient", {
+            tags = {"protein", "meat"},
+            scoreValue = 15
+        }),
+        TestHelpers.createTestCard("Milk", "ingredient", {
+            tags = {"dairy", "liquid"},
+            scoreValue = 5
+        }),
+        -- High-value technique
+        TestHelpers.createTestCard("Master Chef Special", "technique", {
+            scoreValue = 4.0
+        })
+    }
+
+    battle:scoreCards()
+    t:assertEquals(battle.state.roundScore, 240, "Should correctly apply single pair bonus with high technique multiplier")
+end)
+
 return TestRunner
+
+
 
 
 
