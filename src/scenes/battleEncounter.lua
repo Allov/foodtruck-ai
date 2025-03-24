@@ -3,6 +3,7 @@ local Chef = require('src.entities.chef')
 local Card = require('src.cards.card')
 local encounterConfigs = require('src.encounters.encounterConfigs')
 local CombinationSystem = require('src.cards.combinationSystem')
+local DeckManager = require('src.cards.deckManager')
 
 local BattleEncounter = {}
 BattleEncounter.__index = BattleEncounter
@@ -89,11 +90,11 @@ function BattleEncounter:enter()
     -- Use the current deck directly
     self.state.deck = gameState.currentDeck
 
-    -- Draw initial hand
-    self:drawInitialHand()
-
     -- Set battle parameters based on type
     self:setupBattleParameters()
+
+    -- Draw initial hand
+    self:drawInitialHand()
 
     -- Initialize first card as selected
     if #self.state.handCards > 0 then
@@ -132,6 +133,11 @@ function BattleEncounter:setupBattleParameters()
         name = self.state.battleType == "food_critic" and "Food Critic" or "Lunch Rush",
         specialty = self.state.battleType == "food_critic" and "Fine Dining" or "Speed Service"
     }
+
+    -- Shuffle the deck before starting the battle
+    if self.state.deck then
+        DeckManager.resetAndShuffle(self.state.deck)
+    end
 end
 
 function BattleEncounter:updateRating(finalScore)
