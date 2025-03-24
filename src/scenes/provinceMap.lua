@@ -12,6 +12,9 @@ function ProvinceMap.new()
 
     -- Create a random generator but DON'T generate map yet
     self.randomGenerator = love.math.newRandomGenerator()
+    -- Set a default seed (will be overridden by gameState.mapSeed when available)
+    self.randomGenerator:setSeed(os.time())
+
 
     -- Map configuration
     self.NUM_LEVELS = 15  -- Changed from 8 to match actual number of rows
@@ -123,18 +126,14 @@ function ProvinceMap:init()
 
     -- Initialize camera peek offset
     self.peekOffset = 0
-    self.PEEK_SPEED = 800 -- Pixels per second
+    self.PEEK_SPEED = 800
+
+    -- If gameState has a seed, use it
+    if gameState and gameState.mapSeed then
+        self.randomGenerator:setSeed(gameState.mapSeed)
+    end
 
     -- Generate the initial map
-    self:generateMap()
-end
-
-function ProvinceMap:setSeed(seed)
-    if not seed then
-        print("Warning: Attempting to set nil seed")
-        seed = os.time()
-    end
-    self.randomGenerator:setSeed(seed)
     self:generateMap()
 end
 
@@ -408,7 +407,7 @@ function ProvinceMap:randomEncounterType(excludeBattle)
     else
         types = {"card_battle", "beneficial", "negative", "market", "lore"}
     end
-    return types[love.math.random(#types)]
+    return types[math.floor(self.randomGenerator:random(#types))]
 end
 
 function ProvinceMap:canSelectNode(level, index)
@@ -456,7 +455,7 @@ function ProvinceMap:handleNodeSelection(selectedNode)
     if selectedNode.type == "market" then
         -- Randomly select a market type
         local marketTypes = {"farmers_market", "specialty_shop", "supply_store"}
-        gameState.currentMarketType = marketTypes[love.math.random(#marketTypes)]
+        gameState.currentMarketType = marketTypes[math.floor(self.randomGenerator:random(1, #marketTypes + 0.9999))]
     end
 
     -- Get the appropriate scene for this encounter
@@ -974,7 +973,48 @@ function ProvinceMap:drawChefInfo(textX, textY, lineHeight)
     return textY
 end
 
+function ProvinceMap:generateStructureHash()
+    local MAX_INT = 9223372036854775807  -- Lua's max integer
+    local hash = 0
+    for level, row in ipairs(self.nodes) do
+        hash = (hash * 17 + level) % MAX_INT
+
+        for nodeIndex, node in ipairs(row) do
+            local typeValue = ({
+                card_battle = 1,
+                market = 2,
+                beneficial = 3,
+                negative = 4,
+                lore = 5
+            })[node.type] or 0
+
+            local encounterValue = ({
+                food_critic = 1,
+                rush_hour = 2,
+                final_showdown = 3,
+                starting_market = 4,
+                farmers_market = 5,
+                equipment_malfunction = 6,
+                beneficial = 7,
+                lore = 8
+            })[node.encounterType] or 0
+
+            hash = (hash * 17 + typeValue) % MAX_INT
+            hash = (hash * 17 + encounterValue) % MAX_INT
+            hash = (hash * 17 + nodeIndex) % MAX_INT
+        end
+    end
+    return hash
+end
+
 return ProvinceMap
+
+
+
+
+
+
+
 
 
 
