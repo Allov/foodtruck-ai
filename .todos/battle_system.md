@@ -1,27 +1,26 @@
 # Battle System TODOs
 
-## Core Mechanics
-1. [x] Implement proper card combination system
-   - [x] Track ingredient combinations
-   - [x] Calculate synergy bonuses
-   - [x] Handle technique cards affecting ingredients
+## Remaining Core Features
+1. [ ] Connect Systems
+   - [ ] Link battle results to progression
+   - [ ] Implement reward distribution
+   - [ ] Connect to save system
 
-2. [ ] Create distinct battle type mechanics
-   - [ ] Food Critic: ingredient combination scoring
-   - [ ] Rush Hour: multiple order management
+2. [ ] Missing Feedback
+   - [ ] Sound effects
+   - [ ] Tutorial hints
+   - [ ] Progress indicators
 
-3. [ ] Improve round scoring system
-   - Add round-specific scoring
-   - Track success/failure conditions per round
-   - Store round history
+## Deferred Features
+- Additional battle types
+- Complex scoring rules
+- Special effects
+- Advanced animations
 
-## Polish & Balance
-4. [x] Enhance cooking action feedback
-   - [x] Visual feedback for success/failure
-   - [ ] Show combination effects
-   - [x] Display score calculations
+## Note: Already Completed
+- Basic battle flow
+- Core phases (Preparation, Judging, Results)
+- Score calculation
+- Rating system
+- Basic animations
 
-5. [ ] Balance timing system
-   - [x] Adjust time per action
-   - [ ] Add time bonuses/penalties
-   - [ ] Scale difficulty properly

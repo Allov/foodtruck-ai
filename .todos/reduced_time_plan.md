@@ -7,25 +7,25 @@
 
 ## Priority Tasks (15-30 min sessions)
 
-### Week 1: State Persistence
-- Day 1: Save game state structure
-- Day 2: Basic save/load for map progress
-- Day 3: Chef/deck persistence
-- Day 4: Test and debug saves
-- Day 5: Verify state consistency
+### Week 1: Complete Core Loop Connections
+- Day 1: Connect existing battle results to progression
+- Day 2: Implement proper reward distribution
+- Day 3: Link market purchases to deck updates
+- Day 4: Add proper win/loss state tracking
+- Day 5: Test full gameplay cycle
 
-### Week 2: Core Loop Connection
-- Day 1: Link map to encounters
-- Day 2: Connect encounter results to progression
-- Day 3: Basic win/loss conditions
-- Day 4: Progress tracking
-- Day 5: Victory/defeat screens
+### Week 2: Game State Persistence
+- Day 1: Design save data structure
+- Day 2: Implement progress saving
+- Day 3: Add deck/inventory persistence
+- Day 4: Create autosave system
+- Day 5: Test save/load functionality
 
 ### Week 3: Essential Polish
-- Day 1: Critical feedback messages
-- Day 2: Basic sound cues
-- Day 3: Minimal tutorial hints
-- Day 4: Essential UI fixes
+- Day 1: Add missing feedback messages
+- Day 2: Implement basic sound cues
+- Day 3: Create minimal tutorial hints
+- Day 4: Polish UI transitions
 - Day 5: Final testing
 
 ## Development Guidelines
@@ -36,14 +36,10 @@
 5. Keep documentation current
 
 ## Skip For Now
+- Additional battle types (already have Food Critic)
+- Complex market features
 - CRT shader optimizations
-- Advanced market features
-- Complex progression systems
-- Non-essential encounters
-- Detailed tutorials
-- Achievement system
-- Sound variety
-- Visual polish
+- Advanced progression systems
 
 ## Quick Session Checklist
 1. Review last session's work
