@@ -10,6 +10,15 @@ local FLOAT_SPEED = 1.5
 local FLOAT_AMOUNT = 8
 local SHIMMER_SPEED = 2
 
+-- Add this function to convert string seed to numeric value
+function SeedInput.stringToSeed(str)
+    local seed = 0
+    for i = 1, #str do
+        seed = seed + string.byte(str, i) * (i * 256)
+    end
+    return seed
+end
+
 function SeedInput.new()
     local self = Scene.new()
     setmetatable(self, SeedInput)
@@ -26,7 +35,7 @@ function SeedInput:init()
     self.selected = 1
     self.inputtingSeed = false
     self.seedInput = ""
-    
+
     -- Initialize animation variables
     self.titleOffset = 0
     self.titleAlpha = 1
@@ -72,24 +81,24 @@ end
 
 function SeedInput:draw()
     MenuStyle.drawBackground()
-    
+
     -- Draw animated title
     love.graphics.setFont(MenuStyle.FONTS.TITLE)
-    love.graphics.setColor(MenuStyle.COLORS.TITLE[1], MenuStyle.COLORS.TITLE[2], 
+    love.graphics.setColor(MenuStyle.COLORS.TITLE[1], MenuStyle.COLORS.TITLE[2],
         MenuStyle.COLORS.TITLE[3], self.titleAlpha)
-    love.graphics.printf("Choose Seed Type", 0, 
-        MenuStyle.LAYOUT.TITLE_Y + self.titleOffset, 
+    love.graphics.printf("Choose Seed Type", 0,
+        MenuStyle.LAYOUT.TITLE_Y + self.titleOffset,
         love.graphics.getWidth(), 'center')
 
     if self.inputtingSeed then
         -- Draw seed input interface
         love.graphics.setFont(MenuStyle.FONTS.MENU)
         love.graphics.setColor(MenuStyle.COLORS.TEXT)
-        love.graphics.printf("Enter Seed:", 0, 
-            MenuStyle.LAYOUT.MENU_START_Y, 
+        love.graphics.printf("Enter Seed:", 0,
+            MenuStyle.LAYOUT.MENU_START_Y,
             love.graphics.getWidth(), 'center')
-        love.graphics.printf(self.seedInput .. "_", 0, 
-            MenuStyle.LAYOUT.MENU_START_Y + MenuStyle.LAYOUT.MENU_ITEM_HEIGHT, 
+        love.graphics.printf(self.seedInput .. "_", 0,
+            MenuStyle.LAYOUT.MENU_START_Y + MenuStyle.LAYOUT.MENU_ITEM_HEIGHT,
             love.graphics.getWidth(), 'center')
     else
         -- Draw menu options
@@ -99,8 +108,8 @@ function SeedInput:draw()
     end
 
     -- Draw instructions
-    local instructions = self.inputtingSeed and 
-        "Type seed and press Enter, Escape to cancel" or 
+    local instructions = self.inputtingSeed and
+        "Type seed and press Enter, Escape to cancel" or
         "Use ↑↓ to select, Enter to confirm"
     MenuStyle.drawInstructions(instructions)
 end
