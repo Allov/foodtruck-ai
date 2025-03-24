@@ -59,11 +59,26 @@ When using the AI assistant:
    - Review your changes
    - Run `check.bat` separately if you want to fix issues first
    - Ensure all new code has tests
+   - Remove any temporary debug prints
+   - Verify logging follows our principles (see `.instructions/principles.md`)
 
 3. **Handling Failures**
    - If checks fail: Review Luacheck output and fix issues
    - If tests fail: Check test output and fix failing tests
    - Re-run `cm.bat` after fixes
+
+### Logging Guidelines
+- Use `print()` for temporary debugging only - remove before commit
+- System critical prints are maintained for reliability
+- Use the debug console logger for permanent logs:
+  ```lua
+  debugConsole:debug("Debug message")
+  debugConsole:info("Info message")
+  debugConsole:warn("Warning message")
+  debugConsole:error("Error message")
+  debugConsole:success("Success message")
+  ```
+- See full logging principles in `.instructions/principles.md`
 
 ### Example Workflow
 
@@ -83,3 +98,4 @@ cm.bat
 - `check.bat`: Code quality checks
 - `test.bat`: Test runner
 - `.luacheckrc`: Luacheck configuration
+

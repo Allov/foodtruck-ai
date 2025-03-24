@@ -99,5 +99,25 @@
 - Proper state cleanup
 - Resource management between transitions
 
+## Logging Principles
 
+### Print Usage
+- `print()` statements should be used for temporary debugging only
+- Temporary prints should be removed before committing
+- System critical prints are not considered logs and should be maintained
+- Critical system feedback should use direct `print()` for reliability
+
+### Logger Usage
+- Always prefer debugConsole logging methods over print():
+  - `debugConsole:debug()` - For debug information
+  - `debugConsole:info()` - For general information
+  - `debugConsole:warn()` - For warnings
+  - `debugConsole:error()` - For errors
+  - `debugConsole:success()` - For success messages
+
+### Implementation Guidelines
+- Replace any non-temporary print with appropriate logger calls
+- Critical system prints should be clearly commented as such
+- Debug console must be initialized before any logging
+- All logs are automatically saved to log files for debugging
 
