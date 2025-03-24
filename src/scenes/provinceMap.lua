@@ -555,7 +555,7 @@ function ProvinceMap:drawMapInfo()
     local padding = 10
     local lineHeight = 20
     local panelWidth = 250  -- Increased width to accommodate chef stats
-    local panelHeight = 160  -- Increased height for additional info
+    local panelHeight = 180  -- Increased height to fit money display
     local x = padding
     local y = padding
 
@@ -594,6 +594,11 @@ function ProvinceMap:drawMapInfo()
         -- Specialty
         love.graphics.setColor(0.8, 0.8, 1, 1)  -- Light blue for specialty
         love.graphics.print("Specialty: " .. chef.specialty, textX, textY)
+        textY = textY + lineHeight
+
+        -- Money (using gold color)
+        love.graphics.setColor(1, 0.8, 0.2, 1)  -- Gold color for money
+        love.graphics.print(string.format("Money: %d coins", gameState.cash), textX, textY)
         textY = textY + lineHeight
 
         -- Rating with color coding
@@ -970,6 +975,9 @@ function ProvinceMap:drawChefInfo(textX, textY, lineHeight)
 end
 
 return ProvinceMap
+
+
+
 
 
 
