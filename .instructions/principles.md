@@ -26,6 +26,58 @@
 - Regular commits
 - Tag important releases
 
+## Development Priorities
+1. Complete core systems before adding new features
+2. Focus on user experience and feedback
+3. Maintain documentation alongside code changes
+4. Regular testing and quality assurance
+5. Performance optimization as needed
+
+## Testing Principles
+
+### Automated Testing
+- All critical systems must have unit tests
+- Use `test.bat` for running the full test suite
+- Tests must be atomic and independent
+- Mock external dependencies when necessary
+
+### Testing Tools
+- `check.bat`: Code quality and syntax validation
+- `test.bat`: Full test suite execution
+- `stt.bat`: Test before launch
+- Debug console for runtime testing
+
+### Test Categories
+1. Unit Tests
+   - Card interactions
+   - Scoring calculations
+   - State management
+   - Resource management
+
+2. Integration Tests
+   - Scene transitions
+   - Encounter flow
+   - Save/load operations
+   - Resource cleanup
+
+3. System Tests
+   - Full gameplay loops
+   - Performance benchmarks
+   - Memory management
+   - State persistence
+
+### Testing Workflow
+1. Write tests before implementing features
+2. Run local tests before commits
+3. Use debug tools for verification
+4. Document test cases and expected results
+
+### Debug Features
+- Console commands for testing
+- State inspection tools
+- Performance monitoring
+- Error logging and reporting
+
 ## Game-Specific Principles
 
 ### Scene Management
@@ -46,3 +98,6 @@
 - Consistent transition animations
 - Proper state cleanup
 - Resource management between transitions
+
+
+

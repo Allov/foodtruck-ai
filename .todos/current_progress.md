@@ -26,43 +26,37 @@
 - CRT shader effect
 - Basic status message system
 
-## In Progress
-- Battle encounter system
-  - Core phases working
-  - Basic scoring system implemented
-  - Score feedback implemented
-  - Need to complete card combination system
-  - Need to implement synergy system
-- Card effect implementation
-  - Basic structure in place
-  - Need full effect system
-- UI systems
-  - Common elements working
-  - Phase-specific UI improvements in progress
-  - Status messages implemented
-  - Need better feedback animations
+## Current Development Focus
+1. Content & Progression
+   - Chef progression system
+   - Province-based difficulty scaling
+   - Market encounter variety
+   - Reward structure implementation
 
-## Next Steps
-1. Complete battle encounter core mechanics
-   - Implement card combinations
-   - Add synergy calculations
-   - Add battle-type specific mechanics
-2. Implement remaining encounter types
-   - Complete negative encounters
-   - Expand beneficial encounters
-   - Flesh out lore system
-3. Add progression systems
-   - Chef experience system
-   - Unlock mechanics
-   - Achievement tracking
-4. Polish and feedback
-   - Add sound system
-   - Improve visual feedback
-   - Add particle effects
-5. Content creation
-   - More card varieties
-   - Additional encounter types
-   - Extended story elements
+2. Market System
+   - Bargaining mechanics
+   - Seasonal variations
+   - Special orders
+   - Loyalty system
+   - Inventory management
+
+3. Game State & Persistence
+   - Save/load system expansion
+   - Progress tracking
+   - Achievement system
+   - Statistics tracking
+
+4. Polish & Feedback
+   - Sound system implementation
+   - Visual feedback improvements
+   - UI polish
+   - Status message enhancements
+
+## On Hold
+- Battle encounter refinements
+- Card combination system
+- Synergy calculations
+- Battle-type specific mechanics
 
 ## Known Issues
 1. Market balance needs tuning
@@ -73,3 +67,4 @@
 6. Chef progression system incomplete
 7. Content variety limited
 8. Performance optimization needed for larger maps
+
