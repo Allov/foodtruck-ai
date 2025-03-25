@@ -102,7 +102,8 @@ function Main.load()
         encounterTester = require('src.scenes.encounterTester'),
         deckViewer = require('src.scenes.deckViewer'),
         game = require('src.scenes.game'),
-        optionsMenu = require('src.scenes.optionsMenu')
+        optionsMenu = require('src.scenes.optionsMenu'),
+        gameOver = require('src.scenes.gameOver')
     }
 
     -- Initialize scene manager with scenes
@@ -317,6 +318,7 @@ function Main.mousepressed(x, y, button)
 end
 
 return Main
+
 
 
 

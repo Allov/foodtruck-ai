@@ -161,46 +161,38 @@ function BattleEncounter:updateRating(finalScore)
     -- Store for UI feedback only
     self.state.dishRating = dishRating
 
-    -- Record battle results
-    chef:recordBattleResult(
-        dishRating ~= "F",  -- Consider anything not F as a "win"
-        finalScore
-    )
+    -- Record battle results and check for game over
+    local won = dishRating ~= "F"
+    chef:recordBattleResult(won, finalScore)
+
+    if not won then
+        -- Game Over - Failed dish ends the run
+        gameState.gameOver = true
+    end
 end
 
 function BattleEncounter:endBattle(won)
     -- Update rating based on final total score
     self:updateRating(self.state.totalScore)
 
-    -- Calculate and give reward to player
-    local reward = self:calculateReward()
-    if reward > 0 then
-        gameState.cash = (gameState.cash or 0) + reward
-        print("[BattleEncounter] Rewarding player with", reward, "coins. New total:", gameState.cash)
-    end
-
     -- Store battle results
     gameState.battleResults = {
         won = won,
         score = self.state.totalScore,
         rounds = self.state.roundNumber,
-        rating = gameState.selectedChef.rating,
-        previousRating = self.state.previousRating,
-        ratingChanged = self.state.ratingChanged,
-        reward = reward
+        dishRating = self.state.dishRating,
+        reward = won and self:calculateReward() or 0
     }
-
-    -- Mark node as completed if from province map
-    if gameState.currentNodeLevel and gameState.currentNodeIndex then
-        local provinceMap = sceneManager.scenes['provinceMap']
-        provinceMap:markNodeCompleted(gameState.currentNodeLevel, gameState.currentNodeIndex)
-    end
 
     -- Clear current encounter
     gameState.currentEncounter = nil
 
-    -- Return to previous scene
-    sceneManager:switch(gameState.previousScene or 'provinceMap')
+    -- If game over, go to game over scene, otherwise continue
+    if gameState.gameOver then
+        sceneManager:switch('gameOver')
+    else
+        sceneManager:switch(gameState.previousScene or 'provinceMap')
+    end
 end
 
 function BattleEncounter:isBattleComplete()
@@ -1277,6 +1269,8 @@ function BattleEncounter:calculateReward()
 end
 
 return BattleEncounter  -- NOT return true/false
+
+
 
 
 
