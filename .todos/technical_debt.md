@@ -50,6 +50,18 @@ Future Requirements:
 - Add corruption recovery
 - Include backup system
 
+### 5. Test Coverage Gaps
+Location: tests/*.lua
+Current Status:
+- Missing battle round count tests
+- Missing node navigation tests
+- Missing mouse interaction tests
+Future Requirements:
+- Add battle round completion tests
+- Add node connection validation tests
+- Add mouse interaction tests
+- Add integration tests for UI flows
+
 ## Code Markers
 
 ### Comment Tags
@@ -60,6 +72,7 @@ Use these tags to mark technical debt:
 -- DEBT(valid): Add proper validation
 -- DEBT(error): Improve error handling
 -- DEBT(test): Add comprehensive tests
+-- DEBT(coverage): Missing test coverage
 ```
 
 ### Debug Flags
