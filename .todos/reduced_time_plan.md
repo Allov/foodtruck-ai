@@ -1,42 +1,37 @@
 # Reduced Time Development Plan
 
-## Time Constraints
-- Limited development time for next few weeks
-- Need to maximize impact of short sessions
-- Focus on critical path only
+## Priority Tasks (5-6 hour sessions)
 
-## Priority Tasks (15-30 min sessions)
+### Week 1: Critical Fixes
+- Day 1: Battle System Fixes
+  - Fix extra round issue
+  - Add battle round tests
+  - Test win/loss conditions
 
-### Week 1: Complete Core Loop Connections
-- Day 1: Connect existing battle results to progression
-- Day 2: Implement proper reward distribution
-- Day 3: Link market purchases to deck updates
-- Day 4: Add proper win/loss state tracking
-- Day 5: Test full gameplay cycle
+- Day 2: Navigation System
+  - Fix node connection logic
+  - Add connection validation
+  - Add navigation tests
 
-### Week 2: Game State Persistence
-- Day 1: Design save data structure
-- Day 2: Implement progress saving
-- Day 3: Add deck/inventory persistence
-- Day 4: Create autosave system
-- Day 5: Test save/load functionality
+- Day 3: Mouse Support
+  - Implement map clicking
+  - Add battle mouse controls
+  - Add market mouse controls
+  - Add mouse interaction tests
 
-### Week 3: Essential Polish
-- Day 1: Add missing feedback messages
-- Day 2: Implement basic sound cues
-- Day 3: Create minimal tutorial hints
-- Day 4: Polish UI transitions
-- Day 5: Final testing
+### Week 2: Essential Polish
+- Day 1: Game State Persistence
+- Day 2: Sound Implementation
+- Day 3: UI/UX Improvements
 
 ## Development Guidelines
 1. Commit early and often
-2. Focus on one small task per session
+2. Focus on one system per session
 3. Maintain debug flags for testing
-4. Skip non-essential features
-5. Keep documentation current
+4. Keep documentation current
 
 ## Skip For Now
-- Additional battle types (already have Food Critic)
+- Additional encounter types
 - Complex market features
 - CRT shader optimizations
 - Advanced progression systems
@@ -53,3 +48,4 @@ If time becomes even more limited, focus only on:
 1. Map → Battle → Progress loop
 2. Basic save/load
 3. Win/loss conditions
+
