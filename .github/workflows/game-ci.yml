@@ -18,7 +18,7 @@ jobs:
         run: |
           sudo add-apt-repository ppa:bartbes/love-stable
           sudo apt-get update
-          sudo apt-get install love
+          sudo apt-get install love xvfb
 
       - name: Setup Luacheck
         run: |
@@ -29,7 +29,7 @@ jobs:
         run: luacheck . --config .luacheckrc
 
       - name: Run Test Suite
-        run: love . test
+        run: xvfb-run love . test
 
   build:
     needs: validate
@@ -90,4 +90,5 @@ jobs:
             FoodTruckJourney-macOS.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
