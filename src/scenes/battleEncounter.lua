@@ -1252,8 +1252,6 @@ function BattleEncounter:calculateReward()
     local targetScore = self.state.targetScore
     local scoreRatio = self.state.totalScore / targetScore
 
-    print(targetScore)
-
     -- Determine rating based on score ratio
     local rating
     if scoreRatio >= 2.0 then
@@ -1280,6 +1278,8 @@ function BattleEncounter:calculateReward()
 end
 
 return BattleEncounter  -- NOT return true/false
+
+
 
 
 

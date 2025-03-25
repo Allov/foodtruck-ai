@@ -29,11 +29,11 @@ function DebugMenu:init()
         "Back to Main Menu"
     }
     self.selected = 1
-    
+
     -- Initialize animation variables
     self.titleOffset = 0
     self.titleAlpha = 1
-    
+
     -- Initialize chef selection submenu
     self.chefSelect = ChefSelect.new()
     self.showingChefSelect = false
@@ -100,22 +100,37 @@ function DebugMenu:update(dt)
             sceneManager:switch('mainMenu')
         end
     end
+
+    if self.showingChefSelect and love.keyboard.wasPressed('return') then
+        local selectedChefData = self.chefs[self.selectedChef]
+        local Chef = require('src.entities.chef')
+        local chef = Chef.new({
+            name = selectedChefData.name,
+            specialty = selectedChefData.specialty,
+            description = selectedChefData.description,
+            rating = selectedChefData.rating
+        })
+        gameState.selectedChef = chef
+        gameState.currentDeck = self.chefSelect:generateStarterDeck(selectedChefData)
+        gameState.previousScene = 'debugMenu'
+        sceneManager:switch('deckViewer')
+    end
 end
 
 function DebugMenu:draw()
     MenuStyle.drawBackground()
-    
+
     -- Draw animated title
     love.graphics.setFont(MenuStyle.FONTS.TITLE)
-    love.graphics.setColor(MenuStyle.COLORS.TITLE[1], MenuStyle.COLORS.TITLE[2], 
+    love.graphics.setColor(MenuStyle.COLORS.TITLE[1], MenuStyle.COLORS.TITLE[2],
         MenuStyle.COLORS.TITLE[3], self.titleAlpha)
-    love.graphics.printf("Debug Menu", 0, MenuStyle.LAYOUT.TITLE_Y + self.titleOffset, 
+    love.graphics.printf("Debug Menu", 0, MenuStyle.LAYOUT.TITLE_Y + self.titleOffset,
         love.graphics.getWidth(), 'center')
-    
+
     if self.showingChefSelect then
         love.graphics.setFont(MenuStyle.FONTS.MENU)
         love.graphics.printf("Select Chef Deck to View", 0, 160, love.graphics.getWidth(), 'center')
-        
+
         for i, chef in ipairs(self.chefs) do
             local displayText = chef.name .. " - " .. chef.specialty
             MenuStyle.drawMenuItem(displayText, i, i == self.selectedChef, false)
@@ -128,7 +143,7 @@ function DebugMenu:draw()
     end
 
     -- Draw instructions
-    local instructions = self.showingChefSelect and 
+    local instructions = self.showingChefSelect and
         "Use ↑↓ to select, Enter to confirm, Esc to return" or
         "Use ↑↓ to select, Enter to confirm, Esc to exit"
     MenuStyle.drawInstructions(instructions)

@@ -9,7 +9,7 @@ end
 
 function EncounterTester:init()
     self:resetState()
-    
+
     -- Get encounter types from Encounter scene
     self.encounterTypes = {
         "card_battle",
@@ -18,7 +18,7 @@ function EncounterTester:init()
         "market",
         "lore"
     }
-    
+
     -- Get chefs list
     local ChefSelect = require('src.scenes.chefSelect')
     local chefSelector = ChefSelect.new()
@@ -46,13 +46,13 @@ function EncounterTester:update(dt)
 
     if love.keyboard.wasPressed('up') then
         self.state.selected = self.state.selected - 1
-        if self.state.selected < 1 then 
+        if self.state.selected < 1 then
             self.state.selected = #(self.state.step == 1 and self.encounterTypes or self.chefs)
         end
     end
     if love.keyboard.wasPressed('down') then
         self.state.selected = self.state.selected + 1
-        if self.state.selected > #(self.state.step == 1 and self.encounterTypes or self.chefs) then 
+        if self.state.selected > #(self.state.step == 1 and self.encounterTypes or self.chefs) then
             self.state.selected = 1
         end
     end
@@ -63,8 +63,16 @@ function EncounterTester:update(dt)
             self.state.step = 2
             self.state.selected = 1
         else
-            -- Store selected chef and start encounter
-            gameState.selectedChef = self.chefs[self.state.selected]
+            -- Create proper Chef instance when selecting chef
+            local selectedChefData = self.chefs[self.state.selected]
+            local Chef = require('src.entities.chef')
+            local chef = Chef.new({
+                name = selectedChefData.name,
+                specialty = selectedChefData.specialty,
+                description = selectedChefData.description,
+                rating = selectedChefData.rating
+            })
+            gameState.selectedChef = chef
             -- Set previous scene for return after encounter
             gameState.previousScene = 'debugMenu'
             sceneManager:switch('encounter')
@@ -74,10 +82,10 @@ end
 
 function EncounterTester:draw()
     love.graphics.setColor(1, 1, 1, 1)
-    
+
     if self.state.step == 1 then
         love.graphics.printf("Select Encounter Type", 0, 100, love.graphics.getWidth(), 'center')
-        
+
         for i, encounterType in ipairs(self.encounterTypes) do
             if i == self.state.selected then
                 love.graphics.setColor(1, 1, 0, 1)
@@ -88,7 +96,7 @@ function EncounterTester:draw()
         end
     else
         love.graphics.printf("Select Chef", 0, 100, love.graphics.getWidth(), 'center')
-        
+
         for i, chef in ipairs(self.chefs) do
             if i == self.state.selected then
                 love.graphics.setColor(1, 1, 0, 1)
@@ -106,4 +114,5 @@ function EncounterTester:draw()
 end
 
 return EncounterTester
+
 

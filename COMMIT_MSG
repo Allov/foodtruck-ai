@@ -1,7 +1,0 @@
-fix: resolve menu initialization and dependency issues
-
-- Add proper MenuStyle require in MainMenu and OptionsMenu
-- Fix BaseMenu initialization order
-- Ensure options table is initialized before setupClickables
-- Standardize menu initialization pattern across menu scenes
-
