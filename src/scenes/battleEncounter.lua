@@ -137,42 +137,35 @@ function BattleEncounter:setupBattleParameters()
     end
 end
 
-function BattleEncounter:updateRating(finalScore)
-    local chef = gameState.selectedChef
-    local previousRating = chef.rating
+function BattleEncounter:getDishRating(score)
     local targetScore = self.state.targetScore
 
-    -- Check for perfect dish
-    local isPerfect = chef:isPerfectDish(finalScore, targetScore)
+    -- Calculate score as percentage of target
+    local percentage = score / targetScore
 
-    if finalScore < targetScore then
-        -- Decrease rating
-        local currentIndex = chef:getRatingIndex(chef.rating)
-        if currentIndex < #Chef.RATINGS then
-            chef:updateRating(Chef.RATINGS[currentIndex + 1])
-        end
-    elseif isPerfect then
-        -- Increase rating for perfect dish
-        local currentIndex = chef:getRatingIndex(chef.rating)
-        if currentIndex > 1 then
-            chef:updateRating(Chef.RATINGS[currentIndex - 1])
-        end
-    end
+    -- Return rating based on percentage thresholds
+    if percentage >= 2.0 then return "S"     -- 200%+ of target
+    elseif percentage >= 1.5 then return "A" -- 150%+ of target
+    elseif percentage >= 1.2 then return "B" -- 120%+ of target
+    elseif percentage >= 1.0 then return "C" -- 100%+ of target
+    elseif percentage >= 0.7 then return "D" -- 70%+ of target
+    else return "F" end                      -- Below 70%
+end
+
+function BattleEncounter:updateRating(finalScore)
+    local chef = gameState.selectedChef
+
+    -- Get dish rating based on score relative to target
+    local dishRating = self:getDishRating(finalScore)
+
+    -- Store for UI feedback only
+    self.state.dishRating = dishRating
 
     -- Record battle results
     chef:recordBattleResult(
-        finalScore >= targetScore,
+        dishRating ~= "F",  -- Consider anything not F as a "win"
         finalScore
     )
-
-    -- Store the rating change for UI feedback
-    self.state.previousRating = previousRating
-    self.state.ratingChanged = chef.rating ~= previousRating
-
-    -- Check for game over condition
-    if chef.rating == 'F' then
-        self:gameOver()
-    end
 end
 
 function BattleEncounter:endBattle(won)
@@ -587,7 +580,7 @@ function BattleEncounter:drawBattleStats(y)
         200, 'right'
     )
 
-    -- Score - now showing total score instead of current round score
+    -- Score
     local totalScore = self.state.totalScore or 0
     local scoreColor = totalScore >= self.state.targetScore and COLORS.SUCCESS or COLORS.HIGHLIGHT
     love.graphics.setColor(scoreColor)
@@ -597,6 +590,23 @@ function BattleEncounter:drawBattleStats(y)
             self.state.targetScore
         ),
         statsX, y + statSpacing,
+        200, 'right'
+    )
+
+    -- Dish Rating
+    local currentRating = self:getDishRating(totalScore)
+    local ratingColor = {1, 1, 1, 1}  -- Default white
+    if currentRating == 'S' then
+        ratingColor = {1, 0.8, 0, 1}  -- Gold
+    elseif currentRating == 'A' then
+        ratingColor = {0.8, 0.8, 1, 1}  -- Light blue
+    elseif currentRating == 'F' then
+        ratingColor = {1, 0.2, 0.2, 1}  -- Red
+    end
+    love.graphics.setColor(ratingColor)
+    love.graphics.printf(
+        "Grade: " .. currentRating,
+        statsX, y + (statSpacing * 2),
         200, 'right'
     )
 end
@@ -857,14 +867,17 @@ function BattleEncounter:drawJudgingPhase()
             )
         end
 
-        -- Draw animated total below formula with even larger font
+        -- Draw animated total
         if self.state.scoringState.displayTotal > 0 then
+            -- Draw score
             love.graphics.setFont(FONTS.TITLE)
             love.graphics.setColor(COLORS.HIGHLIGHT)
+            local currentScore = math.ceil(self.state.scoringState.animatedTotal)
+            local totalScore = (self.state.totalScore or 0) + currentScore
             love.graphics.printf(
-                tostring(math.ceil(self.state.scoringState.animatedTotal)),
+                tostring(totalScore),
                 0,
-                textY + 50,  -- 50 pixels below the formula
+                textY + 50,
                 screenWidth,
                 'center'
             )
@@ -1249,35 +1262,30 @@ function BattleEncounter:drawPileView()
 end
 
 function BattleEncounter:calculateReward()
-    local targetScore = self.state.targetScore
-    local scoreRatio = self.state.totalScore / targetScore
+    -- Get current dish rating
+    local dishRating = self:getDishRating(self.state.totalScore)
 
-    -- Determine rating based on score ratio
-    local rating
-    if scoreRatio >= 2.0 then
-        rating = "S"
-    elseif scoreRatio >= 1.5 then
-        rating = "A"
-    elseif scoreRatio >= 1.2 then
-        rating = "B"
-    elseif scoreRatio >= 1.0 then
-        rating = "C"
-    elseif scoreRatio >= 0.5 then
-        rating = "D"
-    else
-        rating = "F"
-    end
-
-    -- If score is below half target, no reward
-    if rating == "F" then
+    -- If score is F rating, no reward
+    if dishRating == "F" then
         return 0
     end
 
     -- Return base reward plus rating bonus
-    return self.config.rewards.base_money + (self.config.rewards.rating_bonus[rating] or 0)
+    local baseReward = self.config.rewards.base_money
+    local ratingBonus = self.config.rewards.rating_bonus[dishRating] or 0
+    return baseReward + ratingBonus
 end
 
 return BattleEncounter  -- NOT return true/false
+
+
+
+
+
+
+
+
+
 
 
 

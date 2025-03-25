@@ -68,23 +68,15 @@ TestRunner:addTest("BattleEncounter - Rating Updates", function(t)
     -- Set up the game state
     gameState = { selectedChef = chef }
 
-    -- Test rating decrease on low score
-    battle:updateRating(80)
-    t:assertEquals(chef.rating, "C", "Rating should decrease on low score")
+    -- Test low score results in F dish rating
+    battle:updateRating(60)
+    t:assertEquals(battle.state.dishRating, "F", "Should get F dish rating for low score")
+    t:assertEquals(chef.rating, "B", "Chef rating should remain unchanged")
 
-    -- Test rating increase on perfect score
-    chef.rating = "B"
-    battle:updateRating(200)  -- Need 200 to meet perfect dish criteria (2x target)
-    t:assertEquals(chef.rating, "A", "Rating should increase on perfect score")
-
-    -- Test game over condition
-    chef.rating = "F"
-    local gameOverCalled = false
-    battle.gameOver = function(self)
-        gameOverCalled = true
-    end
-    battle:updateRating(50)
-    t:assert(gameOverCalled, "Game over should be called when rating is F")
+    -- Test perfect score results in S dish rating
+    battle:updateRating(200)
+    t:assertEquals(battle.state.dishRating, "S", "Should get S dish rating for perfect score")
+    t:assertEquals(chef.rating, "B", "Chef rating should remain unchanged")
 end)
 
 TestRunner:addTest("BattleEncounter - Multiple Ingredient Pair Combination", function(t)
@@ -437,6 +429,7 @@ TestRunner:addTest("BattleEncounter - No Reward on Loss", function(t)
 end)
 
 return TestRunner
+
 
 
 
