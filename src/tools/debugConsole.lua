@@ -498,7 +498,7 @@ end
 
 -- New command implementations
 function DebugConsole:showVersion()
-    self:info("Game Version: 0.1.0-prototype")
+    self:info("Game Version: " .. GAME_VERSION)
     self:info("LÖVE Version: " .. love.getVersion())
 end
 
@@ -612,6 +612,7 @@ function DebugConsole:cleanup()
 end
 
 return DebugConsole
+
 
 
 

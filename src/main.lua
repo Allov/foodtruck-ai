@@ -190,7 +190,7 @@ function Main:drawGlobalOverlays()
         string.format("Memory: %.1f MB", collectgarbage("count") / 1024),
         string.format("FPS: %d", love.timer.getFPS()),
         string.format("Resolution: %dx%d", love.graphics.getWidth(), love.graphics.getHeight()),
-        string.format("Version: %s (LÖVE %s)", "0.1.0-prototype", love.getVersion())
+        string.format("Version: %s (LÖVE %s)", GAME_VERSION, love.getVersion())
     }
 
     -- Save current graphics state
@@ -318,6 +318,7 @@ function Main.mousepressed(x, y, button)
 end
 
 return Main
+
 
 
 
