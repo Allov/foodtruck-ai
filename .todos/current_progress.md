@@ -18,11 +18,6 @@
   - Need: Visual improvements
   - Need: Balance tuning
 
-## On Hold
-- Card combination system refinements
-- Synergy calculations improvements
-- Battle-type specific mechanics expansions
-
 ## Known Issues
 1. Market balance needs tuning
 2. Card effects need implementation
@@ -31,12 +26,18 @@
 5. Game state persistence between encounters needs improvement
 6. Chef progression system incomplete
 7. Content variety limited
-8. Performance optimization needed for larger maps
+8. Performance optimization needed
+9. Battle plays extra round
+10. Node navigation ignores connection logic
+11. Missing mouse support (map, battles, market)
 
 ## Next Priorities
-1. Map system improvements
-2. Content variety expansion
-3. Visual polish
+1. Fix battle round count
+2. Fix node navigation logic
+3. Add mouse support
+4. Map system improvements
+5. Content variety expansion
+
 
 
 

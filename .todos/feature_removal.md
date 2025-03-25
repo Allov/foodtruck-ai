@@ -47,7 +47,11 @@
    - Progress tracking
    - Victory condition
 
-2. Simple Battle System
+2. Battle System
+   - Both food_critic and rush_hour variants
+   - Different strategic approaches:
+     * Food Critic: Quality focus (3 rounds, high target)
+     * Rush Hour: Speed focus (5 rounds, lower target)
    - Basic scoring
    - Win/loss states
    - Reward structure
