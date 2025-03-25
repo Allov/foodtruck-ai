@@ -240,10 +240,9 @@ function Main.textinput(t)
         return
     end
 
-    if sceneManager.current and sceneManager.current.inputtingSeed then
-        if t:match("^[%w%s%-_%.]+$") then
-            sceneManager.current.seedInput = sceneManager.current.seedInput .. t
-        end
+    -- Add this to handle menu text input
+    if sceneManager.current and sceneManager.current.textinput then
+        sceneManager.current:textinput(t)
     end
 end
 
@@ -318,6 +317,7 @@ function Main.mousepressed(x, y, button)
 end
 
 return Main
+
 
 
 

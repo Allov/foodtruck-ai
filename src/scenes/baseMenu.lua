@@ -25,6 +25,39 @@ function BaseMenu:init()
     self.titleOffset = 0
     self.titleAlpha = 1
     self.clickables = MouseHelper.newClickableCollection()
+
+    -- Add input handling properties
+    self.inputting = false
+    self.inputText = ""
+    self.inputValidator = nil  -- Function to validate input characters
+    self.onInputComplete = nil -- Function to handle input completion
+    self.inputPrompt = ""      -- Text to show above input field
+end
+
+function BaseMenu:startInput(prompt, validator, onComplete)
+    self.inputting = true
+    self.inputText = ""
+    self.inputPrompt = prompt or "Enter text:"
+    self.inputValidator = validator
+    self.onInputComplete = onComplete
+end
+
+function BaseMenu:stopInput()
+    self.inputting = false
+    self.inputText = ""
+    self.inputValidator = nil
+    self.onInputComplete = nil
+end
+
+function BaseMenu:handleTextInput(text)
+    if not self.inputting then return end
+    if self.inputValidator then
+        if self.inputValidator(text) then
+            self.inputText = self.inputText .. text
+        end
+    else
+        self.inputText = self.inputText .. text
+    end
 end
 
 -- Add a new method for child classes to call after setting options
@@ -86,6 +119,19 @@ function BaseMenu:update(dt)
     self.titleOffset = math.sin(love.timer.getTime() * self.FLOAT_SPEED) * self.FLOAT_AMOUNT
     self.titleAlpha = 1 - math.abs(math.sin(love.timer.getTime() * self.SHIMMER_SPEED) * 0.2)
 
+    if self.inputting then
+        if love.keyboard.wasPressed('return') and #self.inputText > 0 then
+            if self.onInputComplete then
+                self.onInputComplete(self.inputText)
+            end
+        elseif love.keyboard.wasPressed('backspace') then
+            self.inputText = self.inputText:sub(1, -2)
+        elseif love.keyboard.wasPressed('escape') then
+            self:stopInput()
+        end
+        return
+    end
+
     -- Update mouse interaction
     local mx, my = love.mouse.getPosition()
     self.clickables:update(mx, my)
@@ -115,15 +161,35 @@ end
 function BaseMenu:draw()
     MenuStyle.drawBackground()
 
-    -- Draw menu options
-    for i, option in ipairs(self.options) do
-        local displayText = self:getOptionText(option)
-        MenuStyle.drawMenuItem(displayText, i, i == self.selected, false)
+    if self.inputting then
+        -- Draw input interface
+        love.graphics.setFont(MenuStyle.FONTS.MENU)
+        love.graphics.setColor(MenuStyle.COLORS.TEXT)
+        love.graphics.printf(self.inputPrompt, 0,
+            MenuStyle.LAYOUT.MENU_START_Y,
+            love.graphics.getWidth(), 'center')
+        love.graphics.printf(self.inputText .. "_", 0,
+            MenuStyle.LAYOUT.MENU_START_Y + MenuStyle.LAYOUT.MENU_ITEM_HEIGHT,
+            love.graphics.getWidth(), 'center')
+    else
+        -- Draw menu options
+        for i, option in ipairs(self.options) do
+            local displayText = self:getOptionText(option)
+            MenuStyle.drawMenuItem(displayText, i, i == self.selected, false)
+        end
     end
 
     -- Debug visualization
     self.clickables:debugDraw()
 end
 
+function BaseMenu:textinput(t)
+    if self.inputting then
+        self:handleTextInput(t)
+    end
+end
+
 return BaseMenu
+
+
 
