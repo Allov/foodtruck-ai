@@ -64,7 +64,7 @@ jobs:
   build:
     needs: validate
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v2
       
@@ -73,28 +73,60 @@ jobs:
         run: |
           zip -9 -r game.love . -x "*.git*" "*.github*" "*.bat" "*.md"
       
-      # Upload artifact
-      - name: Upload Build Artifact
+      # Build Windows version
+      - name: Build Windows Version
+        run: |
+          wget https://github.com/love2d/love/releases/download/11.4/love-11.4-win64.zip
+          unzip love-11.4-win64.zip
+          mkdir -p build/win
+          cp love-11.4-win64/* build/win/
+          cat build/win/love.exe game.love > build/win/FoodTruckJourney.exe
+      
+      # Build macOS version
+      - name: Build macOS Version
+        run: |
+          wget https://github.com/love2d/love/releases/download/11.4/love-11.4-macos.zip
+          unzip love-11.4-macos.zip
+          mkdir -p build/macos
+          cp -r love.app build/macos/FoodTruckJourney.app
+          cp game.love build/macos/FoodTruckJourney.app/Contents/Resources/
+          # Update Info.plist would go here
+      
+      # Upload artifacts
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: game-build
-          path: game.love
+          name: game-builds
+          path: |
+            game.love
+            build/win
+            build/macos
 
-  deploy:
+  release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/download-artifact@v2
         with:
-          name: game-build
+          name: game-builds
       
-      # Create release
+      # Zip platform-specific builds
+      - name: Package Builds
+        run: |
+          zip -r FoodTruckJourney-Windows.zip build/win/
+          zip -r FoodTruckJourney-macOS.zip build/macos/
+      
+      # Create GitHub Release
       - name: Create Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: game.love
+          files: |
+            game.love
+            FoodTruckJourney-Windows.zip
+            FoodTruckJourney-macOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ## Version Control Strategy
