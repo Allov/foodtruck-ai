@@ -44,6 +44,10 @@ function love.textinput(t)
     game.textinput(t)
 end
 
+function love.mousepressed(x, y, button)
+    game.mousepressed(x, y, button)
+end
+
 function love.wheelmoved(x, y)
     game.wheelmoved(x, y)
 end

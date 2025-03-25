@@ -311,7 +311,14 @@ function Main.wheelmoved(x, y)
     end
 end
 
+function Main.mousepressed(x, y, button)
+    if sceneManager.current and sceneManager.current.mousepressed then
+        sceneManager.current:mousepressed(x, y, button)
+    end
+end
+
 return Main
+
 
 
 
